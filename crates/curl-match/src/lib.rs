@@ -1,0 +1,286 @@
+//! Transport-independent host authority. Only validated commands reach the sim.
+use curl_rules::{Format, Match, Phase, Remedy, Resolution, Rules};
+use curl_sim::{Release, Sim, Sweep};
+use serde::{Deserialize, Serialize};
+use std::collections::BTreeMap;
+
+pub const LATE_WINDOW: u32 = 24; // 100 ms; older samples apply at authority arrival.
+pub const FUTURE_WINDOW: u32 = 12;
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
+pub struct Seat {
+    pub team: u8,
+    pub position: u8,
+}
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+pub struct AcceptedSweep {
+    pub tick: u32,
+    pub input: Sweep,
+    pub retimed: bool,
+}
+#[derive(Clone)]
+pub struct Authority {
+    pub sim: Sim,
+    pub game: Match,
+    release_snapshot: Option<Sim>,
+    sweeps: BTreeMap<(u32, u8), Sweep>,
+    pub last_resolution: Option<Resolution>,
+}
+impl Authority {
+    pub fn new(seed: u64, rules: Rules, hammer: u8) -> Result<Self, &'static str> {
+        Ok(Self {
+            sim: Sim::new(seed),
+            game: Match::new(rules, hammer)?,
+            release_snapshot: None,
+            sweeps: BTreeMap::new(),
+            last_resolution: None,
+        })
+    }
+    pub fn release(&mut self, seat: Seat, mut release: Release) -> Result<(), &'static str> {
+        if !self.valid_seat(seat)
+            || seat.team != self.game.delivering_team()
+            || seat.position != self.game.throwing_seat()
+            || self.game.phase != Phase::Calling
+        {
+            return Err("seat does not own this delivery");
+        }
+        // Ignore client-provided identity: the authority assigns team and stone id.
+        release.team = seat.team;
+        release.stone = self.game.next_stone_id();
+        release.validate()?;
+        // Validate both state transitions on clones so failure cannot partially mutate.
+        let mut sim = self.sim.clone();
+        sim.release(release.clone())?;
+        let mut game = self.game.clone();
+        game.begin(seat.team, release.stone, &self.sim.stones)?;
+        self.game = game;
+        self.sim = sim;
+        self.release_snapshot = Some(self.sim.clone());
+        self.sweeps.clear();
+        self.last_resolution = None;
+        Ok(())
+    }
+    fn valid_seat(&self, seat: Seat) -> bool {
+        seat.team < 2
+            && seat.position
+                < if self.game.rules.format == Format::MixedDoubles {
+                    2
+                } else {
+                    4
+                }
+    }
+    pub fn sweep(
+        &mut self,
+        seat: Seat,
+        requested_tick: u32,
+        mut input: Sweep,
+    ) -> Result<AcceptedSweep, &'static str> {
+        if !self.valid_seat(seat) || self.game.phase != Phase::InFlight || !input.valid() {
+            return Err("sweep unavailable");
+        }
+        if self.game.rules.format == Format::Wheelchair {
+            return Err("wheelchair curling has no sweeping");
+        }
+        if requested_tick > self.sim.tick.saturating_add(FUTURE_WINDOW) {
+            return Err("sweep too far in future");
+        }
+        let tick = if requested_tick.saturating_add(LATE_WINDOW) < self.sim.tick {
+            self.sim.tick
+        } else {
+            requested_tick.max(self.sim.release_tick)
+        };
+        let delivered = self.sim.delivered.ok_or("no delivered stone")?;
+        if input.stone != delivered {
+            return Err("only delivered-stone sweeping supported in this slice");
+        }
+        // Behind the tee: one sweeper per side. A defending skip (seat 1 in mixed,
+        // 3 in teams) may sweep only after the stone reaches the far tee.
+        let stone = self
+            .sim
+            .stones
+            .iter()
+            .find(|s| s.id == delivered && s.active)
+            .ok_or("stone out of play")?;
+        if seat.team != self.game.delivering_team() {
+            let skip = if self.game.rules.format == Format::MixedDoubles {
+                1
+            } else {
+                3
+            };
+            if seat.position != skip || stone.pos.y < curl_fx::Fx::ZERO {
+                return Err("opponent cannot sweep here");
+            }
+            // Do not retroactively authorize a command using the stone's later position.
+            if tick < self.sim.tick {
+                return Err("opponent sweep may not predate tee authorization");
+            }
+        }
+        // One tracked brush stream per team in first slice, no client-selected fatigue id.
+        input.brush = seat.team;
+        if self.sweeps.contains_key(&(tick, input.brush)) {
+            return Err("duplicate team sweep tick");
+        }
+        self.sweeps.insert((tick, input.brush), input);
+        if tick < self.sim.tick {
+            self.resimulate()?;
+        }
+        Ok(AcceptedSweep {
+            tick,
+            input,
+            retimed: tick != requested_tick,
+        })
+    }
+    fn inputs(&self, tick: u32) -> Vec<Sweep> {
+        self.sweeps
+            .range((tick, 0)..=(tick, u8::MAX))
+            .map(|(_, s)| *s)
+            .collect()
+    }
+    fn resimulate(&mut self) -> Result<(), &'static str> {
+        let target = self.sim.tick;
+        let mut restored = self
+            .release_snapshot
+            .clone()
+            .ok_or("missing release snapshot")?;
+        while restored.tick < target && !restored.is_resting() {
+            restored.step(&self.inputs(restored.tick));
+        }
+        self.sim = restored;
+        Ok(())
+    }
+    pub fn step(&mut self) -> Result<(), &'static str> {
+        if self.game.phase != Phase::InFlight {
+            return Ok(());
+        }
+        self.sim.step(&self.inputs(self.sim.tick));
+        if self.sim.timed_out {
+            return Err("physics time budget exhausted");
+        }
+        if self.sim.is_resting() {
+            let resolution = self.game.settle(&self.sim.stones)?;
+            if let Some(stones) = &resolution.replace_stones {
+                self.sim.stones = stones.clone();
+            }
+            self.last_resolution = Some(resolution);
+        }
+        Ok(())
+    }
+    pub fn choose(&mut self, seat: Seat, remedy: Remedy) -> Result<(), &'static str> {
+        if !self.valid_seat(seat) {
+            return Err("invalid seat");
+        }
+        let resolution = self.game.choose(seat.team, remedy)?;
+        if let Some(stones) = &resolution.replace_stones {
+            self.sim.stones = stones.clone();
+        }
+        self.last_resolution = Some(resolution);
+        Ok(())
+    }
+    pub fn accepted_sweeps(&self) -> Vec<(u32, Sweep)> {
+        self.sweeps
+            .iter()
+            .map(|((tick, _), s)| (*tick, *s))
+            .collect()
+    }
+}
+#[cfg(test)]
+mod tests {
+    use super::*;
+    const THROWER: Seat = Seat {
+        team: 0,
+        position: 0,
+    };
+    fn authority() -> Authority {
+        Authority::new(42, Rules::mixed(), 1).unwrap()
+    }
+    #[test]
+    fn release_ownership_and_identity() {
+        let mut a = authority();
+        assert!(
+            a.release(
+                Seat {
+                    team: 1,
+                    position: 0
+                },
+                Release::draw()
+            )
+            .is_err()
+        );
+        assert_eq!(a.game.phase, Phase::Calling);
+        a.release(THROWER, Release::draw()).unwrap();
+        assert_eq!(a.sim.delivered, Some(2));
+        assert_eq!(a.sim.stones[0].team, 0);
+        assert!(a.release(THROWER, Release::draw()).is_err());
+    }
+    #[test]
+    fn rejected_release_is_atomic() {
+        let mut a = authority();
+        let before = a.sim.hash();
+        let mut r = Release::draw();
+        r.vel.y = curl_fx::Fx(i64::MAX);
+        assert!(a.release(THROWER, r).is_err());
+        assert_eq!(before, a.sim.hash());
+        assert_eq!(a.game.phase, Phase::Calling);
+    }
+    #[test]
+    fn delayed_inputs_match_on_time_exactly() {
+        let mut a = authority();
+        a.release(THROWER, Release::draw()).unwrap();
+        let mut b = a.clone();
+        let input = Sweep::centered(2, 255);
+        a.sweep(THROWER, 10, input).unwrap();
+        for _ in 0..20 {
+            a.step().unwrap();
+            b.step().unwrap();
+        }
+        b.sweep(THROWER, 10, input).unwrap();
+        assert_eq!(a.sim.hash(), b.sim.hash());
+        for _ in 0..50 {
+            a.step().unwrap();
+            b.step().unwrap();
+        }
+        assert_eq!(a.sim.hash(), b.sim.hash());
+    }
+    #[test]
+    fn stale_sweep_cannot_rewrite_past() {
+        let mut a = authority();
+        a.release(THROWER, Release::draw()).unwrap();
+        for _ in 0..100 {
+            a.step().unwrap();
+        }
+        let before = a.sim.hash();
+        let accepted = a.sweep(THROWER, 0, Sweep::centered(2, 255)).unwrap();
+        assert_eq!(accepted.tick, 100);
+        assert!(accepted.retimed);
+        assert_eq!(before, a.sim.hash());
+    }
+    #[test]
+    fn deny_opponent_before_tee_and_duplicate_fatigue_stream() {
+        let mut a = authority();
+        a.release(THROWER, Release::draw()).unwrap();
+        let input = Sweep::centered(2, 255);
+        assert!(
+            a.sweep(
+                Seat {
+                    team: 1,
+                    position: 1
+                },
+                0,
+                input
+            )
+            .is_err()
+        );
+        a.sweep(THROWER, 0, input).unwrap();
+        assert!(
+            a.sweep(
+                Seat {
+                    team: 0,
+                    position: 1
+                },
+                0,
+                input
+            )
+            .is_err()
+        );
+        assert!(a.sweep(THROWER, 500, input).is_err());
+    }
+}

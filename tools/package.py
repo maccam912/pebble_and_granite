@@ -40,7 +40,7 @@ try:
     out=ROOT/'build'/a.platform;out.mkdir(parents=True,exist_ok=True)
     filename={'linux':'pebble-and-granite.x86_64','windows':'pebble-and-granite.exe','macos':'pebble-and-granite.zip','android':'pebble-and-granite.apk'}[a.platform]
     preset={'linux':'Linux','windows':'Windows','macos':'macOS','android':'Android'}[a.platform]
-    run([godot,'--headless','--path',str(ROOT),'--editor','--import'])
+    run([godot,'--headless','--path',str(ROOT),'--editor','--import','--frame-delay','1000'])
     run([godot,'--headless','--path',str(ROOT),'--export-debug',preset,str(out/filename)])
     downloads=ROOT/'build/download';downloads.mkdir(exist_ok=True)
     name='pebble-and-granite-'+a.number+'-'+a.platform

@@ -220,6 +220,9 @@ impl Sim {
             || stone.team > 1
             || stone.vel != V2::ZERO
             || stone.spin != Fx::ZERO
+            || stone.turns != Fx::ZERO
+            || stone.touched
+            || !stone.active
             || stone.pos.x < -HALF_WIDTH + RADIUS
             || stone.pos.x > HALF_WIDTH - RADIUS
             || stone.pos.y < FAR_HOG

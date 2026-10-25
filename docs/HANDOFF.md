@@ -47,3 +47,23 @@ bible only. Remote: `maccam912/pebble_and_granite`, main branch.
   No multiplayer feature is claimed yet. Four-character Iroh rooms remain planned.
 - CI and desktop/Android package configuration authored; remote result pending.
 - Usage checkpoint: 5% used / 95% remaining.
+
+## Milestone 2 — authority/rules and first remote gates
+
+- `29cc46c` pushed the playable lab, replay checker and release workflow.
+- GitHub run 40240006046: all four core jobs passed (Linux, Windows, macOS ARM64,
+  macOS Intel), including every-tick canonical traces. Initial package jobs failed:
+  Android setup requested removed SDK package `tools`; Linux encountered first-import
+  GDExtension editor shutdown race. Fixes use explicit platform-tools and the upstream
+  documented frame-delay workaround (godotengine/godot#111048), with a fresh-cache
+  reproduction test. A preloaded extension cache also passed, but is not the chosen fix.
+- Development Android keystore is stored outside the repo under
+  `~/.local/share/pebble-and-granite/signing/` and in the repository Actions secret.
+- Added 10 rules tests and 5 transport-independent authority tests. Mixed doubles
+  matches/positioned stones are not yet exposed in the lab; no online product claim.
+- 2026 rulebook URL returned 403. Rules currently implement the supplied bible;
+  complete clause audit (including changed 2026 positioned guard locations) remains.
+- Authority admits one brush stream per team in this slice, validates ownership,
+  deduplicates per tick/team, allows a 100 ms late-input window, and retimes older
+  samples to arrival. Opponent sweeping cannot be retroactively authorized by a
+  later tee crossing. Full role-specific multi-brush play is deferred.

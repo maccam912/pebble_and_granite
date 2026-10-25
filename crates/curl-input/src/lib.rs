@@ -50,6 +50,10 @@ impl Default for Stroke {
 }
 impl Stroke {
     pub fn grip(&mut self, s: Sample) {
+        if !valid_sample(s) {
+            self.phase = Phase::Cancelled;
+            return;
+        }
         self.start = s;
         self.last = s;
         self.drive = s;
@@ -61,7 +65,7 @@ impl Stroke {
         self.phase = Phase::Cancelled;
     }
     pub fn sample(&mut self, s: Sample) {
-        if s.us <= self.last.us || s.x.abs() > 4_000_000 || s.y.abs() > 4_000_000 {
+        if s.us <= self.last.us || !valid_sample(s) {
             return;
         }
         match self.phase {
@@ -83,8 +87,8 @@ impl Stroke {
             let part = end_us.saturating_sub(self.last.us).min(span);
             let end = Sample {
                 us: end_us,
-                x: self.last.x + (s.x - self.last.x) * part as i64 / span as i64,
-                y: self.last.y + (s.y - self.last.y) * part as i64 / span as i64,
+                x: self.last.x + ((s.x - self.last.x) as i128 * part as i128 / span as i128) as i64,
+                y: self.last.y + ((s.y - self.last.y) as i128 * part as i128 / span as i128) as i64,
             };
             self.finish_drive(end);
             self.phase = Phase::Slide;
@@ -93,8 +97,9 @@ impl Stroke {
     }
     fn finish_drive(&mut self, end: Sample) {
         let duration = end.us.saturating_sub(self.drive.us).max(1);
-        let velocity =
-            ((self.drive.y - end.y).max(0) * 1_000_000 / duration as i64) * self.gain / 1000;
+        let velocity = ((self.drive.y - end.y).max(0) * 1_000_000 / duration as i64)
+            * self.gain.clamp(250, 4000)
+            / 1000;
         // Broad comfortable stroke range for draw weights, with hits at the top.
         self.speed = if velocity < 350_000 {
             1600 + velocity * 600 / 350_000
@@ -105,6 +110,16 @@ impl Stroke {
         self.drive_end = Some(end);
     }
     pub fn release(&mut self, s: Sample) -> Report {
+        if !valid_sample(s) || s.us < self.last.us {
+            self.phase = Phase::Cancelled;
+            return Report {
+                speed_mm_s: 0,
+                line_mm: 0,
+                push_mm_s: 0,
+                drive_us: 0,
+                valid: false,
+            };
+        }
         self.sample(s);
         if self.phase == Phase::Drive && s.us - self.drive.us >= 30_000 {
             self.finish_drive(s);
@@ -129,6 +144,12 @@ impl Stroke {
         }
     }
 }
+fn valid_sample(s: Sample) -> bool {
+    (-4_000_000..=4_000_000).contains(&s.x)
+        && (-4_000_000..=4_000_000).contains(&s.y)
+        && s.us < i64::MAX as u64 - 120_000
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

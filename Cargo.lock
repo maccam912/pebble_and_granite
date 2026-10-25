@@ -26,6 +26,16 @@ name = "curl-input"
 version = "0.1.0"
 
 [[package]]
+name = "curl-match"
+version = "0.1.0"
+dependencies = [
+ "curl-fx",
+ "curl-rules",
+ "curl-sim",
+ "serde",
+]
+
+[[package]]
 name = "curl-proto"
 version = "0.1.0"
 dependencies = [
