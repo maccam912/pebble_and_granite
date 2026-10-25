@@ -21,6 +21,7 @@ func run() -> void:
 	assert(not session.frame().timed_out)
 	assert(session.state_hash().length() == 16)
 	var scene: Control = load("res://scenes/lab.tscn").instantiate()
+	scene.persistence_enabled = false
 	root.add_child(scene)
 	await process_frame
 	assert(scene.status.text.contains("Ready"))

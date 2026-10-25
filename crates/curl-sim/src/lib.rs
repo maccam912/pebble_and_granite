@@ -259,6 +259,34 @@ impl Sim {
         self.stones.sort_by_key(|s| s.id);
         Ok(())
     }
+    /// Advance deterministic ice time while no stones move. Heat cools lazily.
+    pub fn advance_idle(&mut self, ticks: u32) -> Result<(), &'static str> {
+        if !self.is_resting() || ticks > HZ * 3600 {
+            return Err("invalid idle interval");
+        }
+        self.tick = self
+            .tick
+            .checked_add(ticks)
+            .ok_or("simulation clock exhausted")?;
+        for f in &mut self.brush_fatigue {
+            *f = f.saturating_sub(ticks.saturating_mul(2).min(u16::MAX as u32) as u16);
+        }
+        Ok(())
+    }
+    /// Remove practice stones without re-pebbling or rewinding the ice clock.
+    pub fn clear_stones(&mut self) -> Result<(), &'static str> {
+        if !self.is_resting() {
+            return Err("stones still moving");
+        }
+        self.stones.clear();
+        self.delivered = None;
+        self.release_tick = self.tick;
+        self.hog_tick = None;
+        self.contacts = 0;
+        self.timed_out = false;
+        self.last_cells = [None; MAX_STONES];
+        Ok(())
+    }
     pub fn is_resting(&self) -> bool {
         self.stones.iter().all(|s| !s.active || s.vel == V2::ZERO)
     }

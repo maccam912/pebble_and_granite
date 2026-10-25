@@ -15,6 +15,7 @@ version = "0.1.0"
 dependencies = [
  "curl-fx",
  "curl-input",
+ "curl-match",
  "curl-proto",
  "curl-sim",
  "godot",
@@ -30,9 +31,11 @@ name = "curl-match"
 version = "0.1.0"
 dependencies = [
  "curl-fx",
+ "curl-proto",
  "curl-rules",
  "curl-sim",
  "serde",
+ "serde_json",
 ]
 
 [[package]]
@@ -59,6 +62,7 @@ name = "curl-server"
 version = "0.1.0"
 dependencies = [
  "curl-fx",
+ "curl-match",
  "curl-proto",
  "curl-sim",
  "serde_json",

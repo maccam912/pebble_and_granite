@@ -56,6 +56,7 @@ func throw_with(scene: Control, touch: bool) -> Dictionary:
 
 func run() -> void:
 	var scene: Control = load("res://scenes/lab.tscn").instantiate()
+	scene.persistence_enabled = false
 	root.add_child(scene)
 	await process_frame
 	var mouse := throw_with(scene, false)

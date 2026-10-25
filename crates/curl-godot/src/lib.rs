@@ -1,6 +1,8 @@
 //! Presentation boundary: floats may leave this crate, never enter sim math.
 use curl_fx::{Fx, V2};
-use curl_sim::{Release, Sim, Sweep};
+use curl_match::practice::Practice;
+use curl_proto::session::SessionLog;
+use curl_sim::{Release, Sweep};
 use godot::prelude::*;
 struct Extension;
 #[gdextension]
@@ -9,7 +11,7 @@ unsafe impl ExtensionLibrary for Extension {}
 #[derive(GodotClass)]
 #[class(base=RefCounted)]
 pub struct CurlSession {
-    sim: Sim,
+    practice: Practice,
     stroke: curl_input::Stroke,
     base: Base<RefCounted>,
 }
@@ -17,7 +19,7 @@ pub struct CurlSession {
 impl IRefCounted for CurlSession {
     fn init(base: Base<RefCounted>) -> Self {
         Self {
-            sim: Sim::new(42),
+            practice: Practice::new(42),
             stroke: curl_input::Stroke::default(),
             base,
         }
@@ -30,7 +32,8 @@ fn render(n: Fx) -> f64 {
 impl CurlSession {
     #[func]
     fn reset(&mut self, seed: i64) {
-        self.sim = Sim::new(seed as u64);
+        self.practice = Practice::new(seed as u64);
+        self.stroke.cancel();
     }
     /// All public input units are integers: mm/s, millimetres, milli-revolutions/s.
     #[func]
@@ -41,10 +44,15 @@ impl CurlSession {
         {
             return "Invalid delivery".into();
         }
+        let Some(id) = self.practice.next_id() else {
+            return "Clear the stones before the next throw".into();
+        };
         let mut r = Release::draw();
+        r.stone = id;
+        r.team = id % 2;
         r.vel = V2::new(Fx::ratio(broom_mm, 1000), -r.pos.y).unit() * Fx::ratio(speed_mm_s, 1000);
         r.spin = Fx::ratio(12 * turn, 100);
-        match self.sim.release(r) {
+        match self.practice.release(r) {
             Ok(()) => GString::new(),
             Err(e) => e.into(),
         }
@@ -59,21 +67,24 @@ impl CurlSession {
             return;
         }
         let input = Sweep {
-            stone: 0,
+            stone: self.practice.sim.delivered.unwrap_or(0),
             brush: 0,
             effort: effort as u8,
             lateral_mm: lateral_mm as i16,
             ahead_mm: ahead_mm as u16,
         };
         for _ in 0..count {
-            self.sim.step(&[input]);
+            if let Err(error) = self.practice.step(&[input]) {
+                godot_error!("Practice step: {error}");
+                break;
+            }
         }
     }
     #[func]
     fn frame(&self) -> VarDictionary {
         let mut frame = VarDictionary::new();
         let mut stones = Array::<VarDictionary>::new();
-        for s in &self.sim.stones {
+        for s in &self.practice.sim.stones {
             let mut d = VarDictionary::new();
             d.set("id", s.id as i64);
             d.set("team", s.team as i64);
@@ -86,19 +97,80 @@ impl CurlSession {
             d.set("active", s.active);
             stones.push(&d);
         }
+        let last_release = self.practice.log.records.iter().rev().find_map(|r| {
+            if let curl_proto::session::Record::Shot(s) = r {
+                Some(s.release.vel.length())
+            } else {
+                None
+            }
+        });
+        frame.set("release_speed", last_release.map_or(0.0, render));
         frame.set("stones", &stones);
-        frame.set("tick", self.sim.tick as i64);
-        frame.set("resting", self.sim.is_resting());
-        frame.set("contacts", self.sim.contacts as i64);
-        frame.set("hog_tick", self.sim.hog_tick.map_or(-1, |t| t as i64));
-        frame.set("timed_out", self.sim.timed_out);
+        frame.set(
+            "tick",
+            (self.practice.sim.tick - self.practice.sim.release_tick) as i64,
+        );
+        frame.set("global_tick", self.practice.sim.tick as i64);
+        frame.set(
+            "delivered",
+            self.practice.sim.delivered.map_or(-1, |id| id as i64),
+        );
+        frame.set("can_deliver_next", self.practice.next_id().is_some());
+        frame.set("ice_cells", self.practice.sim.ice.cells.len() as i64);
+        frame.set("resting", self.practice.sim.is_resting());
+        frame.set("contacts", self.practice.sim.contacts as i64);
+        frame.set(
+            "hog_tick",
+            self.practice
+                .sim
+                .hog_tick
+                .map_or(-1, |t| (t - self.practice.sim.release_tick) as i64),
+        );
+        frame.set("timed_out", self.practice.sim.timed_out);
         frame
     }
     #[func]
     fn state_hash(&self) -> GString {
-        GString::from(&format!("{:016x}", self.sim.hash()))
+        GString::from(&format!("{:016x}", self.practice.sim.hash()))
     }
 
+    #[func]
+    fn prepare_next(&mut self, clear: bool) -> GString {
+        let mut next = self.practice.clone();
+        if clear {
+            if let Err(e) = next.clear_stones() {
+                return e.into();
+            }
+        }
+        if let Err(e) = next.idle(480) {
+            return e.into();
+        }
+        self.practice = next;
+        self.stroke.cancel();
+        GString::new()
+    }
+    #[func]
+    fn session_json(&self) -> GString {
+        match serde_json::to_string(&self.practice.log) {
+            Ok(json) => GString::from(&json),
+            Err(e) => {
+                godot_error!("Session serialize: {e}");
+                GString::new()
+            }
+        }
+    }
+    #[func]
+    fn load_session(&mut self, json: GString) -> GString {
+        let parsed = SessionLog::parse(json.to_string().as_bytes()).and_then(Practice::from_log);
+        match parsed {
+            Ok(practice) => {
+                self.practice = practice;
+                self.stroke.cancel();
+                GString::new()
+            }
+            Err(e) => GString::from(&e),
+        }
+    }
     #[func]
     fn grip(&mut self, us: i64, x: i64, y: i64, one_push: bool) {
         self.stroke.one_push = one_push;

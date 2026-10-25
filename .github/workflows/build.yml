@@ -89,6 +89,7 @@ jobs:
         run: |
           python tools/godot.py --headless --path . --script tests/lab_smoke.gd
           python tools/godot.py --headless --path . --script tests/input_routes.gd
+          python tools/godot.py --headless --path . --script tests/session_restore.gd
       - name: Verify Android signature
         if: matrix.platform == 'android'
         shell: bash
@@ -119,4 +120,16 @@ jobs:
           cd release
           sha256sum --check *.sha256
           cd ..
-          gh release create "$RELEASE_TAG" release/* --target "$GITHUB_SHA" --title "Development Build ${{ github.run_number }}" --notes-file docs/RELEASE.md --prerelease
+          remote_tag=$(git ls-remote --tags origin "refs/tags/$RELEASE_TAG")
+          if [ -z "$remote_tag" ]; then
+            git fetch --no-tags origin main
+            if ! git diff --quiet "$GITHUB_SHA" FETCH_HEAD -- .github/workflows/; then
+              echo "::notice::A newer workflow superseded this run; tested packages remain as artifacts."
+              exit 0
+            fi
+            git push origin "$GITHUB_SHA:refs/tags/$RELEASE_TAG"
+            remote_tag=$(git ls-remote --tags origin "refs/tags/$RELEASE_TAG")
+          fi
+          tag_commit=$(printf '%s' "$remote_tag" | cut -f1)
+          test "$tag_commit" = "$GITHUB_SHA"
+          gh release create "$RELEASE_TAG" release/* --verify-tag --title "Development Build ${{ github.run_number }}" --notes-file docs/RELEASE.md --prerelease

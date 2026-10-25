@@ -97,3 +97,21 @@ bible only. Remote: `maccam912/pebble_and_granite`, main branch.
   Input.parse_input_event in both a native window and a scaled headless viewport.
 - Disabled accumulated input so OS motion events reach the mapper without waiting
   for render-frame aggregation. This does not claim to undo OS pointer acceleration.
+
+
+## Persistent practice / session foundation
+
+- Added compressed tick-exact session logs with model/schema validation, bounded
+  records/spans, completed-shot hashes, idle cooling time and clear-stone commands.
+  Interrupted shots restore and continue identically; invalid restores are atomic.
+- Native practice now retains stones/ice across shots, alternates patterned handle
+  colors, and clears the field after 16 stones without re-pebbling. Fresh ice resets.
+- Added autosave with previous-save backup and a disk roundtrip fixture that checks
+  interrupted continuation, two throws, retained ice, corrupted-primary recovery and
+  rejected malformed loads. Test saves are isolated from the player's save file.
+- `curl-server verify-session FILE` verifies the whole recorded practice through the
+  same core. Session replay remains synchronous; long-match seek snapshots are future work.
+- CI run 40240829890 built and verified ALL FOUR packages successfully, including
+  Android signing. Publish alone failed with GitHub integration permissions when
+  creating a tag through the release API. Adopting racinggame's explicit tag/verify
+  flow and superseded-workflow guard; no full release success claimed yet.

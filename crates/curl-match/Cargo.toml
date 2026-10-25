@@ -8,3 +8,5 @@ curl-fx.workspace = true
 curl-sim.workspace = true
 curl-rules.workspace = true
 serde.workspace = true
+curl-proto.workspace = true
+serde_json.workspace = true

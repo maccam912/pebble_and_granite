@@ -30,6 +30,11 @@ var sweep_button: Button
 var one_button: Button
 var run_active := false
 var input_clock: Callable = Time.get_ticks_usec
+var persistence_enabled := true
+var save_allowed := true
+var suspended := false
+var last_save_tick := 0
+var save_path := "user://practice-session.json"
 
 func _ready() -> void:
 	Input.use_accumulated_input = false
@@ -52,13 +57,15 @@ func _ready() -> void:
 	report_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	report_label.add_theme_font_size_override("font_size", 18)
 	add_child(report_label)
-	new_button = button("New stone", Vector2(40, 726), func(): reset())
+	new_button = button("Next stone", Vector2(40, 726), func(): next_throw())
 	turn_button = button("Turn: clockwise ↻", Vector2(225, 726), func(): turn *= -1; update_labels())
 	sweep_button = button("Hold to sweep", Vector2(500, 726), func(): pass)
 	sweep_button.button_down.connect(func(): hold_sweep = true)
 	sweep_button.button_up.connect(func(): hold_sweep = false)
 	one_button = button("One-push: off", Vector2(710, 726), func(): one_push = not one_push; update_labels())
-	reset()
+	button("Fresh ice", Vector2(920, 726), func(): reset())
+	reset(false)
+	restore_practice()
 
 func button(text: String, pos: Vector2, action: Callable) -> Button:
 	var b := Button.new()
@@ -70,12 +77,14 @@ func button(text: String, pos: Vector2, action: Callable) -> Button:
 	add_child(b)
 	return b
 
-func reset() -> void:
+func reset(persist := true) -> void:
 	if session == null: return
 	session.reset(42)
 	frame = session.frame()
 	previous = frame
 	phase = "Ready"
+	last_save_tick = 0
+	save_allowed = true
 	pointer = -99
 	dragging_broom = false
 	sweeping = false
@@ -87,12 +96,15 @@ func reset() -> void:
 	report = "Drag the broom in the house.\nGrip the stone below, pull back, push forward, hold steady, then lift."
 	update_labels()
 	queue_redraw()
+	if persist: save_practice()
 
 func update_labels() -> void:
 	status.text = "PEBBLE & GRANITE  /  " + phase
 	hint.text = "FEEL LAB     •     Seed 42     •     Mouse / trackpad / touch"
 	turn_button.text = "Turn: clockwise ↻" if turn == 1 else "Turn: counterclockwise ↺"
 	one_button.text = "One-push: on" if one_push else "One-push: off"
+	new_button.disabled = run_active
+	new_button.text = "Next stone" if frame.get("can_deliver_next", true) else "Clear stones"
 	turn_button.size.x = 255
 	turn_button.disabled = run_active
 	one_button.disabled = run_active
@@ -108,7 +120,7 @@ func handle_point() -> Vector2:
 	return Vector2(1030, 365)
 
 func _process(delta: float) -> void:
-	if session == null: return
+	if session == null or suspended: return
 	if run_active:
 		# Retain all time debt. Never change fixed dt or silently skip ticks.
 		accumulator += delta
@@ -119,18 +131,24 @@ func _process(delta: float) -> void:
 			accumulator -= float(steps) / 240.0
 			frame = session.frame()
 			if not frame.stones.is_empty():
-				path.append(frame.stones[0].position)
+				path.append(delivered_stone().position)
 			if frame.resting:
 				run_active = false
 				phase = "Stone at rest"
-				var s: Dictionary = frame.stones[0]
+				var s: Dictionary = delivered_stone()
 				var split := "—" if frame.hog_tick < 0 else "%.2f s" % (float(frame.hog_tick) / 240.0)
 				report = "Release %.3f m/s\nHog-to-hog %s\n%.2f rotations • %.2f s travel\nRest: %.2f m across, %.2f m from tee\n%s" % [float(release_report.get("speed_mm_s", 0)) / 1000.0, split, s.turns, float(frame.tick) / 240.0, s.position.x, s.position.y, "In play" if s.active else "Out of play"]
 				update_labels()
+			if frame.resting or frame.global_tick - last_save_tick >= 240:
+				save_practice()
 	queue_redraw()
 
 func _notification(what: int) -> void:
+	if what == NOTIFICATION_APPLICATION_FOCUS_IN or what == NOTIFICATION_APPLICATION_RESUMED:
+		suspended = false
 	if what == NOTIFICATION_APPLICATION_FOCUS_OUT or what == NOTIFICATION_APPLICATION_PAUSED:
+		suspended = true
+		save_practice()
 		pointer = -99
 		hold_sweep = false
 		sweeping = false
@@ -177,6 +195,7 @@ func begin_pointer(id: int, p: Vector2) -> void:
 		update_labels()
 
 func move_pointer(p: Vector2) -> void:
+	if sweeping: return
 	if dragging_broom:
 		broom_mm = clampi(int((p.x - 555) / 94.0 * 1000), -2200, 2200)
 	elif not run_active:
@@ -191,7 +210,7 @@ func end_pointer(p: Vector2) -> void:
 	if dragging_broom:
 		dragging_broom = false
 		return
-	if run_active:
+	if sweeping or run_active:
 		sweeping = false
 		return
 	var q := units(p)
@@ -235,10 +254,10 @@ func _draw() -> void:
 	draw_rect(Rect2(bp - Vector2(18, 6), Vector2(36, 12)), GOLD)
 	for s in frame.get("stones", []):
 		if s.active:
-			stone(sheet_point(s.position), 5.0, s.turns)
-			if s.position.y > -3.6: stone(house_point(s.position), 13.35, s.turns)
+			stone(sheet_point(s.position), 5.0, s.turns, s.team)
+			if s.position.y > -3.6: stone(house_point(s.position), 13.35, s.turns, s.team)
 	if run_active and (hold_sweep or sweeping) and not frame.stones.is_empty():
-		var sp: Vector2 = frame.stones[0].position + Vector2(0, 0.3)
+		var sp: Vector2 = delivered_stone().position + Vector2(0, 0.3)
 		draw_line(sheet_point(sp) - Vector2(10, 0), sheet_point(sp) + Vector2(10, 0), GOLD, 5)
 	draw_string(font, Vector2(825, 147), "THE DELIVERY", HORIZONTAL_ALIGNMENT_LEFT, -1, 16, CYAN)
 	draw_string(font, Vector2(825, 183), "Pull • push • settle • lift", HORIZONTAL_ALIGNMENT_LEFT, -1, 24, Color.WHITE)
@@ -250,12 +269,15 @@ func rings(center: Vector2, scale_m: float) -> void:
 	for entry in [[1.829, Color("346f8e")], [1.219, ICE], [0.610, Color("c06462")], [0.152, ICE]]:
 		draw_circle(center, entry[0] * scale_m, entry[1])
 
-func stone(center: Vector2, radius: float, turns: float) -> void:
+func stone(center: Vector2, radius: float, turns: float, team := 0) -> void:
 	draw_circle(center + Vector2(2, 3), radius + 1, Color(0.03, 0.08, 0.1, 0.3))
 	draw_circle(center, radius, Color("727c80"))
 	draw_circle(center, radius * 0.78, Color("b9c3c6"))
 	var h := Vector2.from_angle(turns * TAU) * radius * 0.62
-	draw_line(center - h, center + h, GOLD, maxf(3, radius * 0.16), true)
+	draw_line(center - h, center + h, GOLD if team == 0 else CYAN, maxf(3, radius * 0.16), true)
+	if team == 1:
+		var cross := h.orthogonal() * 0.4
+		draw_line(center - cross, center + cross, INK, maxf(2, radius * 0.12), true)
 	draw_circle(center, radius * 0.13, INK)
 
 func panel(color: Color) -> StyleBoxFlat:
@@ -263,3 +285,82 @@ func panel(color: Color) -> StyleBoxFlat:
 	p.bg_color = color
 	p.set_corner_radius_all(14)
 	return p
+
+func delivered_stone() -> Dictionary:
+	for s in frame.get("stones", []):
+		if s.id == frame.get("delivered", -1): return s
+	return {}
+
+func next_throw() -> void:
+	if session == null or run_active: return
+	var error: String = session.prepare_next(not frame.get("can_deliver_next", true))
+	if not error.is_empty():
+		report = error
+		update_labels()
+		return
+	frame = session.frame()
+	previous = frame
+	phase = "Ready"
+	stroke_trace.clear()
+	path.clear()
+	report = "Aim again. The stones and the ice stay in play.
+Fresh ice starts a new practice session."
+	update_labels()
+	save_practice()
+
+func save_practice() -> void:
+	if not persistence_enabled or not save_allowed or session == null: return
+	var json: String = session.session_json()
+	if json.is_empty(): return
+	var temp := save_path + ".tmp"
+	var file := FileAccess.open(temp, FileAccess.WRITE)
+	if file == null:
+		save_error("Could not save practice on this device.")
+		return
+	file.store_string(json)
+	file.flush()
+	var error := file.get_error()
+	file.close()
+	if error != OK:
+		save_error("Could not finish saving practice.")
+		return
+	var target := ProjectSettings.globalize_path(save_path)
+	var backup := target + ".bak"
+	if FileAccess.file_exists(target):
+		if FileAccess.file_exists(backup): DirAccess.remove_absolute(backup)
+		if DirAccess.rename_absolute(target, backup) != OK:
+			save_error("Could not retain the previous practice save.")
+			return
+	if DirAccess.rename_absolute(ProjectSettings.globalize_path(temp), target) != OK:
+		save_error("Could not finish saving; the previous save is retained.")
+		return
+	last_save_tick = session.frame().global_tick
+
+func save_error(message: String) -> void:
+	save_allowed = false
+	report = message + " Your current practice can continue."
+	if report_label != null: report_label.text = report
+
+func restore_practice() -> void:
+	if not persistence_enabled: return
+	var found := false
+	for filename in [save_path, save_path + ".bak"]:
+		if not FileAccess.file_exists(filename): continue
+		found = true
+		var file := FileAccess.open(filename, FileAccess.READ)
+		if file == null or file.get_length() > 16 * 1024 * 1024: continue
+		var json := file.get_as_text()
+		file.close()
+		var error: String = session.load_session(json)
+		if not error.is_empty(): continue
+		frame = session.frame()
+		previous = frame
+		run_active = not frame.resting
+		phase = "Travel" if run_active else "Ready"
+		last_save_tick = frame.global_tick
+		release_report = {"speed_mm_s": int(frame.get("release_speed", 0.0) * 1000.0)}
+		report = "Practice restored. The ice and your stones are just as you left them."
+		update_labels()
+		return
+	if found:
+		save_error("The saved practice could not be restored. Existing files are retained; Fresh ice starts a new session.")

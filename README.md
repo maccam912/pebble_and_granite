@@ -17,8 +17,8 @@ godot --path .
 Godot is not installed. Mouse and held-click trackpad use the same stroke as
 Android touch. Drag the broom in the house to aim. Grip the large stone, pull
 back, push upward, settle, then lift. One-push removes the pull/settle requirement.
-Hold the ice or the sweep button to sweep; release to stop. New stone resets the
-practice ice. This is an early lab, not a finished match mode.
+Hold the ice or the sweep button to sweep; release to stop. Next stone retains the field and evolving ice; Fresh ice starts a new session.
+Practice saves automatically, including interrupted shots, with a previous-save backup. This is an early lab, not a finished match mode.
 
 ## Check
 
@@ -28,6 +28,7 @@ python3 tools/build_native.py
 godot --headless --path . --script tests/lab_smoke.gd
 cargo run --release -p curl-server -- example build/throw.json
 cargo run --release -p curl-server -- replay build/throw.json
+cargo run --release -p curl-server -- verify-session /path/to/practice-session.json
 ```
 
 The CLI is currently a replay verifier, not a network listener. Simulation uses

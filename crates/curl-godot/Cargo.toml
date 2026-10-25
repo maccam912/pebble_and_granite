@@ -5,6 +5,7 @@ edition.workspace = true
 license.workspace = true
 
 [dependencies]
+curl-match = { path = "../curl-match" }
 curl-input = { path = "../curl-input" }
 serde_json.workspace = true
 curl-fx.workspace = true
