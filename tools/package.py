@@ -8,6 +8,8 @@ if not a.number.isdigit() or int(a.number)<1: p.error('number must be positive')
 def run(args,env=None):subprocess.run(args,cwd=ROOT,check=True,env=env)
 libdir=ROOT/'native/bin';libdir.mkdir(exist_ok=True,parents=True)
 if a.platform=='android':
+    # The host editor must load the extension while importing Android resources.
+    run([sys.executable,'tools/build_native.py','--release'])
     sdk=pathlib.Path(os.environ.get('ANDROID_HOME',os.environ.get('ANDROID_SDK_ROOT',str(pathlib.Path.home()/'Library/Android/sdk'))))
     ndk=sdk/'ndk/28.1.13356709/toolchains/llvm/prebuilt'/('darwin-x86_64' if platform.system()=='Darwin' else 'linux-x86_64')/'bin'
     target='aarch64-linux-android';run(['rustup','target','add',target])

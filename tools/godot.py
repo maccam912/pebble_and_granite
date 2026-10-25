@@ -19,7 +19,7 @@ def executable():
     suffix={'Linux':'linux.x86_64','Darwin':'macos.universal','Windows':'win64.exe'}[platform.system()]
     folder=CACHE/suffix
     name='Godot_v'+LOCK['godot']+'_'+suffix
-    binary=folder/({'Darwin':'Godot.app/Contents/MacOS/Godot','Windows':name+'.exe','Linux':name}[platform.system()])
+    binary=folder/({'Darwin':'Godot.app/Contents/MacOS/Godot','Windows':name,'Linux':name}[platform.system()])
     if not binary.exists():
         with zipfile.ZipFile(asset(name+'.zip')) as z:z.extractall(folder)
         if platform.system()!='Windows':binary.chmod(0o755)
