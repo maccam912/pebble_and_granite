@@ -22,6 +22,7 @@ pub struct Authority {
     pub sim: Sim,
     pub game: Match,
     release_snapshot: Option<Sim>,
+    idle_remainder: u32,
     sweeps: BTreeMap<(u32, u8), Sweep>,
     pub last_resolution: Option<Resolution>,
 }
@@ -31,6 +32,7 @@ impl Authority {
             sim: Sim::new(seed),
             game: Match::new(rules, hammer)?,
             release_snapshot: None,
+            idle_remainder: 0,
             sweeps: BTreeMap::new(),
             last_resolution: None,
         })
@@ -208,6 +210,20 @@ impl Authority {
         self.last_resolution = Some(resolution);
         Ok(())
     }
+    /// Authority wall time affects both the thinking clock and cooling ice.
+    pub fn think(&mut self, elapsed_ms: u32) -> Result<(), &'static str> {
+        if elapsed_ms > 60000 {
+            return Err("elapsed interval too large");
+        }
+        if self.game.phase != Phase::Calling {
+            return Ok(());
+        }
+        let total = elapsed_ms * 240 + self.idle_remainder;
+        self.sim.advance_idle(total / 1000)?;
+        self.idle_remainder = total % 1000;
+        self.game.think(elapsed_ms);
+        Ok(())
+    }
     pub fn accepted_sweeps(&self) -> Vec<(u32, Sweep)> {
         self.sweeps
             .iter()
@@ -363,6 +379,23 @@ mod tests {
         assert_eq!(a.sim.stones.len(), 2);
         assert_eq!(a.sim.stones[0].id, 0);
         assert_eq!(a.game.next_stone_id(), 2);
+    }
+    #[test]
+    fn thinking_time_cools_ice_independent_of_frame_partition() {
+        let mut a = authority();
+        let mut b = a.clone();
+        a.think(1001).unwrap();
+        for _ in 0..1001 {
+            b.think(1).unwrap();
+        }
+        assert_eq!(a.sim.hash(), b.sim.hash());
+        assert_eq!(a.game.thinking_ms, b.game.thinking_ms);
+        assert_eq!(a.idle_remainder, b.idle_remainder);
+        assert_eq!(a.sim.tick, 240);
+        let tick = a.sim.tick;
+        a.release(THROWER, Release::draw()).unwrap();
+        a.think(1000).unwrap();
+        assert_eq!(a.sim.tick, tick);
     }
 }
 

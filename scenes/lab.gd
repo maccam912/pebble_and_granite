@@ -34,6 +34,19 @@ var persistence_enabled := true
 var save_allowed := true
 var suspended := false
 var last_save_tick := 0
+var clock_remainder := 0.0
+var clock_label: Label
+var match_mode := false
+var own_house := true
+var power_side := 0
+var setup_panel: Panel
+var setup_label: Label
+var house_button: Button
+var power_button: Button
+var gold_order: Button
+var cyan_order: Button
+var mode_button: Button
+var fresh_button: Button
 var save_path := "user://practice-session.json"
 
 func _ready() -> void:
@@ -67,7 +80,13 @@ func _ready() -> void:
 	sweep_button.button_down.connect(func(): hold_sweep = true)
 	sweep_button.button_up.connect(func(): hold_sweep = false)
 	one_button = button("One-push: off", Vector2(710, 726), func(): one_push = not one_push; update_labels())
-	button("Fresh ice", Vector2(920, 726), func(): reset())
+	fresh_button = button("Fresh ice", Vector2(920, 726), func(): reset())
+	mode_button = button("Mixed doubles", Vector2(1030, 30), func(): switch_mode())
+	clock_label = Label.new()
+	clock_label.position = Vector2(40, 88)
+	clock_label.add_theme_font_size_override("font_size", 14)
+	add_child(clock_label)
+	create_match_controls()
 	reset(false)
 	restore_practice()
 
@@ -83,10 +102,12 @@ func button(text: String, pos: Vector2, action: Callable) -> Button:
 
 func reset(persist := true) -> void:
 	if session == null: return
-	session.reset(42)
+	if match_mode: session.new_match(42)
+	else: session.reset(42)
 	frame = session.frame()
 	previous = frame
 	phase = "Ready"
+	clock_remainder = 0.0
 	last_save_tick = 0
 	save_allowed = true
 	pointer = -99
@@ -100,6 +121,9 @@ func reset(persist := true) -> void:
 	report = "Drag the broom in the house.\nGrip the stone below, pull back, push forward, hold steady, then lift."
 	update_labels()
 	queue_redraw()
+	if match_mode:
+		phase = "Choose placement"
+		update_labels()
 	if persist: save_practice()
 
 func update_labels() -> void:
@@ -113,6 +137,95 @@ func update_labels() -> void:
 	turn_button.disabled = run_active
 	one_button.disabled = run_active
 	report_label.text = report
+	clock_label.visible = match_mode
+	sweep_button.disabled = not run_active
+	mode_button.text = "Practice" if match_mode else "Mixed doubles"
+	mode_button.disabled = run_active
+	fresh_button.text = "New match" if match_mode else "Fresh ice"
+	setup_panel.visible = match_mode and frame.get("match_phase", "") == "Placement"
+	if match_mode:
+		clock_label.text = "Thinking time   Gold %s   •   Cyan %s" % [clock_text(frame.clock_gold), clock_text(frame.clock_cyan)]
+		hint.text = "LOCAL DOUBLES  •  End %d/%d  •  Gold %d : %d Cyan  •  Not saved yet" % [frame.end, frame.scheduled_ends, frame.score_gold, frame.score_cyan]
+		if frame.match_phase == "Placement":
+			status.text = "PEBBLE & GRANITE  /  Choose placement"
+			new_button.text = "Next stone"
+			setup_label.text = "%s chooses the placement" % team_name(frame.placement_team)
+			house_button.text = "Take the house" if own_house else "Take the guard"
+			power_button.text = "Centre placement" if power_side == 0 else ("Left power play" if power_side < 0 else "Right power play")
+			power_button.disabled = not frame.power_available
+			gold_order.text = "Gold: player %d throws 1 & 5" % (frame.first_gold + 1)
+			cyan_order.text = "Cyan: player %d throws 1 & 5" % (frame.first_cyan + 1)
+			new_button.disabled = true
+			report_label.text = "Pass the device between players. Select each team's first/last thrower, then choose where to place the stones."
+		elif frame.match_phase in ["Calling", "InFlight"]:
+			status.text = "PEBBLE & GRANITE  /  %s • Player %d • %s" % [team_name(frame.team), frame.thrower + 1, phase]
+		elif frame.match_phase == "EndComplete":
+			new_button.text = "Next end"
+			status.text = "PEBBLE & GRANITE  /  End complete"
+		elif frame.match_phase == "GameComplete":
+			new_button.text = "Rematch"
+			status.text = "PEBBLE & GRANITE  /  %s wins" % team_name(frame.winner)
+		if not frame.get("violation", "").is_empty():
+			report_label.text += "\nProtected stone removed: positions restored; delivery forfeited."
+
+func clock_text(ms: int) -> String:
+	var seconds := int(ceil(float(ms) / 1000.0))
+	return "%d:%02d" % [seconds / 60, seconds % 60]
+
+func team_name(team: int) -> String:
+	return "Gold" if team == 0 else "Cyan"
+
+func create_match_controls() -> void:
+	setup_panel = Panel.new()
+	setup_panel.position = Vector2(800, 110)
+	setup_panel.size = Vector2(440, 380)
+	setup_panel.add_theme_stylebox_override("panel", panel(Color("102b37")))
+	add_child(setup_panel)
+	setup_label = Label.new()
+	setup_label.position = Vector2(20, 18)
+	setup_label.add_theme_font_size_override("font_size", 22)
+	setup_panel.add_child(setup_label)
+	house_button = setup_button(Vector2(20, 70), func(): own_house = not own_house; update_labels())
+	power_button = setup_button(Vector2(20, 128), func(): power_side = -1 if power_side == 0 else (1 if power_side == -1 else 0); update_labels())
+	gold_order = setup_button(Vector2(20, 186), func(): change_order(0))
+	cyan_order = setup_button(Vector2(20, 244), func(): change_order(1))
+	var apply_button := setup_button(Vector2(20, 310), func(): apply_placement())
+	apply_button.text = "Place stones & begin"
+
+func setup_button(pos: Vector2, action: Callable) -> Button:
+	var b := button("", Vector2.ZERO, action)
+	b.reparent(setup_panel)
+	b.position = pos
+	b.custom_minimum_size = Vector2(400, 48)
+	return b
+
+func switch_mode() -> void:
+	if run_active: return
+	if not match_mode: save_practice()
+	match_mode = not match_mode
+	own_house = true
+	power_side = 0
+	reset(false)
+	if not match_mode: restore_practice()
+
+func change_order(team: int) -> void:
+	var current: int = frame.first_gold if team == 0 else frame.first_cyan
+	var error: String = session.match_order(team, 1 - current)
+	if not error.is_empty(): report = error
+	frame = session.frame()
+	update_labels()
+
+func apply_placement() -> void:
+	var error: String = session.place_match(own_house, power_side)
+	if not error.is_empty():
+		report = error
+	else:
+		frame = session.frame()
+		previous = frame
+		phase = "Ready"
+		report = "Ten deliveries this end. The player shown above throws; the other player calls the shot. Hold to sweep after release."
+	update_labels()
+	queue_redraw()
 
 func sheet_point(p: Vector2) -> Vector2:
 	return Vector2(168 + p.x * 30, 125 + (2.2 - p.y) * 17)
@@ -125,6 +238,13 @@ func handle_point() -> Vector2:
 
 func _process(delta: float) -> void:
 	if session == null or suspended: return
+	if match_mode and not run_active and frame.get("match_phase", "") == "Calling":
+		clock_remainder += delta * 1000.0
+		var elapsed := mini(int(clock_remainder), 60000)
+		clock_remainder -= elapsed
+		session.match_think(elapsed)
+		frame = session.frame()
+		update_labels()
 	if run_active:
 		# Retain all time debt. Never change fixed dt or silently skip ticks.
 		accumulator += delta
@@ -135,11 +255,12 @@ func _process(delta: float) -> void:
 			accumulator -= float(steps) / 240.0
 			frame = session.frame()
 			if not frame.stones.is_empty():
-				path.append(delivered_stone().position)
+				if not delivered_stone().is_empty(): path.append(delivered_stone().position)
 			if frame.resting:
 				run_active = false
 				phase = "Stone at rest"
 				var s: Dictionary = delivered_stone()
+				if s.is_empty(): s = {"turns": 0.0, "position": Vector2.ZERO, "active": false}
 				var split := "—" if frame.hog_tick < 0 else "%.2f s" % (float(frame.hog_tick) / 240.0)
 				report = "Release %.3f m/s\nHog-to-hog %s\n%.2f rotations • %.2f s travel\nRest: %.2f m across, %.2f m from tee\n%s" % [float(release_report.get("speed_mm_s", 0)) / 1000.0, split, s.turns, float(frame.tick) / 240.0, s.position.x, s.position.y, "In play" if s.active else "Out of play"]
 				update_labels()
@@ -180,6 +301,7 @@ func units(p: Vector2) -> Vector2i:
 	return Vector2i(p * (1000000.0 / 800.0))
 
 func begin_pointer(id: int, p: Vector2) -> void:
+	if match_mode and not run_active and frame.get("match_phase", "") != "Calling": return
 	if pointer != -99 or p.y > 710: return
 	if run_active:
 		# The lab's accessible hold gesture follows the stone's brush position.
@@ -260,12 +382,12 @@ func _draw() -> void:
 		if s.active:
 			stone(sheet_point(s.position), 5.0, s.turns, s.team)
 			if s.position.y > -3.6: stone(house_point(s.position), 13.35, s.turns, s.team)
-	if run_active and (hold_sweep or sweeping) and not frame.stones.is_empty():
+	if run_active and (hold_sweep or sweeping) and not delivered_stone().is_empty():
 		var sp: Vector2 = delivered_stone().position + Vector2(0, 0.3)
 		draw_line(sheet_point(sp) - Vector2(10, 0), sheet_point(sp) + Vector2(10, 0), GOLD, 5)
 	draw_string(font, Vector2(825, 147), "THE DELIVERY", HORIZONTAL_ALIGNMENT_LEFT, -1, 16, CYAN)
 	draw_string(font, Vector2(825, 183), "Pull • push • settle • lift", HORIZONTAL_ALIGNMENT_LEFT, -1, 24, Color.WHITE)
-	stone(handle_point(), 63, float(turn) / 12.0)
+	stone(handle_point(), 63, float(turn) / 12.0, int(frame.get("team", 0)))
 	if stroke_trace.size() > 1: draw_polyline(stroke_trace, Color(0.91, 0.75, 0.41, 0.5), 2)
 	draw_string(font, Vector2(900, 464), "Your hand on the handle", HORIZONTAL_ALIGNMENT_LEFT, -1, 17, Color("92acb7"))
 
@@ -297,6 +419,21 @@ func delivered_stone() -> Dictionary:
 
 func next_throw() -> void:
 	if session == null or run_active: return
+	if match_mode and frame.match_phase == "GameComplete":
+		reset(false)
+		return
+	if match_mode and frame.match_phase == "EndComplete":
+		var end_error: String = session.match_next_end()
+		if not end_error.is_empty(): report = end_error
+		frame = session.frame()
+		previous = frame
+		power_side = 0
+		own_house = true
+		phase = "Choose placement"
+		path.clear()
+		stroke_trace.clear()
+		update_labels()
+		return
 	var error: String = session.prepare_next(not frame.get("can_deliver_next", true))
 	if not error.is_empty():
 		report = error
@@ -313,7 +450,7 @@ Fresh ice starts a new practice session."
 	save_practice()
 
 func save_practice() -> void:
-	if not persistence_enabled or not save_allowed or session == null: return
+	if match_mode or not persistence_enabled or not save_allowed or session == null: return
 	var json: String = session.session_json()
 	if json.is_empty(): return
 	var temp := save_path + ".tmp"

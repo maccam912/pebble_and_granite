@@ -203,6 +203,7 @@ impl Room {
         let a = self.authority.as_ref().ok_or("no game")?;
         let mut h = Hash64::default();
         h.u64(a.sim.hash());
+        h.u64(a.idle_remainder as u64);
         let rules = serde_json::to_vec(&a.game).map_err(|_| "cannot encode rules")?;
         h.bytes(&rules);
         h.u64(a.release_snapshot.as_ref().map_or(0, |sim| sim.hash()));
@@ -259,7 +260,7 @@ impl Room {
             return Err("game paused for disconnected player");
         }
         let a = self.authority.as_mut().ok_or("no game")?;
-        a.game.think(thinking_ms);
+        a.think(thinking_ms)?;
         a.step()
     }
     pub fn next_end(&mut self, peer: i32) -> Result<(), &'static str> {

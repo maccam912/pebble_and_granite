@@ -189,3 +189,24 @@ bible only. Remote: `maccam912/pebble_and_granite`, main branch.
   rematch rejection. Clippy passes. The UI still exposes only practice.
 - Transport pipeline d3f6b0b: Linux package succeeded; Windows/macOS/Android still
   building at this checkpoint. Later queued runs may supersede pending revisions.
+
+## Playable local mixed doubles
+
+- Connected Authority to the native CurlSession presentation/input boundary, keeping
+  all physics, turn ownership, scoring, placement and remedies in Rust.
+- Added a local pass-and-play mode with positioned-stone choices, power-play side,
+  per-team first/last thrower, score/end/role display, thinking clocks, next end and
+  rematch. Practice remains independently saved. Local match persistence is pending
+  and the UI explicitly says it is not saved yet; no online-room claim.
+- Godot match_flow runs a complete end, power-play setup, complete game and rematch.
+  Passed headless; native-window setup captured and inspected. Existing pointer/touch
+  routes and practice restore tests also passed. New full-game gate added to CI.
+- Fixed presentation handling when a rules remedy removes the delivered stone.
+- d3f6b0b transport packages passed Linux/Windows/Android; macOS still building.
+  Android artifact download to build/run9-android started for installed-app proof.
+
+- Thinking time now advances idle ice cooling with an integer fractional-tick
+  remainder; one 1001 ms update and 1001 one-ms updates produce identical state.
+  Full core gate: 57 tests plus unchanged golden traces pass. Full Godot match,
+  input routes and practice restore pass; bridge/core clippy passes.
+- Usage checkpoint: 14% used / 86% remaining.

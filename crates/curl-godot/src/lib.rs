@@ -1,7 +1,8 @@
 //! Presentation boundary: floats may leave this crate, never enter sim math.
 use curl_fx::{Fx, V2};
-use curl_match::practice::Practice;
+use curl_match::{Authority, Seat, practice::Practice};
 use curl_proto::session::SessionLog;
+use curl_rules::{Phase, PowerPlay, Rules};
 use curl_sim::{Release, Sweep};
 use godot::prelude::*;
 struct Extension;
@@ -12,6 +13,8 @@ unsafe impl ExtensionLibrary for Extension {}
 #[class(base=RefCounted)]
 pub struct CurlSession {
     practice: Practice,
+    game: Option<Authority>,
+    match_release_speed: Fx,
     stroke: curl_input::Stroke,
     base: Base<RefCounted>,
 }
@@ -20,6 +23,8 @@ impl IRefCounted for CurlSession {
     fn init(base: Base<RefCounted>) -> Self {
         Self {
             practice: Practice::new(42),
+            game: None,
+            match_release_speed: Fx::ZERO,
             stroke: curl_input::Stroke::default(),
             base,
         }
@@ -32,6 +37,7 @@ fn render(n: Fx) -> f64 {
 impl CurlSession {
     #[func]
     fn reset(&mut self, seed: i64) {
+        self.game = None;
         self.practice = Practice::new(seed as u64);
         self.stroke.cancel();
     }
@@ -44,15 +50,36 @@ impl CurlSession {
         {
             return "Invalid delivery".into();
         }
-        let Some(id) = self.practice.next_id() else {
-            return "Clear the stones before the next throw".into();
+        let id = if let Some(a) = &self.game {
+            a.game.next_stone_id()
+        } else {
+            let Some(id) = self.practice.next_id() else {
+                return "Clear the stones before the next throw".into();
+            };
+            id
         };
         let mut r = Release::draw();
         r.stone = id;
         r.team = id % 2;
         r.vel = V2::new(Fx::ratio(broom_mm, 1000), -r.pos.y).unit() * Fx::ratio(speed_mm_s, 1000);
         r.spin = Fx::ratio(12 * turn, 100);
-        match self.practice.release(r) {
+        let result = if let Some(a) = &mut self.game {
+            let speed = r.vel.length();
+            let result = a.release(
+                Seat {
+                    team: a.game.delivering_team(),
+                    position: a.game.throwing_seat(),
+                },
+                r,
+            );
+            if result.is_ok() {
+                self.match_release_speed = speed;
+            }
+            result
+        } else {
+            self.practice.release(r)
+        };
+        match result {
             Ok(()) => GString::new(),
             Err(e) => e.into(),
         }
@@ -64,6 +91,36 @@ impl CurlSession {
             || !(-350..=350).contains(&lateral_mm)
             || !(80..=700).contains(&ahead_mm)
         {
+            return;
+        }
+        if let Some(a) = &mut self.game {
+            for _ in 0..count {
+                if a.game.phase != Phase::InFlight {
+                    break;
+                }
+                let input = Sweep {
+                    stone: a.sim.delivered.unwrap_or(0),
+                    brush: 0,
+                    effort: effort as u8,
+                    lateral_mm: lateral_mm as i16,
+                    ahead_mm: ahead_mm as u16,
+                };
+                let seat = Seat {
+                    team: a.game.delivering_team(),
+                    position: a.game.throwing_seat(),
+                };
+                // Only brush while the delivered stone remains in play.
+                if a.sim.stones.iter().any(|s| s.id == input.stone && s.active)
+                    && let Err(e) = a.sweep(seat, a.sim.tick, input)
+                {
+                    godot_error!("Match sweep: {e}");
+                    break;
+                }
+                if let Err(e) = a.step() {
+                    godot_error!("Match step: {e}");
+                    break;
+                }
+            }
             return;
         }
         let input = Sweep {
@@ -82,9 +139,10 @@ impl CurlSession {
     }
     #[func]
     fn frame(&self) -> VarDictionary {
+        let sim = self.game.as_ref().map_or(&self.practice.sim, |a| &a.sim);
         let mut frame = VarDictionary::new();
         let mut stones = Array::<VarDictionary>::new();
-        for s in &self.practice.sim.stones {
+        for s in &sim.stones {
             let mut d = VarDictionary::new();
             d.set("id", s.id as i64);
             d.set("team", s.team as i64);
@@ -106,27 +164,57 @@ impl CurlSession {
         });
         frame.set("release_speed", last_release.map_or(0.0, render));
         frame.set("stones", &stones);
-        frame.set(
-            "tick",
-            (self.practice.sim.tick - self.practice.sim.release_tick) as i64,
-        );
-        frame.set("global_tick", self.practice.sim.tick as i64);
-        frame.set(
-            "delivered",
-            self.practice.sim.delivered.map_or(-1, |id| id as i64),
-        );
+        frame.set("tick", (sim.tick - sim.release_tick) as i64);
+        frame.set("global_tick", sim.tick as i64);
+        frame.set("delivered", sim.delivered.map_or(-1, |id| id as i64));
         frame.set("can_deliver_next", self.practice.next_id().is_some());
-        frame.set("ice_cells", self.practice.sim.ice.cells.len() as i64);
-        frame.set("resting", self.practice.sim.is_resting());
-        frame.set("contacts", self.practice.sim.contacts as i64);
+        frame.set("ice_cells", sim.ice.cells.len() as i64);
+        frame.set("resting", sim.is_resting());
+        frame.set("contacts", sim.contacts as i64);
         frame.set(
             "hog_tick",
-            self.practice
-                .sim
-                .hog_tick
-                .map_or(-1, |t| (t - self.practice.sim.release_tick) as i64),
+            sim.hog_tick.map_or(-1, |t| (t - sim.release_tick) as i64),
         );
-        frame.set("timed_out", self.practice.sim.timed_out);
+        frame.set("timed_out", sim.timed_out);
+        frame.set(
+            "mode",
+            if self.game.is_some() {
+                "match"
+            } else {
+                "practice"
+            },
+        );
+        if let Some(a) = &self.game {
+            frame.set("release_speed", render(self.match_release_speed));
+            frame.set("match_phase", format!("{:?}", a.game.phase));
+            frame.set("end", a.game.end as i64);
+            frame.set("scheduled_ends", a.game.rules.ends as i64);
+            frame.set("team", a.game.delivering_team() as i64);
+            frame.set("thrower", a.game.throwing_seat() as i64);
+            frame.set("delivered_count", a.game.delivered as i64);
+            frame.set("hammer", a.game.hammer as i64);
+            frame.set("placement_team", a.game.placement_team as i64);
+            frame.set("clock_gold", a.game.thinking_ms[0] as i64);
+            frame.set("clock_cyan", a.game.thinking_ms[1] as i64);
+            frame.set("score_gold", a.game.score[0] as i64);
+            frame.set("score_cyan", a.game.score[1] as i64);
+            frame.set("first_gold", a.game.first_thrower[0] as i64);
+            frame.set("first_cyan", a.game.first_thrower[1] as i64);
+            frame.set(
+                "power_available",
+                !a.game.power_play_used[a.game.placement_team as usize]
+                    && a.game.end <= a.game.rules.ends,
+            );
+            frame.set("winner", a.game.winner.map_or(-1, |t| t as i64));
+            frame.set("can_deliver_next", a.game.phase == Phase::Calling);
+            frame.set(
+                "violation",
+                a.last_resolution
+                    .as_ref()
+                    .and_then(|r| r.violation)
+                    .map_or(String::new(), |v| format!("{v:?}")),
+            );
+        }
         frame
     }
     #[func]
@@ -138,16 +226,27 @@ impl CurlSession {
     }
     #[func]
     fn state_hash(&self) -> GString {
-        GString::from(&format!("{:016x}", self.practice.sim.hash()))
+        GString::from(&format!(
+            "{:016x}",
+            self.game
+                .as_ref()
+                .map_or(&self.practice.sim, |a| &a.sim)
+                .hash()
+        ))
     }
 
     #[func]
     fn prepare_next(&mut self, clear: bool) -> GString {
-        let mut next = self.practice.clone();
-        if clear {
-            if let Err(e) = next.clear_stones() {
-                return e.into();
+        if let Some(a) = &self.game {
+            if a.game.phase != Phase::Calling {
+                return "Finish end setup before throwing".into();
             }
+            self.stroke.cancel();
+            return GString::new();
+        }
+        let mut next = self.practice.clone();
+        if clear && let Err(e) = next.clear_stones() {
+            return e.into();
         }
         if let Err(e) = next.idle(480) {
             return e.into();
@@ -158,6 +257,9 @@ impl CurlSession {
     }
     #[func]
     fn session_json(&self) -> GString {
+        if self.game.is_some() {
+            return GString::new();
+        }
         match serde_json::to_string(&self.practice.log) {
             Ok(json) => GString::from(&json),
             Err(e) => {
@@ -171,11 +273,76 @@ impl CurlSession {
         let parsed = SessionLog::parse(json.to_string().as_bytes()).and_then(Practice::from_log);
         match parsed {
             Ok(practice) => {
+                self.game = None;
                 self.practice = practice;
                 self.stroke.cancel();
                 GString::new()
             }
             Err(e) => GString::from(&e),
+        }
+    }
+    #[func]
+    fn match_think(&mut self, elapsed_ms: i64) {
+        if !(0..=60000).contains(&elapsed_ms) {
+            return;
+        }
+        if let Some(a) = &mut self.game
+            && let Err(e) = a.think(elapsed_ms as u32)
+        {
+            godot_error!("Match clock: {e}");
+        }
+    }
+    #[func]
+    fn new_match(&mut self, seed: i64) {
+        self.game =
+            Some(Authority::new(seed as u64, Rules::mixed(), 1).expect("built-in rules valid"));
+        self.match_release_speed = Fx::ZERO;
+        self.stroke.cancel();
+    }
+    #[func]
+    fn place_match(&mut self, own_house: bool, side: i64) -> GString {
+        let Some(a) = &mut self.game else {
+            return "No match".into();
+        };
+        let side = match side {
+            -1 => PowerPlay::Left,
+            0 => PowerPlay::None,
+            1 => PowerPlay::Right,
+            _ => return "Invalid placement".into(),
+        };
+        match a.place_mixed(
+            Seat {
+                team: a.game.placement_team,
+                position: 0,
+            },
+            own_house,
+            side,
+        ) {
+            Ok(()) => GString::new(),
+            Err(e) => e.into(),
+        }
+    }
+    #[func]
+    fn match_order(&mut self, team: i64, position: i64) -> GString {
+        if !(0..=1).contains(&team) || !(0..=1).contains(&position) {
+            return "Invalid player".into();
+        }
+        let Some(a) = &mut self.game else {
+            return "No match".into();
+        };
+        match a.game.set_first_thrower(team as u8, position as u8) {
+            Ok(()) => GString::new(),
+            Err(e) => e.into(),
+        }
+    }
+    #[func]
+    fn match_next_end(&mut self) -> GString {
+        let Some(a) = &mut self.game else {
+            return "No match".into();
+        };
+        match a.next_end() {
+            Ok(()) => GString::new(),
+            Err(e) => e.into(),
         }
     }
     #[func]

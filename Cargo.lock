@@ -387,6 +387,7 @@ dependencies = [
  "curl-input",
  "curl-match",
  "curl-proto",
+ "curl-rules",
  "curl-sim",
  "godot",
  "serde_json",
