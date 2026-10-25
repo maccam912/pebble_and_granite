@@ -42,6 +42,10 @@ func _ready() -> void:
 		push_error("Build the Rust bridge: python3 tools/build_native.py")
 		return
 	session = ClassDB.instantiate("CurlSession")
+	if "--self-test" in OS.get_cmdline_user_args():
+		persistence_enabled = false
+		call_deferred("run_self_test")
+		return
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
 	status = Label.new()
 	status.position = Vector2(40, 26)
@@ -155,7 +159,7 @@ func _notification(what: int) -> void:
 		dragging_broom = false
 		if session != null:
 			session.cancel_stroke()
-			if not run_active and phase != "Stone at rest":
+			if status != null and not run_active and phase != "Stone at rest":
 				phase = "Ready"
 				update_labels()
 
@@ -364,3 +368,18 @@ func restore_practice() -> void:
 		return
 	if found:
 		save_error("The saved practice could not be restored. Existing files are retained; Fresh ice starts a new session.")
+
+func run_self_test() -> void:
+	var actual: String = session.golden_trace()
+	var expected := FileAccess.get_file_as_string("res://validation/golden.txt")
+	var nonce := "local"
+	for argument in OS.get_cmdline_user_args():
+		if argument.begins_with("--probe-id="): nonce = argument.trim_prefix("--probe-id=")
+	var result := {"ok": not expected.is_empty() and actual == expected, "nonce": nonce, "trace": actual, "platform": OS.get_name()}
+	DirAccess.make_dir_recursive_absolute("user://diagnostics")
+	var file := FileAccess.open("user://diagnostics/self-test.json", FileAccess.WRITE)
+	if file != null:
+		file.store_string(JSON.stringify(result))
+		file.close()
+	print("PEBBLE_SELF_TEST_RESULT " + JSON.stringify(result))
+	get_tree().quit(0 if result.ok else 1)

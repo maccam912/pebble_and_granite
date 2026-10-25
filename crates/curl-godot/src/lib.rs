@@ -130,6 +130,13 @@ impl CurlSession {
         frame
     }
     #[func]
+    fn golden_trace(&self) -> GString {
+        match curl_proto::fixtures::golden_text() {
+            Ok(text) => GString::from(&text),
+            Err(e) => GString::from(&e),
+        }
+    }
+    #[func]
     fn state_hash(&self) -> GString {
         GString::from(&format!("{:016x}", self.practice.sim.hash()))
     }

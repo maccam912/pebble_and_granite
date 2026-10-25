@@ -115,3 +115,18 @@ bible only. Remote: `maccam912/pebble_and_granite`, main branch.
   Android signing. Publish alone failed with GitHub integration permissions when
   creating a tag through the release API. Adopting racinggame's explicit tag/verify
   flow and superseded-workflow guard; no full release success claimed yet.
+
+
+## First published release and packaged runtime checks
+
+- Development Build 6 (`v0.0.6-dev`, commit `c0f4263`) published all four packages
+  after all core/native integration jobs passed. The earlier publish 403 was on a
+  superseded workflow revision; keep the explicit tag guard added for that case.
+- Created a separate `pebble_granite_lab` Android 35 ARM64 emulator on port 5580;
+  no existing AVD was modified. Release 6 APK download is in progress.
+- Added a compiled-app `--self-test` route sharing six every-tick golden fixtures
+  with the headless server. Desktop packages must now run their exported binary
+  against these fixtures; Android has an explicit-serial install/probe tool.
+- Cancelled the obsolete local universal export while its 1.2 GB template download
+  was still slow. Both architecture libraries had compiled, but CI is the package
+  evidence. Partial archives are ignored cache files, never release artifacts.

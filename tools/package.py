@@ -2,6 +2,7 @@
 """Build one native bridge and export its matching platform package."""
 import argparse,hashlib,json,os,pathlib,platform,shutil,subprocess,sys,zipfile
 from godot import executable,templates
+from verify_export import verify
 ROOT=pathlib.Path(__file__).resolve().parents[1]
 p=argparse.ArgumentParser();p.add_argument('platform',choices=['linux','windows','macos','android']);p.add_argument('--number',default='1');a=p.parse_args()
 if not a.number.isdigit() or int(a.number)<1: p.error('number must be positive')
@@ -44,6 +45,7 @@ try:
     preset={'linux':'Linux','windows':'Windows','macos':'macOS','android':'Android'}[a.platform]
     run([godot,'--headless','--path',str(ROOT),'--editor','--import','--frame-delay','1000'])
     run([godot,'--headless','--path',str(ROOT),'--export-debug',preset,str(out/filename)])
+    if a.platform!='android':verify(a.platform,out/filename)
     downloads=ROOT/'build/download';downloads.mkdir(exist_ok=True)
     name='pebble-and-granite-'+a.number+'-'+a.platform
     if a.platform in ['android','macos']:
