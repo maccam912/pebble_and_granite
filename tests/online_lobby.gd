@@ -23,6 +23,8 @@ func run() -> void:
 		return
 	for i in range(3):
 		var client := CurlOnline.new()
+		client.identity_path = "user://network/test-lobby-%s-%d.key" % [OS.get_process_id(), i]
+		client.failed.connect(func(message: String) -> void: print("LOBBY_CLIENT: ", message))
 		rooms.append(client)
 		check(client.join(host.endpoint, relay_only).is_empty(), "Join failed")
 	var deadline := Time.get_ticks_msec() + 45000
@@ -57,12 +59,22 @@ func run() -> void:
 		check(host.state.paused, "Disconnected player did not pause match")
 		check(count_players(host.state) == 4, "Disconnected game seat was discarded")
 		check(host.state.players.all(func(player) -> bool: return player.peer != departed), "Old connection still bound")
+		check(rooms[2].join(host.endpoint, relay_only).is_empty(), "Reconnect failed")
+		deadline = Time.get_ticks_msec() + 10000
+		while Time.get_ticks_msec() < deadline:
+			tick()
+			if host.state.players.all(func(player) -> bool: return player.peer != null): break
+			await create_timer(.01).timeout
+		check(host.state.players.all(func(player) -> bool: return player.peer != null), "Persistent identity did not reclaim reserved seat")
+		check(host.state.paused, "Rejoin resumed before verified replay synchronization")
 		host.close()
 		deadline = Time.get_ticks_msec() + 5000
 		while Time.get_ticks_msec() < deadline and (rooms[1].peer != null or rooms[3].peer != null):
 			tick()
 			await create_timer(.01).timeout
 		check(rooms[1].peer == null and rooms[3].peer == null, "Host loss did not close clients")
-	for room in rooms: room.close()
+	for room in rooms:
+		room.close()
+		if room != host: DirAccess.remove_absolute(ProjectSettings.globalize_path(room.identity_path))
 	print("ONLINE_LOBBY_OK relay_only=", relay_only) if not failed else print("ONLINE_LOBBY_FAILED")
 	quit(1 if failed else 0)

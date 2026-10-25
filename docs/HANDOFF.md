@@ -12,7 +12,7 @@ bible only. Remote: `maccam912/pebble_and_granite`, main branch.
 - [x] Local mixed doubles through complete games/rematches, with command-journal saves.
 - [x] Rules/authority/seat ownership and four-peer Iroh lobby transport proof.
 - [x] CI cross-platform core tests, native exports and published numbered releases.
-- [ ] Online gameplay replication, replay transfer, persistent identity and room UI.
+- [ ] Online gameplay replication, replay transfer and room UI.
 - [ ] Installed Android golden/JNI probe using the new one-use debug request route.
 - [ ] 3D delivery/cameras, spatial scrubbing, measured calibration/performance and AI.
 
@@ -253,3 +253,16 @@ playable scene is still local-only. The code-directory test revoked its own entr
   no persistent test room or token was left behind. Tokens are kept in memory.
 - ad4f4f9 local-match pipeline passed all jobs and published. The 011bab9 journal /
   Android probe revision is next in CI. Online gameplay and UI remain unimplemented.
+
+## Persistent reconnect identity
+
+- Online clients now retain a native Iroh signing key in their own user-data folder.
+  New files are owner-only on Unix, synchronized to disk before use, and never
+  overwritten on malformed/read failure. No private key appears in lobby packets.
+- Native persistence/corruption/permissions test and transport clippy pass.
+- Four-peer forced-relay test reconnected a player under a new connection ID into
+  the reserved seat. The game correctly stayed paused pending replay verification.
+- First default-route lobby attempt timed out before handshake; relay route and
+  subsequent default-route lobby/reconnect and four-channel transport probes passed.
+  External discovery/relay availability remains a dependency, not an offline CI gate.
+- Usage checkpoint: 17% used / 83% remaining. Work continues toward the requested cap.

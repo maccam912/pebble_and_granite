@@ -49,9 +49,22 @@ impl IrohClient {
 
     #[func]
     fn connect_configured(node_id: GString, relay_only: bool) -> Gd<Self> {
+        Self::connect_identity(node_id, relay_only, GString::new())
+    }
+
+    /// Empty path deliberately requests an ephemeral identity (transport probes).
+    /// Persistent failures fail the connection rather than silently changing seats.
+    #[func]
+    fn connect_identity(node_id: GString, relay_only: bool, identity_path: GString) -> Gd<Self> {
         let node_id = node_id.to_string();
+        let identity_path = identity_path.to_string();
         let handle = IrohRuntime::spawn(async move {
-            let builder = Endpoint::builder(presets::N0);
+            let mut builder = Endpoint::builder(presets::N0);
+            if !identity_path.is_empty() {
+                builder = builder.secret_key(crate::identity::load_or_create(
+                    std::path::Path::new(&identity_path),
+                )?);
+            }
             let builder = if relay_only {
                 builder.clear_ip_transports()
             } else {

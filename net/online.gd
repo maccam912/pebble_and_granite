@@ -3,6 +3,7 @@ extends RefCounted
 ## Foreground listen-server lobby. No Godot multiplayer RPC or client-selected seat.
 signal changed
 signal failed(message: String)
+var identity_path := "user://network/player.key"
 var peer: MultiplayerPeer
 var authority: Object
 var state: Dictionary = {}
@@ -34,7 +35,7 @@ func host(relay_only := false) -> String:
 
 func join(address: String, relay_only := false) -> String:
 	close()
-	peer = CurlTransport.connect_host(address, relay_only)
+	peer = CurlTransport.connect_host(address, relay_only, identity_path)
 	if peer == null: return "Invalid endpoint or unavailable transport"
 	endpoint = address
 	deadline = Time.get_ticks_msec() + 30000
@@ -123,7 +124,8 @@ func poll() -> void:
 		fail("Room handshake timed out")
 		return
 	if not is_host and peer.get_connection_status() == MultiplayerPeer.CONNECTION_DISCONNECTED:
-		fail("Could not connect to host")
+		var detail: String = peer.call("connection_error")
+		fail("Could not connect to host" + (": " + detail if not detail.is_empty() else ""))
 		return
 	for id: int in pending.keys():
 		if Time.get_ticks_msec() > pending[id]: drop_peer(id)

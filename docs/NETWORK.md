@@ -53,7 +53,7 @@ A disconnected active-game seat remains reserved. Simulation and thinking clocks
 pause until its authenticated identity returns and confirms the matching full
 state hash. This hash covers simulation, rules/clocks, release snapshot and pending
 sweeps. The host does not migrate. This is the authority contract only: replay
-transfer, durable endpoint identity, reconnect UI and transport wiring are still
+transfer, reconnect UI and gameplay transport wiring are still
 required before reconnect can be advertised as a working game feature.
 
 ## Live control-plane probes
@@ -68,3 +68,17 @@ The native codec rejects unknown fields, oversized packets, malformed UTF-8,
 duplicate peer IDs, malformed hashes and control characters in rejection messages.
 GDScript receives only decoded canonical lobby records. Pending handshakes and
 send queues are bounded; state updates coalesce separately for each peer.
+
+## Local player identity
+
+Online clients persist their Iroh signing key at `user://network/player.key`.
+The native adapter creates it exclusively with owner-only Unix permissions and
+flushes it before connecting; it never sends the secret through Godot or room
+packets. Existing malformed/unreadable keys fail closed instead of silently
+creating a new identity. Low-level transport probes can request ephemeral keys;
+multi-client tests use isolated files and remove only their own test keys.
+
+Reconnecting uses the same authenticated endpoint identity and reclaims the
+reserved seat. The room remains paused until replay synchronization is verified.
+This is not yet a complete reconnect gameplay flow. Hosts remain ephemeral and
+host loss ends the room; host migration is explicitly out of scope.

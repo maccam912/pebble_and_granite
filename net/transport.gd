@@ -17,5 +17,6 @@ static func valid_endpoint(value: String) -> bool:
 static func host(relay_only := false) -> MultiplayerPeer:
 	return ClassDB.class_call_static("IrohServer", "start_configured", relay_only) if available() else null
 
-static func connect_host(endpoint: String, relay_only := false) -> MultiplayerPeer:
-	return ClassDB.class_call_static("IrohClient", "connect_configured", endpoint, relay_only) if available() and valid_endpoint(endpoint) else null
+static func connect_host(endpoint: String, relay_only := false, identity_path := "") -> MultiplayerPeer:
+	var path := ProjectSettings.globalize_path(identity_path) if not identity_path.is_empty() else ""
+	return ClassDB.class_call_static("IrohClient", "connect_identity", endpoint, relay_only, path) if available() and valid_endpoint(endpoint) else null
