@@ -35,3 +35,23 @@ checks four bidirectional channels, connection cancellation, and forced disconne
 Add `-- --relay-only` to prove relay routing. Both passed locally on macOS ARM64.
 These probes require external relay/discovery service availability and are separate
 from deterministic offline release gates. No two-device internet test is claimed.
+
+## Room authority contract
+
+`curl-match::room` binds four mixed-doubles seats to transport-authenticated
+endpoint identities. The host supplies those identities from Iroh's connection
+metadata, never from a client claim. Peer 1 is reserved for the original host.
+The room checks model/protocol/rules compatibility before admitting a peer.
+
+All four seats must be connected and ready before the host starts. Gameplay
+commands contain no seat field; the room derives team and role from the binding.
+Packets have a 1200-byte boundary and strict tagged decoding. A 128-command
+receive window rejects repeats while admitting reordered sweep inputs. Each
+rematch advances an epoch and requires fresh readiness.
+
+A disconnected active-game seat remains reserved. Simulation and thinking clocks
+pause until its authenticated identity returns and confirms the matching full
+state hash. This hash covers simulation, rules/clocks, release snapshot and pending
+sweeps. The host does not migrate. This is the authority contract only: replay
+transfer, durable endpoint identity, reconnect UI and transport wiring are still
+required before reconnect can be advertised as a working game feature.

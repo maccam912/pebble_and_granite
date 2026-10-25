@@ -174,3 +174,18 @@ bible only. Remote: `maccam912/pebble_and_granite`, main branch.
 - New tests cover invalid/atomic placement, all guard positions and mirrored power
   plays, use/extra-end restrictions, throwing order, blank distinctions and a full
   ten-delivery end through next-end setup. These do not yet expose full matches in UI.
+
+## Room ownership and recovery contract
+
+- 8ab077c pushed the mixed-doubles lifecycle. Added room authority core next:
+  fixed authenticated seats, compatibility gate, four-player readiness, host-only
+  start/end/rematch, strict bounded command envelopes, replay-resistant sequence
+  window that still admits reordered sweep packets, and rematch epochs.
+- Disconnects reserve active-game seats and pause simulation/clocks. Rejoining the
+  same identity must confirm full simulation/rules/pending-input hash before play
+  resumes. No host migration. Actual replay transfer/identity persistence/UI remain.
+- Six room tests pass, including hostile envelope fields, identity/role spoofing,
+  reordered sweep acceptance, reconnect pause/hash/sequence behavior and stale
+  rematch rejection. Clippy passes. The UI still exposes only practice.
+- Transport pipeline d3f6b0b: Linux package succeeded; Windows/macOS/Android still
+  building at this checkpoint. Later queued runs may supersede pending revisions.

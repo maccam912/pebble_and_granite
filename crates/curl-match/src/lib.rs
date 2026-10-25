@@ -367,3 +367,5 @@ mod tests {
 }
 
 pub mod practice;
+
+pub mod room;
