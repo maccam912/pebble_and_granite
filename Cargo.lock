@@ -58,6 +58,7 @@ dependencies = [
 name = "curl-server"
 version = "0.1.0"
 dependencies = [
+ "curl-fx",
  "curl-proto",
  "curl-sim",
  "serde_json",

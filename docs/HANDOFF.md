@@ -67,3 +67,17 @@ bible only. Remote: `maccam912/pebble_and_granite`, main branch.
   deduplicates per tick/team, allows a 100 ms late-input window, and retimes older
   samples to arrival. Opponent sweeping cannot be retroactively authorized by a
   later tee crossing. Full role-specific multi-brush play is deferred.
+
+## Model 2 — contact sign and sweep behavior
+
+- Added physical spin-transfer direction/energy and packed-chain separation tests.
+  They caught a reversed tangential contact sign; corrected before gameplay grows.
+- Increased provisional sweep curl suppression so the same release goes longer
+  **and** straighter: swept x=0.824 m vs unswept x=0.910 m, +1.347 m carry.
+- Simulation version is now 2; metadata lives in compatibility.json and CI checks
+  it against Rust constants. Old model replays are rejected rather than reinterpreted.
+- Golden traces now cover three seeded draws, sweeping, reverse turn and runback.
+- Initial Android setup and editor import fixes are rerunning remotely. Windows
+  executable-name and Android host-extension import fixes are in `2e4ca7f`.
+- Local universal macOS bridge compiled for ARM64/x64. Full template download is
+  unusually slow locally; no local packaged macOS result is claimed yet.

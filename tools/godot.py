@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """Fetch hash-pinned official Godot editor/templates, or use GODOT_BIN override."""
-import hashlib,json,os,pathlib,platform,subprocess,sys,urllib.request,zipfile
+import hashlib,json,os,pathlib,platform,shutil,subprocess,sys,urllib.request,zipfile
 ROOT=pathlib.Path(__file__).resolve().parents[1]
 LOCK=json.loads((ROOT/'tools/toolchain.json').read_text())
 CACHE=ROOT/'build/toolchain'
@@ -11,7 +11,14 @@ def asset(name):
     expected=LOCK['sha512'][name]
     if not archive.exists() or hashlib.sha512(archive.read_bytes()).hexdigest()!=expected:
         url='https://github.com/godotengine/godot-builds/releases/download/'+LOCK['godot']+'/'+name
-        urllib.request.urlretrieve(url,archive)
+        partial=archive.with_suffix(archive.suffix+'.partial')
+        curl=shutil.which('curl.exe' if platform.system()=='Windows' else 'curl')
+        if curl:
+            subprocess.run([curl,'--fail','--location','--retry','3','--connect-timeout','30','--silent','--show-error','--output',str(partial),url],check=True)
+        else:
+            with urllib.request.urlopen(url,timeout=60) as response, partial.open('wb') as out:
+                shutil.copyfileobj(response,out,1024*1024)
+        partial.replace(archive)
     if hashlib.sha512(archive.read_bytes()).hexdigest()!=expected: raise RuntimeError('Godot download checksum mismatch')
     return archive
 def executable():

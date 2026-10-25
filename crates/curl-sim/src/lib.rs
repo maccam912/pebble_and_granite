@@ -3,7 +3,7 @@ use curl_fx::{Fx, Hash64, Rng, V2};
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
 
-pub const MODEL_VERSION: u32 = 1;
+pub const MODEL_VERSION: u32 = 2;
 pub const HZ: u32 = 240;
 pub const DT: Fx = Fx::ratio(1, HZ as i64);
 pub const RADIUS: Fx = Fx::ratio(142, 1000);
@@ -318,7 +318,7 @@ impl Sim {
             let lateral = Fx::ratio(90, 10000) / (speed + Fx::ratio(3, 10))
                 * s.spin.sign()
                 * spin_factor
-                * (Fx::ONE - heat * Fx::ratio(35, 100));
+                * (Fx::ONE - heat * Fx::ratio(70, 100));
             s.vel = (dir * next + dir.right() * (lateral * DT)).unit() * next;
             s.turns += s.spin * DT;
             s.spin = s.spin * Fx::ratio(99998, 100000);
@@ -426,14 +426,14 @@ impl Sim {
                 // Tangential surface impulse includes spin; solid disc inertia m*r²/2.
                 let tangent = normal.right();
                 let tau = Fx::ratio(6283185307, 1000000000);
-                let slip = (a.vel - b.vel).dot(tangent) - (a.spin + b.spin) * tau * RADIUS;
+                let slip = (a.vel - b.vel).dot(tangent) + (a.spin + b.spin) * tau * RADIUS;
                 let jt = (slip / Fx::int(6))
                     .clamp(-impulse * Fx::ratio(1, 10), impulse * Fx::ratio(1, 10));
                 a.vel = a.vel - tangent * jt;
                 b.vel = b.vel + tangent * jt;
                 let spin_delta = jt * Fx::int(2) / (tau * RADIUS);
-                a.spin += spin_delta;
-                b.spin += spin_delta;
+                a.spin -= spin_delta;
+                b.spin -= spin_delta;
                 a.touched = true;
                 b.touched = true;
                 self.contacts += 1;
@@ -551,6 +551,7 @@ mod tests {
         let a = run(s.clone(), 0);
         let b = run(s, 255);
         assert!(b.stones[0].pos.y > a.stones[0].pos.y + Fx::ratio(1, 10));
+        assert!(b.stones[0].pos.x < a.stones[0].pos.x);
     }
     #[test]
     fn snapshot_resumes_exactly() {
@@ -591,6 +592,56 @@ mod tests {
         assert!(s.stones[1].vel.y > Fx::int(5));
         assert!((s.stones[1].pos - s.stones[0].pos).length() >= DIAMETER);
         assert_eq!(events.len(), 1);
+    }
+    #[test]
+    fn spun_contact_reduces_energy_and_deflects_in_physical_direction() {
+        let mut s = Sim::new(0);
+        s.stones = vec![
+            Stone::resting(0, 0, V2::new(Fx::ZERO, Fx::ratio(-30, 100))),
+            Stone::resting(1, 1, V2::ZERO),
+        ];
+        s.stones[0].vel = V2::new(Fx::ZERO, Fx::int(6));
+        s.stones[0].spin = Fx::ratio(1, 2);
+        fn energy(stones: &[Stone]) -> Fx {
+            let tau = Fx::ratio(6283185307, 1000000000);
+            stones.iter().fold(Fx::ZERO, |sum, s| {
+                sum + s.vel.dot(s.vel) / Fx::int(2)
+                    + RADIUS * RADIUS * s.spin * s.spin * tau * tau / Fx::int(4)
+            })
+        }
+        let before = energy(&s.stones);
+        let mut events = vec![];
+        s.move_contacts(&mut events);
+        assert!(energy(&s.stones) <= before);
+        // Clockwise running surface at the front moves right; friction transfers
+        // rightward momentum to the struck stone and leftward reaction to shooter.
+        assert!(s.stones[1].vel.x > Fx::ZERO);
+        assert!(s.stones[0].spin < Fx::ratio(1, 2));
+    }
+    #[test]
+    fn packed_chain_separates_after_each_tick() {
+        let mut s = Sim::new(0);
+        for id in 0..12 {
+            s.stones.push(Stone::resting(
+                id,
+                id % 2,
+                V2::new(Fx::ZERO, Fx::int(-4) + DIAMETER * Fx::int(id as i32)),
+            ));
+        }
+        s.stones[0].vel = V2::new(Fx::ZERO, Fx::int(6));
+        for _ in 0..120 {
+            s.step(&[]);
+            for (i, a) in s.stones.iter().enumerate() {
+                for b in &s.stones[i + 1..] {
+                    if a.active && b.active {
+                        assert!(
+                            (a.pos - b.pos).length() + Fx::ratio(5, 1000000) >= DIAMETER,
+                            "overlap in packed chain"
+                        );
+                    }
+                }
+            }
+        }
     }
     #[test]
     fn hash_includes_ice() {

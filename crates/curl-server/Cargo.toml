@@ -5,6 +5,7 @@ edition.workspace = true
 license.workspace = true
 
 [dependencies]
+curl-fx.workspace = true
 serde_json.workspace = true
 curl-sim.workspace = true
 curl-proto.workspace = true

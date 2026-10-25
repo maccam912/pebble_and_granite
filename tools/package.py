@@ -56,7 +56,7 @@ try:
     digest=hashlib.sha256(result.read_bytes()).hexdigest()
     (downloads/(name+'.sha256')).write_text(digest+'  '+result.name+'\n')
     revision=subprocess.check_output(['git','rev-parse','HEAD'],cwd=ROOT,text=True).strip()
-    (downloads/(name+'.json')).write_text(json.dumps({'commit':revision,'platform':a.platform,'build':a.number,'sha256':digest,'godot':'4.7-stable','model':1,'protocol':1,'status':'development feel lab'},indent=2)+'\n')
+    (downloads/(name+'.json')).write_text(json.dumps({'commit':revision,'platform':a.platform,'build':a.number,'sha256':digest,'godot':'4.7-stable',**json.loads((ROOT/'compatibility.json').read_text()),'status':'development feel lab'},indent=2)+'\n')
 finally:
     presets.write_text(original)
     if settings:
