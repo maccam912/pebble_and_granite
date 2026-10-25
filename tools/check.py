@@ -8,7 +8,7 @@ for key,file,constant in [('model','curl-sim','MODEL_VERSION'),('protocol','curl
     assert int(re.search(constant+r': u32 = (\d+)',source).group(1))==compat[key], 'Compatibility metadata mismatch'
 def run(args):subprocess.run(args,cwd=ROOT,check=True)
 run(['cargo','fmt','--all','--','--check'])
-run(['cargo','test','--locked','--workspace','--exclude','curl-godot'])
+run(['cargo','test','--locked','--workspace','--exclude','curl-godot','--exclude','curl-transport'])
 actual=subprocess.check_output(['cargo','run','--locked','--release','-p','curl-server','--','golden'],cwd=ROOT,text=True)
 expected=(ROOT/'validation/golden.txt').read_text()
 if actual.replace('\r\n','\n')!=expected:print('Golden trace mismatch:\n'+actual);sys.exit(1)

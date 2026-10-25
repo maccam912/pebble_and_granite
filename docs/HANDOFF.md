@@ -130,3 +130,21 @@ bible only. Remote: `maccam912/pebble_and_granite`, main branch.
 - Cancelled the obsolete local universal export while its 1.2 GB template download
   was still slow. Both architecture libraries had compiled, but CI is the package
   evidence. Partial archives are ignored cache files, never release artifacts.
+
+## Iroh transport and Android bridge
+
+- Development Build 7 (1373b4a) passed every job and published all four platforms.
+- Build 8 compiled all platforms; exported Linux/macOS golden checks passed.
+  Windows produced identical simulation hashes but failed the in-app text comparison
+  because checkout converted the fixture to CRLF. Added repository LF attributes.
+- Imported the bounded racinggame Iroh adapter with project-specific ALPN and JNI
+  identity, retaining upstream MIT license. Renamed connect methods that shadowed
+  Godot Object.connect. Both native libraries build together.
+- Local macOS direct/default and forced-relay tests passed four bidirectional packet
+  channels, connect cancellation, and forced disconnect. Offline lab and session
+  tests still pass; all 44 Rust tests and six golden fixtures pass.
+- Added PebbleMobile Java plugin (compiled locally against Godot 4.7), Gradle export,
+  manifest/DEX structural checks and native Android C compiler configuration. New
+  cross-platform packaging must be checked in CI; Android runtime JNI remains open.
+- Online rooms/seat binding/gameplay are not yet wired. The lab remains offline.
+- Usage checkpoint: 10% used / 90% remaining. Work continues under requested cap.

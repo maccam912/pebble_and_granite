@@ -3,6 +3,7 @@
 import argparse,hashlib,json,os,pathlib,platform,shutil,subprocess,sys,zipfile
 from godot import executable,templates
 from verify_export import verify
+from android_services import build as build_android_services, verify_package as verify_android_services
 ROOT=pathlib.Path(__file__).resolve().parents[1]
 p=argparse.ArgumentParser();p.add_argument('platform',choices=['linux','windows','macos','android']);p.add_argument('--number',default='1');a=p.parse_args()
 if not a.number.isdigit() or int(a.number)<1: p.error('number must be positive')
@@ -14,16 +15,21 @@ if a.platform=='android':
     sdk=pathlib.Path(os.environ.get('ANDROID_HOME',os.environ.get('ANDROID_SDK_ROOT',str(pathlib.Path.home()/'Library/Android/sdk'))))
     ndk=sdk/'ndk/28.1.13356709/toolchains/llvm/prebuilt'/('darwin-x86_64' if platform.system()=='Darwin' else 'linux-x86_64')/'bin'
     target='aarch64-linux-android';run(['rustup','target','add',target])
-    env=os.environ.copy();env['CARGO_TARGET_AARCH64_LINUX_ANDROID_LINKER']=str(ndk/'aarch64-linux-android29-clang');env['AR_aarch64_linux_android']=str(ndk/'llvm-ar')
-    run(['cargo','build','--locked','--release','-p','curl-godot','--target',target],env)
-    shutil.copy2(ROOT/'target'/target/'release/libcurl_godot.so',libdir/'libcurl_godot.android.so')
+    env=os.environ.copy();env['CARGO_TARGET_AARCH64_LINUX_ANDROID_LINKER']=str(ndk/'aarch64-linux-android29-clang');env['CC_aarch64_linux_android']=env['CARGO_TARGET_AARCH64_LINUX_ANDROID_LINKER'];env['AR_aarch64_linux_android']=str(ndk/'llvm-ar')
+    run(['cargo','build','--locked','--release','-p','curl-godot','-p','curl-transport','--target',target],env)
+    for name in ['curl_godot','pebble_iroh']:
+        shutil.copy2(ROOT/'target'/target/('release/lib'+name+'.so'),libdir/('lib'+name+'.android.so'))
 elif a.platform=='macos':
-    paths=[]
-    for target in ['aarch64-apple-darwin','x86_64-apple-darwin']:
-        run(['rustup','target','add',target]);run(['cargo','build','--locked','--release','-p','curl-godot','--target',target]);paths.append(str(ROOT/'target'/target/'release/libcurl_godot.dylib'))
-    run(['lipo','-create',*paths,'-output',str(libdir/'libcurl_godot.dylib')])
+    targets=['aarch64-apple-darwin','x86_64-apple-darwin']
+    for target in targets:
+        run(['rustup','target','add',target]);run(['cargo','build','--locked','--release','-p','curl-godot','-p','curl-transport','--target',target])
+    for name in ['curl_godot','pebble_iroh']:
+        paths=[str(ROOT/'target'/target/('release/lib'+name+'.dylib')) for target in targets]
+        run(['lipo','-create',*paths,'-output',str(libdir/('lib'+name+'.dylib'))])
 else:run([sys.executable,'tools/build_native.py','--release'])
-templates();godot=executable()
+template_dir=templates();godot=executable()
+if a.platform=='android':
+    build_android_services()
 # Set export-only version metadata in a temporary modified preset, restoring it.
 presets=ROOT/'export_presets.cfg';original=presets.read_text()
 settings=None;original_settings=None
@@ -44,7 +50,8 @@ try:
     filename={'linux':'pebble-and-granite.x86_64','windows':'pebble-and-granite.exe','macos':'pebble-and-granite.zip','android':'pebble-and-granite.apk'}[a.platform]
     preset={'linux':'Linux','windows':'Windows','macos':'macOS','android':'Android'}[a.platform]
     run([godot,'--headless','--path',str(ROOT),'--editor','--import','--frame-delay','1000'])
-    run([godot,'--headless','--path',str(ROOT),'--export-debug',preset,str(out/filename)])
+    run([godot,'--headless','--path',str(ROOT),*(['--install-android-build-template'] if a.platform=='android' else []),'--export-debug',preset,str(out/filename)])
+    if a.platform=='android':verify_android_services(out/filename)
     if a.platform!='android':verify(a.platform,out/filename)
     downloads=ROOT/'build/download';downloads.mkdir(exist_ok=True)
     name='pebble-and-granite-'+a.number+'-'+a.platform

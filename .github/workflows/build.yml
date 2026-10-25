@@ -27,7 +27,7 @@ jobs:
           python-version: '3.14'
       - uses: Swatinem/rust-cache@v2
       - run: python tools/check.py
-      - run: cargo clippy --locked --workspace --exclude curl-godot -- -D warnings
+      - run: cargo clippy --locked --workspace --exclude curl-godot --exclude curl-transport -- -D warnings
   packages:
     needs: core
     strategy:
@@ -43,7 +43,7 @@ jobs:
           - platform: android
             os: ubuntu-24.04
     runs-on: ${{ matrix.os }}
-    timeout-minutes: 35
+    timeout-minutes: 50
     steps:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@1.98.1

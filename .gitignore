@@ -9,3 +9,5 @@ __pycache__/
 *.keystore
 export_credentials.cfg
 
+addons/pebble_mobile/bin/
+/android/
