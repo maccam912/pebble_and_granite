@@ -81,3 +81,8 @@ bible only. Remote: `maccam912/pebble_and_granite`, main branch.
   executable-name and Android host-extension import fixes are in `2e4ca7f`.
 - Local universal macOS bridge compiled for ARM64/x64. Full template download is
   unusually slow locally; no local packaged macOS result is claimed yet.
+
+- Second CI run: Linux package/native Godot test passed. macOS and Android exports
+  exposed the required project-wide ETC2/ASTC import setting; enabled for both.
+  Windows failure was the already-fixed executable-name typo. All platforms remain
+  gated together, so no partial release was published. Latest usage: 7% used / 93% remaining.
