@@ -1,5 +1,5 @@
 //! Transport-independent host authority. Only validated commands reach the sim.
-use curl_rules::{Format, Match, Phase, Remedy, Resolution, Rules};
+use curl_rules::{Format, Match, Phase, PowerPlay, Remedy, Resolution, Rules};
 use curl_sim::{Release, Sim, Sweep};
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
@@ -34,6 +34,39 @@ impl Authority {
             sweeps: BTreeMap::new(),
             last_resolution: None,
         })
+    }
+    pub fn place_mixed(
+        &mut self,
+        seat: Seat,
+        own_house: bool,
+        side: PowerPlay,
+    ) -> Result<(), &'static str> {
+        if !self.valid_seat(seat) {
+            return Err("invalid seat");
+        }
+        let mut game = self.game.clone();
+        let stones = game.place_mixed(seat.team, own_house, side)?;
+        let mut sim = self.sim.clone();
+        sim.clear_stones()?;
+        for stone in stones {
+            sim.add_resting(stone)?;
+        }
+        self.game = game;
+        self.sim = sim;
+        Ok(())
+    }
+    pub fn next_end(&mut self) -> Result<(), &'static str> {
+        let mut game = self.game.clone();
+        game.next_end()?;
+        let mut sim = self.sim.clone();
+        sim.clear_stones()?;
+        sim.advance_idle(60 * 240)?;
+        self.game = game;
+        self.sim = sim;
+        self.release_snapshot = None;
+        self.sweeps.clear();
+        self.last_resolution = None;
+        Ok(())
     }
     pub fn release(&mut self, seat: Seat, mut release: Release) -> Result<(), &'static str> {
         if !self.valid_seat(seat)
@@ -190,7 +223,17 @@ mod tests {
         position: 0,
     };
     fn authority() -> Authority {
-        Authority::new(42, Rules::mixed(), 1).unwrap()
+        let mut a = Authority::new(42, Rules::mixed(), 1).unwrap();
+        a.place_mixed(
+            Seat {
+                team: 1,
+                position: 0,
+            },
+            true,
+            PowerPlay::None,
+        )
+        .unwrap();
+        a
     }
     #[test]
     fn release_ownership_and_identity() {
@@ -282,6 +325,44 @@ mod tests {
             .is_err()
         );
         assert!(a.sweep(THROWER, 500, input).is_err());
+    }
+    #[test]
+    fn mixed_match_end_transition_preserves_ice_and_requires_new_placement() {
+        let mut a = authority();
+        assert_eq!(a.sim.stones.len(), 2);
+        assert!(a.place_mixed(THROWER, true, PowerPlay::None).is_err());
+        for _ in 0..10 {
+            let seat = Seat {
+                team: a.game.delivering_team(),
+                position: a.game.throwing_seat(),
+            };
+            a.release(seat, Release::draw()).unwrap();
+            for _ in 0..curl_sim::MAX_TICKS {
+                if a.game.phase != Phase::InFlight {
+                    break;
+                }
+                a.step().unwrap();
+            }
+            assert_ne!(a.game.phase, Phase::InFlight);
+        }
+        assert_eq!(a.game.phase, Phase::EndComplete);
+        let tick = a.sim.tick;
+        let ice = a.sim.ice.clone();
+        a.next_end().unwrap();
+        assert_eq!(a.game.end, 2);
+        assert_eq!(a.game.phase, Phase::Placement);
+        assert!(a.sim.stones.is_empty());
+        assert_eq!(a.sim.tick, tick + 60 * 240);
+        assert_eq!(a.sim.ice, ice);
+        assert!(a.release(THROWER, Release::draw()).is_err());
+        let seat = Seat {
+            team: a.game.placement_team,
+            position: 0,
+        };
+        a.place_mixed(seat, true, PowerPlay::None).unwrap();
+        assert_eq!(a.sim.stones.len(), 2);
+        assert_eq!(a.sim.stones[0].id, 0);
+        assert_eq!(a.game.next_stone_id(), 2);
     }
 }
 

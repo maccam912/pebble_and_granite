@@ -3,6 +3,7 @@
 use curl_fx::{Fx, V2};
 use curl_sim::{FAR_HOG, HOUSE, RADIUS, Stone};
 use serde::{Deserialize, Serialize};
+pub const RULES_VERSION: u32 = 1;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub enum Format {
@@ -12,6 +13,8 @@ pub enum Format {
 }
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Rules {
+    pub guard_mark: u8,
+    pub guard_behind: bool,
     pub format: Format,
     pub ends: u8,
     pub guard_count: u8,
@@ -21,6 +24,8 @@ pub struct Rules {
 impl Rules {
     pub fn club() -> Self {
         Self {
+            guard_mark: 1,
+            guard_behind: false,
             format: Format::Teams,
             ends: 6,
             guard_count: 5,
@@ -30,6 +35,8 @@ impl Rules {
     }
     pub fn mixed() -> Self {
         Self {
+            guard_mark: 1,
+            guard_behind: false,
             format: Format::MixedDoubles,
             ends: 8,
             guard_count: 3,
@@ -45,7 +52,8 @@ impl Rules {
         }
     }
     fn valid(&self) -> bool {
-        (1..=10).contains(&self.ends)
+        self.guard_mark < 4
+            && (1..=10).contains(&self.ends)
             && self.guard_count <= 5
             && self.thinking_ms > 0
             && (self.format != Format::MixedDoubles || (!self.no_tick && self.guard_count == 3))
@@ -53,6 +61,7 @@ impl Rules {
 }
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub enum Phase {
+    Placement,
     Calling,
     InFlight,
     Choice,
@@ -82,6 +91,9 @@ pub struct Match {
     pub end: u8,
     pub delivered: u8,
     pub hammer: u8,
+    pub placement_team: u8,
+    pub power_play_used: [bool; 2],
+    pub first_thrower: [u8; 2],
     pub score: [u16; 2],
     pub thinking_ms: [u32; 2],
     pub winner: Option<u8>,
@@ -95,12 +107,20 @@ impl Match {
             return Err("invalid match configuration");
         }
         let time = rules.thinking_ms;
+        let phase = if rules.format == Format::MixedDoubles {
+            Phase::Placement
+        } else {
+            Phase::Calling
+        };
         Ok(Self {
             rules,
-            phase: Phase::Calling,
+            phase,
             end: 1,
             delivered: 0,
             hammer,
+            placement_team: hammer,
+            power_play_used: [false; 2],
+            first_thrower: [0; 2],
             score: [0; 2],
             thinking_ms: [time; 2],
             winner: None,
@@ -109,6 +129,47 @@ impl Match {
             delivered_id: None,
         })
     }
+    /// End setup belongs to the placement-choice team, independently of hammer.
+    pub fn place_mixed(
+        &mut self,
+        team: u8,
+        own_house: bool,
+        side: PowerPlay,
+    ) -> Result<Vec<Stone>, &'static str> {
+        if !self.rules.valid()
+            || team > 1
+            || self.rules.format != Format::MixedDoubles
+            || self.phase != Phase::Placement
+            || team != self.placement_team
+        {
+            return Err("placement unavailable to this team");
+        }
+        if side != PowerPlay::None
+            && (self.end > self.rules.ends || self.power_play_used[team as usize])
+        {
+            return Err("power play unavailable");
+        }
+        let hammer = if own_house { team } else { 1 - team };
+        let stones = positioned_stones(&self.rules, hammer, side);
+        self.hammer = hammer;
+        if side != PowerPlay::None {
+            self.power_play_used[team as usize] = true;
+        }
+        self.phase = Phase::Calling;
+        Ok(stones)
+    }
+    pub fn set_first_thrower(&mut self, team: u8, position: u8) -> Result<(), &'static str> {
+        if self.rules.format != Format::MixedDoubles
+            || team > 1
+            || position > 1
+            || self.delivered != 0
+            || !matches!(self.phase, Phase::Placement | Phase::Calling)
+        {
+            return Err("throwing order may change only before the end");
+        }
+        self.first_thrower[team as usize] = position;
+        Ok(())
+    }
     pub fn delivering_team(&self) -> u8 {
         (1 - self.hammer) ^ (self.delivered % 2)
     }
@@ -116,7 +177,8 @@ impl Match {
     pub fn throwing_seat(&self) -> u8 {
         let n = self.delivered / 2;
         if self.rules.format == Format::MixedDoubles {
-            if n == 0 || n == 4 { 0 } else { 1 }
+            self.first_thrower[self.delivering_team() as usize]
+                ^ if n == 0 || n == 4 { 0 } else { 1 }
         } else {
             n / 2
         }
@@ -234,8 +296,9 @@ impl Match {
         if let Some(team) = team {
             self.score[team as usize] += points as u16;
             self.hammer = 1 - team;
-        } else if self.rules.format == Format::MixedDoubles {
-            self.hammer = 1 - self.hammer;
+            self.placement_team = 1 - team;
+        } else if self.rules.format == Format::MixedDoubles && !positions.iter().any(in_house) {
+            self.placement_team = 1 - self.hammer;
         }
         self.phase = Phase::EndComplete;
         if self.end >= self.rules.ends && self.score[0] != self.score[1] {
@@ -247,10 +310,14 @@ impl Match {
         if self.phase != Phase::EndComplete {
             return Err("end not complete");
         }
-        self.end += 1;
+        self.end = self.end.checked_add(1).ok_or("end limit reached")?;
         self.delivered = 0;
         self.before.clear();
-        self.phase = Phase::Calling;
+        self.phase = if self.rules.format == Format::MixedDoubles {
+            Phase::Placement
+        } else {
+            Phase::Calling
+        };
         if self.end > self.rules.ends {
             self.thinking_ms = [270000; 2];
         }
@@ -276,6 +343,36 @@ impl Match {
             self.winner = Some((1 - team) as u8);
         }
     }
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
+pub enum PowerPlay {
+    None,
+    Left,
+    Right,
+}
+
+/// World Curling 2026 R17(f), diagrams pp.29–30. Coordinates in metres.
+/// Kept internal: configuration validation precedes every call.
+fn positioned_stones(rules: &Rules, hammer: u8, side: PowerPlay) -> Vec<Stone> {
+    let mark = rules.guard_mark as usize;
+    let y = -HOUSE - Fx::ratio([1372, 1981, 2591, 3200][mark], 1000)
+        + if rules.guard_behind { RADIUS } else { -RADIUS };
+    let sign = match side {
+        PowerPlay::None => 0,
+        PowerPlay::Left => -1,
+        PowerPlay::Right => 1,
+    };
+    let guard_x = Fx::ratio([1120, 1100, 1080, 1070][mark] * sign, 1000);
+    let house = if side == PowerPlay::None {
+        V2::new(Fx::ZERO, Fx::ratio(610, 1000) - RADIUS)
+    } else {
+        V2::new(Fx::ratio(1219 * sign, 1000), -RADIUS)
+    };
+    vec![
+        Stone::resting(0, 1 - hammer, V2::new(guard_x, y)),
+        Stone::resting(1, hammer, house),
+    ]
 }
 
 pub fn in_house(s: &Stone) -> bool {
@@ -375,6 +472,7 @@ mod tests {
     #[test]
     fn mixed_protects_own_house_stone_for_three_deliveries() {
         let mut m = Match::new(Rules::mixed(), 1).unwrap();
+        m.place_mixed(1, true, PowerPlay::None).unwrap();
         m.begin(0, 2, &[stone(0, 0, 0, 400)]).unwrap();
         assert_eq!(
             m.settle(&[]).unwrap().violation,
@@ -387,6 +485,7 @@ mod tests {
     #[test]
     fn mixed_roles_first_and_last_same_player() {
         let mut m = Match::new(Rules::mixed(), 1).unwrap();
+        m.place_mixed(1, true, PowerPlay::None).unwrap();
         for (d, seat) in [(0, 0), (1, 0), (2, 1), (5, 1), (6, 1), (8, 0), (9, 0)] {
             m.delivered = d;
             assert_eq!(m.throwing_seat(), seat);
@@ -395,6 +494,7 @@ mod tests {
     #[test]
     fn clocks_pause_in_flight_and_expire_authoritatively() {
         let mut m = Match::new(Rules::mixed(), 1).unwrap();
+        m.place_mixed(1, true, PowerPlay::None).unwrap();
         m.begin(0, 2, &[]).unwrap();
         m.think(u32::MAX);
         assert_eq!(m.phase, Phase::InFlight);
@@ -421,5 +521,96 @@ mod tests {
         assert!(m.concede(1).is_err());
         m.concede(0).unwrap();
         assert_eq!(m.winner, Some(1));
+    }
+    #[test]
+    fn placement_choice_is_not_automatically_hammer() {
+        let mut m = Match::new(Rules::mixed(), 1).unwrap();
+        assert!(m.begin(0, 2, &[]).is_err());
+        let before = m.clone();
+        assert!(m.place_mixed(0, true, PowerPlay::None).is_err());
+        assert_eq!(m, before);
+        let stones = m.place_mixed(1, false, PowerPlay::None).unwrap();
+        assert_eq!(m.hammer, 0);
+        assert_eq!(m.delivering_team(), 1);
+        assert_eq!(stones[0].team, 1);
+        assert_eq!(stones[1].team, 0);
+        assert_eq!(stones[1].pos.y + RADIUS, Fx::ratio(610, 1000));
+        assert!(in_guard_zone(&stones[0]));
+        assert!(in_house(&stones[1]));
+        assert!(m.place_mixed(1, true, PowerPlay::None).is_err());
+    }
+    #[test]
+    fn guard_marks_and_power_play_mirror() {
+        for mark in 0..4 {
+            for behind in [false, true] {
+                let mut rules = Rules::mixed();
+                rules.guard_mark = mark;
+                rules.guard_behind = behind;
+                let mut left = Match::new(rules.clone(), 0).unwrap();
+                let mut right = Match::new(rules, 0).unwrap();
+                let l = left.place_mixed(0, true, PowerPlay::Left).unwrap();
+                let r = right.place_mixed(0, true, PowerPlay::Right).unwrap();
+                for i in 0..2 {
+                    assert_eq!(l[i].pos.x, -r[i].pos.x);
+                    assert_eq!(l[i].pos.y, r[i].pos.y);
+                }
+                assert_eq!(
+                    r[0].pos.x,
+                    Fx::ratio([1120, 1100, 1080, 1070][mark as usize], 1000)
+                );
+                assert_eq!(r[1].pos.y + RADIUS, Fx::ZERO);
+                assert!(in_guard_zone(&r[0]));
+            }
+        }
+    }
+    #[test]
+    fn power_play_once_per_team_and_never_extra_end() {
+        let mut m = Match::new(Rules::mixed(), 1).unwrap();
+        m.place_mixed(1, true, PowerPlay::Left).unwrap();
+        m.phase = Phase::EndComplete;
+        m.next_end().unwrap();
+        let before = m.clone();
+        assert!(m.place_mixed(1, true, PowerPlay::Right).is_err());
+        assert_eq!(m, before);
+        m.placement_team = 0;
+        m.place_mixed(0, true, PowerPlay::Right).unwrap();
+        assert_eq!(m.power_play_used, [true, true]);
+        let mut extra = Match::new(Rules::mixed(), 1).unwrap();
+        extra.end = 9;
+        assert!(extra.place_mixed(1, true, PowerPlay::Left).is_err());
+        assert!(!extra.power_play_used[1]);
+        extra.place_mixed(1, true, PowerPlay::None).unwrap();
+    }
+    #[test]
+    fn mixed_empty_blank_and_equal_measure_have_distinct_choice() {
+        let mut m = Match::new(Rules::mixed(), 1).unwrap();
+        m.place_mixed(1, true, PowerPlay::None).unwrap();
+        m.delivered = 9;
+        let mut tied = m.clone();
+        m.begin(1, 11, &[]).unwrap();
+        m.settle(&[]).unwrap();
+        assert_eq!(m.placement_team, 0);
+        tied.begin(1, 11, &[]).unwrap();
+        tied.settle(&[stone(0, 0, 100, 0), stone(1, 1, -100, 0)])
+            .unwrap();
+        assert_eq!(tied.placement_team, 1);
+        assert_eq!(tied.score, [0, 0]);
+        m.next_end().unwrap();
+        assert_eq!(m.phase, Phase::Placement);
+    }
+    #[test]
+    fn first_thrower_can_change_between_ends_only() {
+        let mut m = Match::new(Rules::mixed(), 1).unwrap();
+        m.set_first_thrower(0, 1).unwrap();
+        m.place_mixed(1, true, PowerPlay::None).unwrap();
+        assert_eq!(m.throwing_seat(), 1);
+        m.begin(0, 2, &[]).unwrap();
+        assert!(m.set_first_thrower(0, 0).is_err());
+        m.settle(&[]).unwrap();
+        assert!(m.set_first_thrower(0, 0).is_err());
+        m.delivered = 2;
+        assert_eq!(m.throwing_seat(), 0);
+        m.delivered = 8;
+        assert_eq!(m.throwing_seat(), 1);
     }
 }

@@ -161,3 +161,16 @@ bible only. Remote: `maccam912/pebble_and_granite`, main branch.
 - Packaged self-test now also checks CurlTransport.available(), which on Android
   requires the registered Java singleton and successful native JNI initialization.
   Network connectivity still has its separate live transport probe.
+
+## Mixed doubles lifecycle foundation
+
+- Rules2026.pdf became accessible; inspected R17 and the power-play diagram.
+  Detailed implementation scope and remaining audit live in docs/RULES.md.
+- Added explicit placement phase, independent placement-choice owner, positioned
+  stones, per-team one-use power plays, per-end throwing order, and correct blank
+  end choice handling. Added rules schema 1 to compatibility metadata/checks.
+- Authority transitions clear the field while retaining physical ice history and
+  advancing a 60-second inter-end interval. Sheet-direction reversal remains open.
+- New tests cover invalid/atomic placement, all guard positions and mirrored power
+  plays, use/extra-end restrictions, throwing order, blank distinctions and a full
+  ten-delivery end through next-end setup. These do not yet expose full matches in UI.
