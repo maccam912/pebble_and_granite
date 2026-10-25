@@ -71,6 +71,21 @@ impl CurlRoom {
         answer(room.start(peer, seed as u64))
     }
     #[func]
+    fn require_sync(&mut self, peer: i32) -> GString {
+        let Some(room) = &mut self.room else {
+            return "No hosted room".into();
+        };
+        answer(room.require_sync(peer))
+    }
+    #[func]
+    fn synced_packet(epoch: u32, revision: u32, hash: GString) -> PackedByteArray {
+        packet(LobbyPacket::Synced {
+            epoch,
+            revision,
+            hash: hash.to_string(),
+        })
+    }
+    #[func]
     fn command_peer(&mut self, peer: i32, bytes: PackedByteArray) -> GString {
         let envelope = match curl_match::room::Envelope::parse(bytes.as_slice()) {
             Ok(envelope) => envelope,

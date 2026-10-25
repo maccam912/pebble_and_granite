@@ -25,7 +25,7 @@ bind each connection to a seat before interpreting any gameplay command.
 
 The playable scene currently provides local practice and mixed doubles. Online
 gameplay and room UI are under construction. Android includes a small Godot plugin supplying a JNI application context before
-Iroh starts; its new Gradle export still requires CI and installed-device validation. Public relay availability remains an
+Iroh starts; Build 14 passed export CI and installed Android-emulator golden/JNI checks. Public relay availability remains an
 external service dependency. No host migration is planned for the first slice.
 
 ## Validation
@@ -53,8 +53,8 @@ A disconnected active-game seat remains reserved. Simulation and thinking clocks
 pause until its authenticated identity returns and confirms the matching full
 state hash. This hash covers simulation, rules/clocks, release snapshot and pending
 sweeps. The host does not migrate. This is the authority contract only: replay
-transfer, reconnect UI and gameplay transport wiring are still
-required before reconnect can be advertised as a working game feature.
+reconnect UI and playable-scene integration are still
+required before reconnect can be advertised as a finished game feature.
 
 ## Live control-plane probes
 
@@ -83,7 +83,7 @@ reserved seat. The room remains paused until replay synchronization is verified.
 This is not yet a complete reconnect gameplay flow. Hosts remain ephemeral and
 host loss ends the room; host migration is explicitly out of scope.
 
-## Authoritative replication contract (protocol 2)
+## Authoritative replication contract (protocol 3)
 
 Room gameplay now runs through the same recorded match used by local saves. Each
 accepted update carries an epoch, monotonically increasing revision, before/after
@@ -101,7 +101,9 @@ The checksum detects corruption; authenticated Iroh supplies peer authenticity.
 
 `tests/replica.gd` exercises the native bridge offline and is a desktop CI gate.
 Core tests cover a full shot, late sweeps on both sides of an in-flight restore,
-malformed updates and chunk-transfer failures. The lobby network loop does not
-yet route these gameplay/transfer packets; this contract is the next integration
-step. Restore remains synchronous and live updates currently copy/trial state;
+malformed updates and chunk-transfer failures. The network loop routes these packets on reliable channels 1 and 2, with
+control on channel 0. Start/reconnect freezes play until exact epoch/revision/hash
+acknowledgement; transfers expire after 60 seconds. A four-peer live test covers
+placement, a complete shot and in-flight reconnect under default/relay routing.
+The scene still needs room UI, presentation frames and online input routing. Restore remains synchronous and live updates currently copy/trial state;
 measure Android cost before shipping long-match reconnect as finished.

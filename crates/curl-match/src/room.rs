@@ -211,6 +211,14 @@ impl Room {
         let a = self.authority.as_ref().ok_or("no game")?;
         Ok(a.hash())
     }
+    pub fn require_sync(&mut self, peer: i32) -> Result<(), &'static str> {
+        let index = self.index(peer)?;
+        if self.authority.is_none() || peer == 1 {
+            return Err("active client required");
+        }
+        self.players[index].as_mut().unwrap().synchronized = false;
+        Ok(())
+    }
     pub fn confirm_sync(
         &mut self,
         peer: i32,
@@ -595,6 +603,7 @@ pub struct PlayerView {
     pub peer: Option<i32>,
     pub ready: bool,
     pub synchronized: bool,
+    pub sequence: u32,
 }
 #[derive(Clone, Debug, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
@@ -608,10 +617,23 @@ pub struct RoomView {
 #[derive(Clone, Debug, Serialize, Deserialize)]
 #[serde(tag = "kind", deny_unknown_fields)]
 pub enum LobbyPacket {
-    Hello { compatibility: Compatibility },
-    Ready { ready: bool },
-    State { room: RoomView },
-    Reject { reason: String },
+    Hello {
+        compatibility: Compatibility,
+    },
+    Ready {
+        ready: bool,
+    },
+    State {
+        room: RoomView,
+    },
+    Reject {
+        reason: String,
+    },
+    Synced {
+        epoch: u32,
+        revision: u32,
+        hash: String,
+    },
 }
 impl LobbyPacket {
     pub fn parse(bytes: &[u8]) -> Result<Self, String> {
@@ -620,6 +642,13 @@ impl LobbyPacket {
         }
         let packet: Self = serde_json::from_slice(bytes).map_err(|e| e.to_string())?;
         match &packet {
+            Self::Synced { epoch, hash, .. }
+                if *epoch == 0
+                    || hash.len() != 16
+                    || !hash.bytes().all(|b| b.is_ascii_hexdigit()) =>
+            {
+                return Err("invalid synchronization acknowledgement".into());
+            }
             Self::Reject { reason }
                 if reason.len() > 160 || reason.chars().any(char::is_control) =>
             {
@@ -673,6 +702,7 @@ impl Room {
                     peer: p.peer,
                     ready: p.ready,
                     synchronized: p.synchronized,
+                    sequence: p.sequence,
                 })
             }),
         }
@@ -708,6 +738,7 @@ mod packet_tests {
             peer: Some(1),
             ready: false,
             synchronized: true,
+            sequence: 0,
         });
         assert!(LobbyPacket::State { room: view }.bytes().is_err());
         let mut view = r.view();

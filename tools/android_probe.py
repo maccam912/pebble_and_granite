@@ -16,7 +16,10 @@ adb('shell','am','force-stop',PACKAGE)
 # intentionally unexported. A development-build request lives in this app's own
 # sandbox, consumed once at startup. Do not weaken the Android manifest.
 adb('exec-out','run-as',PACKAGE,'mkdir','-p','files/diagnostics')
-adb('exec-out','run-as',PACKAGE,'tee',request,input=json.dumps({'schema':1,'nonce':nonce}).encode())
+payload=json.dumps({'schema':1,'nonce':nonce}).encode()
+# exec-in forwards stdin; exec-out only reads output. Bounded dd also avoids
+# relying on a remote EOF to finish the request.
+adb('exec-in','run-as',PACKAGE,'dd','of='+request,'bs=1','count='+str(len(payload)),input=payload)
 report=None
 try:
     adb('shell','am','start','-W','-n',activity)

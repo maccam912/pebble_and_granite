@@ -46,9 +46,27 @@ func run() -> void:
 		deadline = Time.get_ticks_msec() + 5000
 		while Time.get_ticks_msec() < deadline:
 			tick()
-			if rooms.all(func(room: CurlOnline) -> bool: return room.state.get("phase") == "Placement"): break
+			if rooms.all(func(room: CurlOnline) -> bool: return room.state.get("phase") == "Placement" and not room.state.paused) and rooms.slice(1).all(func(room: CurlOnline) -> bool: return room.replica != null): break
 			await create_timer(.01).timeout
 		check(rooms.all(func(room: CurlOnline) -> bool: return room.state.get("phase") == "Placement" and room.state.epoch == 1), "Start state did not reach every peer")
+		check(await settled_network(host), "Starting replica hashes differ")
+		var placer: CurlOnline
+		for room in rooms:
+			if room.peer.get_unique_id() == host.state.players[2].peer: placer = room
+		check(placer != null and placer.send_command({"kind": "Place", "own_house": true, "side": "None"}).is_empty(), "Network placement failed")
+		deadline = Time.get_ticks_msec() + 5000
+		while Time.get_ticks_msec() < deadline and host.state.phase != "Calling":
+			tick()
+			await create_timer(.01).timeout
+		check(await settled_network(host), "Placement replicas differ")
+		var release := {"stone": 0, "team": 0, "pos": {"x": 0, "y": -124554051584}, "vel": {"x": 0, "y": 8804682956}, "spin": 515396075}
+		check(host.send_command({"kind": "Release", "release": release}).is_empty(), "Network release failed")
+		check(await settled_network(host), "Release replicas differ")
+		for i in range(3):
+			check(host.advance(24, 0).is_empty(), "Flight advance failed")
+			check(await settled_network(host), "Flight replicas differ")
+		check(host.send_command({"kind": "Sweep", "tick": 60, "input": {"stone": 2, "brush": 0, "effort": 220, "lateral_mm": 0, "ahead_mm": 180}}).is_empty(), "Late network sweep failed")
+		check(await settled_network(host), "Late sweep replicas differ")
 		var departed: int = rooms[2].peer.get_unique_id()
 		rooms[2].close()
 		deadline = Time.get_ticks_msec() + 5000
@@ -63,10 +81,17 @@ func run() -> void:
 		deadline = Time.get_ticks_msec() + 10000
 		while Time.get_ticks_msec() < deadline:
 			tick()
-			if host.state.players.all(func(player) -> bool: return player.peer != null): break
+			if host.state.players.all(func(player) -> bool: return player.peer != null) and not host.state.paused: break
 			await create_timer(.01).timeout
 		check(host.state.players.all(func(player) -> bool: return player.peer != null), "Persistent identity did not reclaim reserved seat")
-		check(host.state.paused, "Rejoin resumed before verified replay synchronization")
+		check(not host.state.paused, "Verified reconnect did not resume match")
+		check(await settled_network(host), "Reconnected replica differs")
+		var updates := 0
+		while host.state.phase == "InFlight" and updates < 650 and not failed:
+			check(host.advance(24, 0).is_empty(), "Post-reconnect flight failed")
+			check(await settled_network(host), "Post-reconnect replica differs")
+			updates += 1
+		check(host.state.phase == "Calling", "Network shot did not settle")
 		host.close()
 		deadline = Time.get_ticks_msec() + 5000
 		while Time.get_ticks_msec() < deadline and (rooms[1].peer != null or rooms[3].peer != null):
@@ -78,3 +103,11 @@ func run() -> void:
 		if room != host: DirAccess.remove_absolute(ProjectSettings.globalize_path(room.identity_path))
 	print("ONLINE_LOBBY_OK relay_only=", relay_only) if not failed else print("ONLINE_LOBBY_FAILED")
 	quit(1 if failed else 0)
+
+func settled_network(host: CurlOnline) -> bool:
+	var deadline := Time.get_ticks_msec() + 5000
+	while Time.get_ticks_msec() < deadline:
+		tick()
+		if rooms.slice(1).all(func(room: CurlOnline) -> bool: return room.replica != null and room.replica.state_hash() == host.state.hash): return true
+		await create_timer(.01).timeout
+	return false

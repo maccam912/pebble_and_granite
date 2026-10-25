@@ -13,13 +13,13 @@ bible only. Remote: `maccam912/pebble_and_granite`, main branch.
 - [x] Rules/authority/seat ownership and four-peer Iroh lobby transport proof.
 - [x] CI cross-platform core tests, native exports and published numbered releases.
 - [ ] Online gameplay replication, replay transfer and room UI.
-- [ ] Installed Android golden/JNI probe using the new one-use debug request route.
+- [x] Installed Android golden/JNI probe using the one-use debug request route.
 - [ ] 3D delivery/cameras, spatial scrubbing, measured calibration/performance and AI.
 
 Latest local gates: 66 core Rust tests (plus native transport identity test), shared golden traces, Godot input/practice/match
 save/full-game fixtures. Live network probes are separate from offline CI because
 relay and code-directory availability are external dependencies. Four peers have
-passed readiness/start/disconnect with default and forced-relay transport, but the
+passed a full shot and in-flight reconnect with default and forced-relay transport, but the
 playable scene is still local-only. The code-directory test revoked its own entry.
 
 ## Owner follow-up / gates
@@ -285,3 +285,28 @@ playable scene is still local-only. The code-directory test revoked its own entr
   record / 16 MiB journal limits can be reached by long high-frequency network
   sweeping. Local held-brush Step spans already compact; individual network Sweep
   records do not. This is a required replication capacity gate, not polish.
+
+## Live authoritative gameplay and Android runtime gate
+
+- Protocol 3 routes control on reliable channel 0, commands/commits on channel 1,
+  and bounded reconnect journals on channel 2. Start/reconnect pauses until every
+  client acknowledges the exact epoch, revision and full hash. Transfers have
+  60-second deadlines and per-peer send limits; disconnected peers cannot leave
+  queued packets that tear down the host's room.
+- Four real Iroh endpoints passed placement, release, a complete simulated shot,
+  in-flight seat recovery and identical final hashes under default and forced
+  relay routing. The latest default-route fixture also sends a late sweep.
+  Client command sequence floors survive reconnect via the authenticated roster.
+- The live network module is still not exposed in the game scene. Room UI,
+  presentation frames, input routing and complete-match network testing are next.
+- Build 14 (`011bab9`) published on all platforms. Installed its 97 MiB ARM64 APK
+  on the dedicated Android 35 emulator. All six golden traces matched, and the
+  JNI networking plugin reported ready. APK SHA-256:
+  `bc931cc36f720404b7c7917110bd88037aaca429f268645311799abdb584219b`.
+  Evidence: `build/evidence/android-self-test.json` (local, ignored).
+- Fixed probe stdin delivery: `adb exec-out` does not forward the request body;
+  `exec-in` with an exact-byte-count write works. The one-use request is consumed
+  before the native test and cannot trigger on subsequent ordinary launches.
+- Android evidence covers simulation/JNI initialization on an emulator. Actual
+  cross-device Iroh play, physical touch feel and store signing remain unverified.
+- Usage checkpoint: 18% used / 82% remaining.
