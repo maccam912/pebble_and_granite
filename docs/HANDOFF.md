@@ -7,13 +7,20 @@ bible only. Remote: `maccam912/pebble_and_granite`, main branch.
 
 ## Work order
 
-- [x] Initial deterministic arithmetic/physics/ice and versioned single-shot replay contracts.
-- [x] Initial Godot delivery/sweep lab with unified pointer/touch event routes.
-  Native runtime checked; Android package/device checks remain pending.
-- [ ] Rules boundaries and mixed-doubles turn ownership.
-- [ ] Authority/input validation and multiplayer transport proof.
-- [ ] CI cross-platform tests, native builds, Godot exports and numbered releases.
-- [ ] Local and remote integration checks; calibration and performance reports.
+- [x] Deterministic arithmetic/physics/ice and versioned replay contracts.
+- [x] Godot mouse/trackpad/touch practice with resumable saves.
+- [x] Local mixed doubles through complete games/rematches, with command-journal saves.
+- [x] Rules/authority/seat ownership and four-peer Iroh lobby transport proof.
+- [x] CI cross-platform core tests, native exports and published numbered releases.
+- [ ] Online gameplay replication, replay transfer, persistent identity and room UI.
+- [ ] Installed Android golden/JNI probe using the new one-use debug request route.
+- [ ] 3D delivery/cameras, spatial scrubbing, measured calibration/performance and AI.
+
+Latest local gates: 63 Rust tests, shared golden traces, Godot input/practice/match
+save/full-game fixtures. Live network probes are separate from offline CI because
+relay and code-directory availability are external dependencies. Four peers have
+passed readiness/start/disconnect with default and forced-relay transport, but the
+playable scene is still local-only. The code-directory test revoked its own entry.
 
 ## Owner follow-up / gates
 
@@ -230,3 +237,19 @@ bible only. Remote: `maccam912/pebble_and_granite`, main branch.
   did not run: 4.7 launcher dropped extras and direct game activity is unexported.
   Added a one-use request in the debug app's own sandbox; source route passes.
   Requires a newly built APK before claiming Android golden/JNI runtime success.
+
+## Live lobby and short-code integration proof
+
+- Added CurlRoom native bridge and a bounded typed lobby/control codec. Iroh's
+  authenticated connection metadata determines identity; Hello cannot claim a seat.
+- CurlOnline handles deadlines, readiness/start, state coalescing, per-peer queue
+  limits and disconnect pause. Native signal callbacks defer close/state work until
+  poll returns, avoiding reentrant GDExtension borrows.
+- Four real Iroh peers passed ready/start, disconnect reservation/pause and host-loss
+  cleanup. Default and forced-relay routing passed. Readiness burst coverage checks
+  that repeated updates coalesce rather than exhaust the host's queue.
+- CurlRendezvous uses the same user-owned four-character directory as racinggame,
+  with Pebble-specific compatibility/golden identity. Register/resolve/revoke passed;
+  no persistent test room or token was left behind. Tokens are kept in memory.
+- ad4f4f9 local-match pipeline passed all jobs and published. The 011bab9 journal /
+  Android probe revision is next in CI. Online gameplay and UI remain unimplemented.

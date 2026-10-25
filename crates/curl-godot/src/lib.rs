@@ -404,3 +404,5 @@ impl CurlSession {
         d
     }
 }
+
+mod room;

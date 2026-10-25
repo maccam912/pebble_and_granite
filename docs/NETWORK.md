@@ -23,8 +23,8 @@ bind each connection to a seat before interpreting any gameplay command.
 
 ## Current scope
 
-Transport integration is under construction. The released feel lab does not yet
-provide online rooms. Android includes a small Godot plugin supplying a JNI application context before
+The playable scene currently provides local practice and mixed doubles. Online
+gameplay and room UI are under construction. Android includes a small Godot plugin supplying a JNI application context before
 Iroh starts; its new Gradle export still requires CI and installed-device validation. Public relay availability remains an
 external service dependency. No host migration is planned for the first slice.
 
@@ -55,3 +55,16 @@ state hash. This hash covers simulation, rules/clocks, release snapshot and pend
 sweeps. The host does not migrate. This is the authority contract only: replay
 transfer, durable endpoint identity, reconnect UI and transport wiring are still
 required before reconnect can be advertised as a working game feature.
+
+## Live control-plane probes
+
+`tests/online_lobby.gd` creates a host and three real Iroh clients, verifies roster,
+ready/start, reserved disconnected seat, pause and host loss. It also exercises a
+burst of readiness changes. Run with `-- --relay-only` for relay routing.
+`tests/room_code.gd` registers one short code, resolves its compatible host endpoint,
+and revokes it. Both probes passed locally; neither is a cross-device gameplay test.
+
+The native codec rejects unknown fields, oversized packets, malformed UTF-8,
+duplicate peer IDs, malformed hashes and control characters in rejection messages.
+GDScript receives only decoded canonical lobby records. Pending handshakes and
+send queues are bounded; state updates coalesce separately for each peer.

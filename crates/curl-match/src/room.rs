@@ -501,3 +501,131 @@ mod tests {
         assert!(send(&mut r, 1, 4, Command::Sweep { tick: 2, input }).is_err());
     }
 }
+
+/// Small, bounded lobby/control protocol; transport identity is never in a Hello.
+#[derive(Clone, Debug, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct PlayerView {
+    pub peer: Option<i32>,
+    pub ready: bool,
+    pub synchronized: bool,
+}
+#[derive(Clone, Debug, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct RoomView {
+    pub epoch: u32,
+    pub phase: Option<Phase>,
+    pub paused: bool,
+    pub hash: Option<String>,
+    pub players: [Option<PlayerView>; 4],
+}
+#[derive(Clone, Debug, Serialize, Deserialize)]
+#[serde(tag = "kind", deny_unknown_fields)]
+pub enum LobbyPacket {
+    Hello { compatibility: Compatibility },
+    Ready { ready: bool },
+    State { room: RoomView },
+    Reject { reason: String },
+}
+impl LobbyPacket {
+    pub fn parse(bytes: &[u8]) -> Result<Self, String> {
+        if bytes.len() > 1200 {
+            return Err("lobby packet too large".into());
+        }
+        let packet: Self = serde_json::from_slice(bytes).map_err(|e| e.to_string())?;
+        match &packet {
+            Self::Reject { reason }
+                if reason.len() > 160 || reason.chars().any(char::is_control) =>
+            {
+                return Err("invalid reason".into());
+            }
+            Self::State { room } => {
+                let mut peers = std::collections::BTreeSet::new();
+                for player in room.players.iter().flatten() {
+                    if let Some(peer) = player.peer
+                        && (peer < 1 || !peers.insert(peer))
+                    {
+                        return Err("invalid roster".into());
+                    }
+                }
+                if room.players[0].as_ref().is_none_or(|p| p.peer != Some(1)) {
+                    return Err("missing host".into());
+                }
+                if room
+                    .hash
+                    .as_ref()
+                    .is_some_and(|h| h.len() != 16 || !h.bytes().all(|b| b.is_ascii_hexdigit()))
+                {
+                    return Err("invalid state hash".into());
+                }
+                if room.phase.is_some() != room.hash.is_some() {
+                    return Err("invalid game state".into());
+                }
+            }
+            _ => {}
+        }
+        Ok(packet)
+    }
+    pub fn bytes(&self) -> Result<Vec<u8>, String> {
+        let bytes = serde_json::to_vec(self).map_err(|e| e.to_string())?;
+        Self::parse(&bytes)?;
+        Ok(bytes)
+    }
+}
+impl Room {
+    pub fn view(&self) -> RoomView {
+        RoomView {
+            epoch: self.epoch,
+            phase: self.authority.as_ref().map(|a| a.game.phase),
+            paused: self.paused(),
+            hash: self
+                .authority
+                .as_ref()
+                .map(|a| format!("{:016x}", a.hash())),
+            players: std::array::from_fn(|i| {
+                self.players[i].as_ref().map(|p| PlayerView {
+                    peer: p.peer,
+                    ready: p.ready,
+                    synchronized: p.synchronized,
+                })
+            }),
+        }
+    }
+}
+
+#[cfg(test)]
+mod packet_tests {
+    use super::*;
+    #[test]
+    fn control_packets_are_bounded_strict_and_identity_free() {
+        let hello = LobbyPacket::Hello {
+            compatibility: Compatibility::CURRENT,
+        }
+        .bytes()
+        .unwrap();
+        assert!(matches!(
+            LobbyPacket::parse(&hello).unwrap(),
+            LobbyPacket::Hello { .. }
+        ));
+        assert!(LobbyPacket::parse(br#"{"kind":"Ready","ready":true,"peer":1}"#).is_err());
+        assert!(LobbyPacket::parse(br#"{"kind":"Ready","ready":1}"#).is_err());
+        assert!(LobbyPacket::parse(br#"{"kind":"Reject","reason":"\u0000"}"#).is_err());
+        assert!(LobbyPacket::parse(&vec![b' '; 1201]).is_err());
+        assert!(LobbyPacket::parse(&[255, 254]).is_err());
+    }
+    #[test]
+    fn roster_rejects_duplicate_connections_and_bad_hashes() {
+        let r = Room::new(&"A".repeat(43)).unwrap();
+        let mut view = r.view();
+        assert!(LobbyPacket::State { room: view.clone() }.bytes().is_ok());
+        view.players[1] = Some(PlayerView {
+            peer: Some(1),
+            ready: false,
+            synchronized: true,
+        });
+        assert!(LobbyPacket::State { room: view }.bytes().is_err());
+        let mut view = r.view();
+        view.hash = Some("bad".into());
+        assert!(LobbyPacket::State { room: view }.bytes().is_err());
+    }
+}
