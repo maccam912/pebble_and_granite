@@ -148,3 +148,16 @@ bible only. Remote: `maccam912/pebble_and_granite`, main branch.
   cross-platform packaging must be checked in CI; Android runtime JNI remains open.
 - Online rooms/seat binding/gameplay are not yet wired. The lab remains offline.
 - Usage checkpoint: 10% used / 90% remaining. Work continues under requested cap.
+
+## Android installed-app smoke evidence
+
+- Verified Release 6 APK SHA256, installed it on emulator-5580, and launched its
+  resolved Godot activity. Dismissed Android's fullscreen tutorial, inspected the
+  landscape UI, toggled one-push through touch, and injected a touch stroke that
+  released a stone. Screenshots: ignored build/evidence/android-release6*.png.
+  This is emulator evidence for the older Release 6, not physical-device or new JNI
+  validation. The emulator stays available for the next packaged self-test.
+- d3f6b0b pushed the transport milestone; Actions run 40242472985 is in progress.
+- Packaged self-test now also checks CurlTransport.available(), which on Android
+  requires the registered Java singleton and successful native JNI initialization.
+  Network connectivity still has its separate live transport probe.

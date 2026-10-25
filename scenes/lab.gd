@@ -375,7 +375,8 @@ func run_self_test() -> void:
 	var nonce := "local"
 	for argument in OS.get_cmdline_user_args():
 		if argument.begins_with("--probe-id="): nonce = argument.trim_prefix("--probe-id=")
-	var result := {"ok": not expected.is_empty() and actual == expected, "nonce": nonce, "trace": actual, "platform": OS.get_name()}
+	var transport_ready := CurlTransport.available()
+	var result := {"ok": not expected.is_empty() and actual == expected and transport_ready, "transport_ready": transport_ready, "nonce": nonce, "trace": actual, "platform": OS.get_name()}
 	DirAccess.make_dir_recursive_absolute("user://diagnostics")
 	var file := FileAccess.open("user://diagnostics/self-test.json", FileAccess.WRITE)
 	if file != null:
