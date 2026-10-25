@@ -29,8 +29,10 @@ var turn_button: Button
 var sweep_button: Button
 var one_button: Button
 var run_active := false
+var input_clock: Callable = Time.get_ticks_usec
 
 func _ready() -> void:
+	Input.use_accumulated_input = false
 	if not ClassDB.class_exists("CurlSession"):
 		push_error("Build the Rust bridge: python3 tools/build_native.py")
 		return
@@ -169,7 +171,7 @@ func begin_pointer(id: int, p: Vector2) -> void:
 	elif phase == "Ready" and p.distance_to(handle_point()) < 80:
 		pointer = id
 		var q := units(p)
-		session.grip(Time.get_ticks_usec(), q.x, q.y, one_push)
+		session.grip(input_clock.call(), q.x, q.y, one_push)
 		stroke_trace = PackedVector2Array([p])
 		phase = "Grip"
 		update_labels()
@@ -179,7 +181,7 @@ func move_pointer(p: Vector2) -> void:
 		broom_mm = clampi(int((p.x - 555) / 94.0 * 1000), -2200, 2200)
 	elif not run_active:
 		var q := units(p)
-		session.motion(Time.get_ticks_usec(), q.x, q.y)
+		session.motion(input_clock.call(), q.x, q.y)
 		stroke_trace.append(p)
 		phase = session.stroke_phase()
 		update_labels()
@@ -193,7 +195,7 @@ func end_pointer(p: Vector2) -> void:
 		sweeping = false
 		return
 	var q := units(p)
-	release_report = session.lift(Time.get_ticks_usec(), q.x, q.y)
+	release_report = session.lift(input_clock.call(), q.x, q.y)
 	if not release_report.valid:
 		phase = "Ready"
 		report = "Try a smooth pull-back, then forward stroke. Lift after the push. A simple click does not throw."

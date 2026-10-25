@@ -86,7 +86,9 @@ jobs:
         run: python tools/package.py ${{ matrix.platform }} --number ${{ github.run_number }}
       - name: Godot native integration
         if: matrix.platform != 'android'
-        run: python tools/godot.py --headless --path . --script tests/lab_smoke.gd
+        run: |
+          python tools/godot.py --headless --path . --script tests/lab_smoke.gd
+          python tools/godot.py --headless --path . --script tests/input_routes.gd
       - name: Verify Android signature
         if: matrix.platform == 'android'
         shell: bash

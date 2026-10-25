@@ -86,3 +86,14 @@ bible only. Remote: `maccam912/pebble_and_granite`, main branch.
   exposed the required project-wide ETC2/ASTC import setting; enabled for both.
   Windows failure was the already-fixed executable-name typo. All platforms remain
   gated together, so no partial release was published. Latest usage: 7% used / 93% remaining.
+
+## Input route verification
+
+- Added Godot-level mouse/held-click and touch event fixtures. Identical timestamped
+  strokes produce identical release reports; extra fingers and emulated mouse-up
+  events cannot steal or release the active finger. Focus loss cancels without throwing.
+- Enabled touch-to-mouse emulation for native GUI buttons, while explicitly ignoring
+  emulated mouse events in the stroke route. Verified accessibility button via actual
+  Input.parse_input_event in both a native window and a scaled headless viewport.
+- Disabled accumulated input so OS motion events reach the mapper without waiting
+  for render-frame aggregation. This does not claim to undo OS pointer acceleration.

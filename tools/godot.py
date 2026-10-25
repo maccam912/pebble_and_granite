@@ -47,5 +47,7 @@ def templates():
 if __name__=='__main__':
     args=sys.argv[1:]
     if '--install-templates' in args:templates();args.remove('--install-templates')
-    if args:sys.exit(subprocess.call([executable(),*args],cwd=ROOT))
+    if args:
+        limit=120 if "--headless" in args and "--script" in args else None
+        sys.exit(subprocess.run([executable(),*args],cwd=ROOT,timeout=limit).returncode)
     print(executable())
