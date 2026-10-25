@@ -14,11 +14,16 @@ name = "curl-godot"
 version = "0.1.0"
 dependencies = [
  "curl-fx",
+ "curl-input",
  "curl-proto",
  "curl-sim",
  "godot",
  "serde_json",
 ]
+
+[[package]]
+name = "curl-input"
+version = "0.1.0"
 
 [[package]]
 name = "curl-proto"

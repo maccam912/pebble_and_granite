@@ -1,0 +1,117 @@
+name: Test and publish development releases
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: build-${{ github.ref }}
+  cancel-in-progress: false
+jobs:
+  core:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-24.04, windows-2022, macos-15, macos-15-intel]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@1.98.1
+        with:
+          components: rustfmt, clippy
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.14'
+      - uses: Swatinem/rust-cache@v2
+      - run: python tools/check.py
+      - run: cargo clippy --locked --workspace --exclude curl-godot -- -D warnings
+  packages:
+    needs: core
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - platform: linux
+            os: ubuntu-24.04
+          - platform: windows
+            os: windows-2022
+          - platform: macos
+            os: macos-15
+          - platform: android
+            os: ubuntu-24.04
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@1.98.1
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.14'
+      - uses: Swatinem/rust-cache@v2
+      - uses: actions/cache@v4
+        with:
+          path: build/toolchain
+          key: godot-${{ runner.os }}-${{ hashFiles('tools/toolchain.json') }}
+      - uses: actions/setup-java@v4
+        if: matrix.platform == 'android'
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: android-actions/setup-android@v3
+        if: matrix.platform == 'android'
+      - name: Android tools and development identity
+        if: matrix.platform == 'android'
+        shell: bash
+        env:
+          KEYSTORE: ${{ secrets.ANDROID_DEBUG_KEYSTORE_BASE64 }}
+        run: |
+          sdkmanager 'platforms;android-36' 'build-tools;35.0.1' 'ndk;28.1.13356709'
+          mkdir -p ~/.android
+          if [ -n "$KEYSTORE" ]; then
+            umask 077
+            printf '%s' "$KEYSTORE" | base64 --decode > ~/.android/debug.keystore
+          elif [ "$GITHUB_EVENT_NAME" = pull_request ]; then
+            keytool -genkeypair -keystore ~/.android/debug.keystore -storepass android -keypass android -alias androiddebugkey -dname 'CN=Pebble PR' -keyalg RSA -keysize 2048 -validity 30
+          else
+            echo 'Stable development keystore secret is required.' >&2
+            exit 1
+          fi
+      - name: Build and export
+        run: python tools/package.py ${{ matrix.platform }} --number ${{ github.run_number }}
+      - name: Godot native integration
+        if: matrix.platform != 'android'
+        run: python tools/godot.py --headless --path . --script tests/lab_smoke.gd
+      - name: Verify Android signature
+        if: matrix.platform == 'android'
+        shell: bash
+        run: '"$ANDROID_HOME/build-tools/35.0.1/apksigner" verify --verbose build/android/pebble-and-granite.apk'
+      - uses: actions/upload-artifact@v4
+        with:
+          name: package-${{ matrix.platform }}
+          path: build/download/
+          if-no-files-found: error
+  publish:
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    needs: packages
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: package-*
+          merge-multiple: true
+          path: release
+      - name: Publish all platforms together
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: v0.0.${{ github.run_number }}-dev
+        run: |
+          cd release
+          sha256sum --check *.sha256
+          cd ..
+          gh release create "$RELEASE_TAG" release/* --target "$GITHUB_SHA" --title "Development Build ${{ github.run_number }}" --notes-file docs/RELEASE.md --prerelease

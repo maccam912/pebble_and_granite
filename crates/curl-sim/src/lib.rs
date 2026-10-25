@@ -319,12 +319,12 @@ impl Sim {
             s.vel = (dir * next + dir.right() * (lateral * DT)).unit() * next;
             s.turns += s.spin * DT;
             s.spin = s.spin * Fx::ratio(99998, 100000);
-            if let Some(cell) = Ice::cell(s.pos) {
-                if self.last_cells[s.id as usize] != Some(cell) {
-                    let c = self.ice.cells.entry(cell).or_default();
-                    c.wear = c.wear.saturating_add(1);
-                    self.last_cells[s.id as usize] = Some(cell);
-                }
+            if let Some(cell) = Ice::cell(s.pos)
+                && self.last_cells[s.id as usize] != Some(cell)
+            {
+                let c = self.ice.cells.entry(cell).or_default();
+                c.wear = c.wear.saturating_add(1);
+                self.last_cells[s.id as usize] = Some(cell);
             }
         }
         self.move_contacts(&mut events);
@@ -352,17 +352,17 @@ impl Sim {
                 s.spin = Fx::ZERO;
             }
         }
-        if self.is_resting() {
-            if let Some(s) = self
+        if self.is_resting()
+            && let Some(s) = self
                 .stones
                 .iter_mut()
                 .find(|s| Some(s.id) == self.delivered)
-            {
-                if s.active && s.pos.y - RADIUS <= FAR_HOG && !s.touched {
-                    s.active = false;
-                    events.push(Event::Removed(s.id));
-                }
-            }
+            && s.active
+            && s.pos.y - RADIUS <= FAR_HOG
+            && !s.touched
+        {
+            s.active = false;
+            events.push(Event::Removed(s.id));
         }
         events
     }
