@@ -1,9 +1,10 @@
 {
   "model": 2,
-  "protocol": 1,
+  "protocol": 2,
   "replay": 1,
   "input": 1,
   "session": 1,
   "rules": 1,
-  "match": 1
+  "match": 1,
+  "sync": 1
 }

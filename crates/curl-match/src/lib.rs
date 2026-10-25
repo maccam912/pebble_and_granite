@@ -413,3 +413,5 @@ pub mod practice;
 pub mod room;
 
 pub mod recorded;
+
+pub mod sync;

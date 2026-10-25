@@ -16,7 +16,7 @@ bible only. Remote: `maccam912/pebble_and_granite`, main branch.
 - [ ] Installed Android golden/JNI probe using the new one-use debug request route.
 - [ ] 3D delivery/cameras, spatial scrubbing, measured calibration/performance and AI.
 
-Latest local gates: 63 Rust tests, shared golden traces, Godot input/practice/match
+Latest local gates: 66 core Rust tests (plus native transport identity test), shared golden traces, Godot input/practice/match
 save/full-game fixtures. Live network probes are separate from offline CI because
 relay and code-directory availability are external dependencies. Four peers have
 passed readiness/start/disconnect with default and forced-relay transport, but the
@@ -266,3 +266,22 @@ playable scene is still local-only. The code-directory test revoked its own entr
   subsequent default-route lobby/reconnect and four-channel transport probes passed.
   External discovery/relay availability remains a dependency, not an offline CI gate.
 - Usage checkpoint: 17% used / 83% remaining. Work continues toward the requested cap.
+
+## Shared host/client command replication
+
+- Protocol 2 adds ordered, hash-checked host commits and bounded journal-transfer
+  primitives. Rooms now use RecordedMatch, preserving the same authoritative
+  decisions and save/replay rules as local play; concession is journaled too.
+- Host updates stop at the exact settled tick. Replicas reproduce a complete shot
+  and late sweeps before/after an in-flight restore with identical full hashes.
+  Duplicate/gapped/old-epoch/corrupt updates leave visible replica state unchanged.
+- Native CurlRoom/CurlReplica/CurlSnapshot bridge and offline Godot fixture pass;
+  the fixture is now included in desktop export CI. Core suite: 66 tests + goldens.
+- The live lobby still needs gameplay channel routing, transfer deadlines,
+  synchronized-start/reconnect acknowledgement, frame presentation and room UI.
+- Snapshot reconstruction is synchronous; copy/trial cost and long-match latency
+  remain profiling work. Do not claim finished online gameplay from these probes.
+- Before full online games, compress sampled sweep histories: the current 20,000
+  record / 16 MiB journal limits can be reached by long high-frequency network
+  sweeping. Local held-brush Step spans already compact; individual network Sweep
+  records do not. This is a required replication capacity gate, not polish.

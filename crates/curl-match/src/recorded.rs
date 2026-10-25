@@ -48,6 +48,9 @@ pub enum Record {
         remedy: Remedy,
     },
     NextEnd {},
+    Concede {
+        team: u8,
+    },
 }
 #[derive(Clone, Debug, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
@@ -148,6 +151,7 @@ impl RecordedMatch {
             Record::Think { ms } => a.think(*ms),
             Record::Choose { seat, remedy } => a.choose(*seat, *remedy),
             Record::NextEnd {} => a.next_end(),
+            Record::Concede { team } => a.game.concede(*team),
             Record::Step { ticks, brush } => {
                 if *ticks == 0 || *ticks > MAX_TICKS {
                     return Err("invalid match step span");

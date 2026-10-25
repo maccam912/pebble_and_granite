@@ -1,10 +1,13 @@
 //! Connection identity and player seats are distinct. Callers must obtain identity
 //! from the authenticated transport, never from the client's claimed name.
+use crate::recorded::{Record, RecordedMatch};
+use crate::sync::{Commit, SYNC_SCHEMA};
 use crate::{Authority, Seat};
 use curl_proto::PROTOCOL_VERSION;
 use curl_rules::{Phase, PowerPlay, RULES_VERSION, Remedy, Rules};
 use curl_sim::{MODEL_VERSION, Release, Sweep};
 use serde::{Deserialize, Serialize};
+use std::collections::VecDeque;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
@@ -57,7 +60,9 @@ impl Envelope {
 pub struct Room {
     host_identity: String,
     players: [Option<Player>; 4],
-    authority: Option<Authority>,
+    authority: Option<RecordedMatch>,
+    revision: u32,
+    commits: VecDeque<Commit>,
     epoch: u32,
 }
 impl Room {
@@ -66,6 +71,8 @@ impl Room {
             host_identity: host_identity.into(),
             players: std::array::from_fn(|_| None),
             authority: None,
+            revision: 0,
+            commits: VecDeque::new(),
             epoch: 0,
         };
         room.join(1, host_identity, Compatibility::CURRENT)?;
@@ -75,7 +82,7 @@ impl Room {
         &self.players
     }
     pub fn authority(&self) -> Option<&Authority> {
-        self.authority.as_ref()
+        self.authority.as_deref()
     }
     pub fn epoch(&self) -> u32 {
         self.epoch
@@ -181,9 +188,11 @@ impl Room {
             return Err("host and four ready players required");
         }
         let epoch = self.epoch.checked_add(1).ok_or("room epoch exhausted")?;
-        let authority = Authority::new(seed, Rules::mixed(), 1)?;
+        let authority = RecordedMatch::new(seed, Rules::mixed(), 1)?;
         self.authority = Some(authority);
         self.epoch = epoch;
+        self.revision = 0;
+        self.commits.clear();
         for player in self.players.iter_mut().flatten() {
             player.sequence = 0;
             player.seen = 0;
@@ -202,9 +211,15 @@ impl Room {
         let a = self.authority.as_ref().ok_or("no game")?;
         Ok(a.hash())
     }
-    pub fn confirm_sync(&mut self, peer: i32, epoch: u32, hash: u64) -> Result<(), &'static str> {
+    pub fn confirm_sync(
+        &mut self,
+        peer: i32,
+        epoch: u32,
+        revision: u32,
+        hash: u64,
+    ) -> Result<(), &'static str> {
         let index = self.index(peer)?;
-        if epoch != self.epoch || hash != self.state_hash()? {
+        if epoch != self.epoch || revision != self.revision || hash != self.state_hash()? {
             return Err("resync mismatch");
         }
         self.players[index].as_mut().unwrap().synchronized = true;
@@ -237,29 +252,98 @@ impl Room {
         // A bounded receive window permits reordered sweep packets, while even
         // rejected requests are consumed so retries cannot replay a failed action.
         let seat = Self::seat(index);
-        let a = self.authority.as_mut().ok_or("no game")?;
-        match envelope.command {
-            Command::Place { own_house, side } => a.place_mixed(seat, own_house, side),
-            Command::Order { first } => a.game.set_first_thrower(seat.team, first),
-            Command::Release { release } => a.release(seat, release),
-            Command::Sweep { tick, input } => a.sweep(seat, tick, input).map(|_| ()),
-            Command::Remedy { remedy } => a.choose(seat, remedy),
-            Command::Concede {} => a.game.concede(seat.team),
+        let record = match envelope.command {
+            Command::Place { own_house, side } => Record::Place {
+                seat,
+                own_house,
+                side,
+            },
+            Command::Order { first } => Record::Order {
+                team: seat.team,
+                first,
+            },
+            Command::Release { release } => Record::Release { seat, release },
+            Command::Sweep { tick, input } => Record::Sweep { seat, tick, input },
+            Command::Remedy { remedy } => Record::Choose { seat, remedy },
+            Command::Concede {} => Record::Concede { team: seat.team },
+        };
+        self.commit(vec![record])
+    }
+    fn commit(&mut self, records: Vec<Record>) -> Result<(), &'static str> {
+        if records.is_empty() {
+            return Ok(());
         }
+        if self.commits.len() >= 256 {
+            return Err("host commit queue full");
+        }
+        let revision = self
+            .revision
+            .checked_add(1)
+            .ok_or("commit revision exhausted")?;
+        let game = self.authority.as_ref().ok_or("no game")?;
+        let before = format!("{:016x}", game.hash());
+        let mut next = game.clone();
+        for record in &records {
+            next.apply(record.clone())?;
+        }
+        let commit = Commit {
+            schema: SYNC_SCHEMA,
+            epoch: self.epoch,
+            revision,
+            before,
+            after: format!("{:016x}", next.hash()),
+            records,
+        };
+        commit.validate()?;
+        self.authority = Some(next);
+        self.revision = revision;
+        self.commits.push_back(commit);
+        Ok(())
+    }
+    pub fn revision(&self) -> u32 {
+        self.revision
+    }
+    pub fn take_commit(&mut self) -> Option<Commit> {
+        self.commits.pop_front()
+    }
+    pub fn journal(&self) -> Result<String, String> {
+        self.authority.as_ref().ok_or("no game")?.json()
     }
     pub fn step(&mut self, thinking_ms: u32) -> Result<(), &'static str> {
+        self.advance(1, thinking_ms)
+    }
+    /// At most 100 ms of flight or 1 s of thinking per authority update.
+    pub fn advance(&mut self, ticks: u32, thinking_ms: u32) -> Result<(), &'static str> {
         if self.paused() {
             return Err("game paused for disconnected player");
         }
-        let a = self.authority.as_mut().ok_or("no game")?;
-        a.think(thinking_ms)?;
-        a.step()
+        if ticks > 24 || thinking_ms > 1000 {
+            return Err("invalid authority interval");
+        }
+        let game = self.authority.as_ref().ok_or("no game")?;
+        match game.game.phase {
+            Phase::Calling if thinking_ms > 0 => {
+                self.commit(vec![Record::Think { ms: thinking_ms }])
+            }
+            Phase::InFlight if ticks > 0 => {
+                // Find the exact settled boundary so replicas never step into a
+                // new player's calling phase. Commit only the ticks actually run.
+                let mut preview = game.clone();
+                let before = preview.sim.tick;
+                preview.advance(ticks, None)?;
+                self.commit(vec![Record::Step {
+                    ticks: preview.sim.tick - before,
+                    brush: None,
+                }])
+            }
+            _ => Ok(()),
+        }
     }
     pub fn next_end(&mut self, peer: i32) -> Result<(), &'static str> {
         if self.index(peer)? != 0 || self.paused() {
             return Err("host required and room must be connected");
         }
-        self.authority.as_mut().ok_or("no game")?.next_end()
+        self.commit(vec![Record::NextEnd {}])
     }
     pub fn rematch(&mut self, peer: i32) -> Result<(), &'static str> {
         if self.index(peer)? != 0
@@ -271,6 +355,8 @@ impl Room {
             return Err("finished game and host required");
         }
         self.authority = None;
+        self.commits.clear();
+        self.revision = 0;
         for player in &mut self.players {
             if player.as_ref().is_some_and(|p| p.peer.is_none()) {
                 *player = None;
@@ -397,9 +483,9 @@ mod tests {
                 position: 0
             }
         );
-        assert!(r.confirm_sync(30, 1, state ^ 1).is_err());
+        assert!(r.confirm_sync(30, 1, r.revision(), state ^ 1).is_err());
         assert!(r.paused());
-        r.confirm_sync(30, 1, state).unwrap();
+        r.confirm_sync(30, 1, r.revision(), state).unwrap();
         assert!(!r.paused());
         assert!(send(&mut r, 3, 2, Command::Order { first: 1 }).is_err());
         assert!(send(&mut r, 30, 1, Command::Order { first: 1 }).is_err());

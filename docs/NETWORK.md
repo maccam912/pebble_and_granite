@@ -82,3 +82,26 @@ Reconnecting uses the same authenticated endpoint identity and reclaims the
 reserved seat. The room remains paused until replay synchronization is verified.
 This is not yet a complete reconnect gameplay flow. Hosts remain ephemeral and
 host loss ends the room; host migration is explicitly out of scope.
+
+## Authoritative replication contract (protocol 2)
+
+Room gameplay now runs through the same recorded match used by local saves. Each
+accepted update carries an epoch, monotonically increasing revision, before/after
+full-state hashes and validated input records. The bounded host queue must be
+drained by the network loop. Replicas reject gaps, duplicates, old epochs and hash
+mismatches atomically. Live batches permit at most 24 physics ticks or 1000 ms of
+thinking; settling emits only the ticks actually simulated.
+
+Reconnect journals use ordered 1028-byte-or-smaller `PGS1` packets with epoch,
+revision, total size, offset and whole-transfer checksum. The receiver accepts at
+most 16 MiB, rejects missing/duplicate/mixed chunks, and verifies the journal by
+replaying the authoritative core before replacing a replica. The transport layer
+must impose a transfer deadline and accept these packets only from its host.
+The checksum detects corruption; authenticated Iroh supplies peer authenticity.
+
+`tests/replica.gd` exercises the native bridge offline and is a desktop CI gate.
+Core tests cover a full shot, late sweeps on both sides of an in-flight restore,
+malformed updates and chunk-transfer failures. The lobby network loop does not
+yet route these gameplay/transfer packets; this contract is the next integration
+step. Restore remains synchronous and live updates currently copy/trial state;
+measure Android cost before shipping long-match reconnect as finished.
