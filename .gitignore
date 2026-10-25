@@ -1,0 +1,11 @@
+.godot/
+target/
+build/
+native/bin/*
+!native/bin/.gitkeep
+*.tmp
+.DS_Store
+__pycache__/
+*.keystore
+export_credentials.cfg
+

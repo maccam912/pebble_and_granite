@@ -1,0 +1,10 @@
+[package]
+name = "curl-server"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[dependencies]
+serde_json.workspace = true
+curl-sim.workspace = true
+curl-proto.workspace = true
