@@ -4,6 +4,7 @@ const ICE := Color("dfecef")
 const INK := Color("0b2330")
 const GOLD := Color("eabf69")
 const CYAN := Color("64cdd1")
+var self_test_nonce := ""
 var session: Object
 var frame: Dictionary = {}
 var previous: Dictionary = {}
@@ -48,6 +49,7 @@ var cyan_order: Button
 var mode_button: Button
 var fresh_button: Button
 var save_path := "user://practice-session.json"
+var match_save_path := "user://match-session.json"
 
 func _ready() -> void:
 	Input.use_accumulated_input = false
@@ -55,7 +57,17 @@ func _ready() -> void:
 		push_error("Build the Rust bridge: python3 tools/build_native.py")
 		return
 	session = ClassDB.instantiate("CurlSession")
-	if "--self-test" in OS.get_cmdline_user_args():
+	var probe_path := "user://diagnostics/self-test-request.json"
+	if OS.is_debug_build() and FileAccess.file_exists(probe_path):
+		var request_file := FileAccess.open(probe_path, FileAccess.READ)
+		if request_file != null and request_file.get_length() <= 256:
+			var request = JSON.parse_string(request_file.get_as_text())
+			var nonce_pattern := RegEx.create_from_string("^[a-f0-9]{32}$")
+			if request is Dictionary and request.get("schema") == 1 and request.get("nonce") is String and nonce_pattern.search(request.nonce) != null:
+				self_test_nonce = request.nonce
+		if request_file != null: request_file.close()
+		DirAccess.remove_absolute(ProjectSettings.globalize_path(probe_path))
+	if not self_test_nonce.is_empty() or "--self-test" in OS.get_cmdline_user_args():
 		persistence_enabled = false
 		call_deferred("run_self_test")
 		return
@@ -145,7 +157,7 @@ func update_labels() -> void:
 	setup_panel.visible = match_mode and frame.get("match_phase", "") == "Placement"
 	if match_mode:
 		clock_label.text = "Thinking time   Gold %s   •   Cyan %s" % [clock_text(frame.clock_gold), clock_text(frame.clock_cyan)]
-		hint.text = "LOCAL DOUBLES  •  End %d/%d  •  Gold %d : %d Cyan  •  Not saved yet" % [frame.end, frame.scheduled_ends, frame.score_gold, frame.score_cyan]
+		hint.text = "LOCAL DOUBLES  •  End %d/%d  •  Gold %d : %d Cyan  •  Autosaved" % [frame.end, frame.scheduled_ends, frame.score_gold, frame.score_cyan]
 		if frame.match_phase == "Placement":
 			status.text = "PEBBLE & GRANITE  /  Choose placement"
 			new_button.text = "Next stone"
@@ -201,12 +213,13 @@ func setup_button(pos: Vector2, action: Callable) -> Button:
 
 func switch_mode() -> void:
 	if run_active: return
-	if not match_mode: save_practice()
+	save_practice()
 	match_mode = not match_mode
 	own_house = true
 	power_side = 0
 	reset(false)
-	if not match_mode: restore_practice()
+	if match_mode: restore_match()
+	else: restore_practice()
 
 func change_order(team: int) -> void:
 	var current: int = frame.first_gold if team == 0 else frame.first_cyan
@@ -214,6 +227,7 @@ func change_order(team: int) -> void:
 	if not error.is_empty(): report = error
 	frame = session.frame()
 	update_labels()
+	save_practice()
 
 func apply_placement() -> void:
 	var error: String = session.place_match(own_house, power_side)
@@ -226,6 +240,7 @@ func apply_placement() -> void:
 		report = "Ten deliveries this end. The player shown above throws; the other player calls the shot. Hold to sweep after release."
 	update_labels()
 	queue_redraw()
+	save_practice()
 
 func sheet_point(p: Vector2) -> Vector2:
 	return Vector2(168 + p.x * 30, 125 + (2.2 - p.y) * 17)
@@ -245,6 +260,7 @@ func _process(delta: float) -> void:
 		session.match_think(elapsed)
 		frame = session.frame()
 		update_labels()
+		if frame.global_tick - last_save_tick >= 240: save_practice()
 	if run_active:
 		# Retain all time debt. Never change fixed dt or silently skip ticks.
 		accumulator += delta
@@ -351,6 +367,7 @@ func end_pointer(p: Vector2) -> void:
 			phase = "Travel"
 			report = "Hold the ice or the sweep button to carry the stone. Let go to stop sweeping."
 			frame = session.frame()
+			save_practice()
 			if OS.get_name() == "Android": Input.vibrate_handheld(18)
 		else: report = error
 	update_labels()
@@ -420,7 +437,7 @@ func delivered_stone() -> Dictionary:
 func next_throw() -> void:
 	if session == null or run_active: return
 	if match_mode and frame.match_phase == "GameComplete":
-		reset(false)
+		reset()
 		return
 	if match_mode and frame.match_phase == "EndComplete":
 		var end_error: String = session.match_next_end()
@@ -433,6 +450,7 @@ func next_throw() -> void:
 		path.clear()
 		stroke_trace.clear()
 		update_labels()
+		save_practice()
 		return
 	var error: String = session.prepare_next(not frame.get("can_deliver_next", true))
 	if not error.is_empty():
@@ -450,27 +468,30 @@ Fresh ice starts a new practice session."
 	save_practice()
 
 func save_practice() -> void:
-	if match_mode or not persistence_enabled or not save_allowed or session == null: return
-	var json: String = session.session_json()
-	if json.is_empty(): return
-	var temp := save_path + ".tmp"
+	if not persistence_enabled or not save_allowed or session == null: return
+	var json: String = session.match_json() if match_mode else session.session_json()
+	if json.is_empty():
+		save_error("Could not encode the current session.")
+		return
+	var destination := match_save_path if match_mode else save_path
+	var temp := destination + ".tmp"
 	var file := FileAccess.open(temp, FileAccess.WRITE)
 	if file == null:
-		save_error("Could not save practice on this device.")
+		save_error("Could not save on this device.")
 		return
 	file.store_string(json)
 	file.flush()
 	var error := file.get_error()
 	file.close()
 	if error != OK:
-		save_error("Could not finish saving practice.")
+		save_error("Could not finish saving.")
 		return
-	var target := ProjectSettings.globalize_path(save_path)
+	var target := ProjectSettings.globalize_path(destination)
 	var backup := target + ".bak"
 	if FileAccess.file_exists(target):
 		if FileAccess.file_exists(backup): DirAccess.remove_absolute(backup)
 		if DirAccess.rename_absolute(target, backup) != OK:
-			save_error("Could not retain the previous practice save.")
+			save_error("Could not retain the previous save.")
 			return
 	if DirAccess.rename_absolute(ProjectSettings.globalize_path(temp), target) != OK:
 		save_error("Could not finish saving; the previous save is retained.")
@@ -479,37 +500,45 @@ func save_practice() -> void:
 
 func save_error(message: String) -> void:
 	save_allowed = false
-	report = message + " Your current practice can continue."
+	report = message + " Your current session can continue."
 	if report_label != null: report_label.text = report
 
 func restore_practice() -> void:
+	restore_current(false)
+
+func restore_match() -> void:
+	restore_current(true)
+
+func restore_current(is_match: bool) -> void:
 	if not persistence_enabled: return
 	var found := false
-	for filename in [save_path, save_path + ".bak"]:
+	var source := match_save_path if is_match else save_path
+	for filename in [source, source + ".bak"]:
 		if not FileAccess.file_exists(filename): continue
 		found = true
 		var file := FileAccess.open(filename, FileAccess.READ)
 		if file == null or file.get_length() > 16 * 1024 * 1024: continue
 		var json := file.get_as_text()
 		file.close()
-		var error: String = session.load_session(json)
+		var error: String = session.load_match(json) if is_match else session.load_session(json)
 		if not error.is_empty(): continue
+		match_mode = is_match
 		frame = session.frame()
 		previous = frame
-		run_active = not frame.resting
+		run_active = frame.match_phase == "InFlight" if is_match else not frame.resting
 		phase = "Travel" if run_active else "Ready"
 		last_save_tick = frame.global_tick
 		release_report = {"speed_mm_s": int(frame.get("release_speed", 0.0) * 1000.0)}
-		report = "Practice restored. The ice and your stones are just as you left them."
+		report = ("Match" if is_match else "Practice") + " restored. The ice and your stones are just as you left them."
 		update_labels()
 		return
 	if found:
-		save_error("The saved practice could not be restored. Existing files are retained; Fresh ice starts a new session.")
+		save_error("The saved session could not be restored. Existing files are retained; start a new session to replace them.")
 
 func run_self_test() -> void:
 	var actual: String = session.golden_trace()
 	var expected := FileAccess.get_file_as_string("res://validation/golden.txt")
-	var nonce := "local"
+	var nonce := self_test_nonce if not self_test_nonce.is_empty() else "local"
 	for argument in OS.get_cmdline_user_args():
 		if argument.begins_with("--probe-id="): nonce = argument.trim_prefix("--probe-id=")
 	var transport_ready := CurlTransport.available()

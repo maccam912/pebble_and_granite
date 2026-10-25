@@ -90,6 +90,8 @@ jobs:
           python tools/godot.py --headless --path . --script tests/lab_smoke.gd
           python tools/godot.py --headless --path . --script tests/input_routes.gd
           python tools/godot.py --headless --path . --script tests/session_restore.gd
+          python tools/godot.py --headless --path . --script tests/match_restore.gd
+          python tools/godot.py --headless --path . --script tests/probe_request.gd
           python tools/godot.py --headless --path . --script tests/match_flow.gd -- --full-match
       - name: Verify Android signature
         if: matrix.platform == 'android'

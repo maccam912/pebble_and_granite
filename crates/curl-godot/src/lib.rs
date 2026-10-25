@@ -1,6 +1,10 @@
 //! Presentation boundary: floats may leave this crate, never enter sim math.
 use curl_fx::{Fx, V2};
-use curl_match::{Authority, Seat, practice::Practice};
+use curl_match::{
+    Seat,
+    practice::Practice,
+    recorded::{Brush, RecordedMatch},
+};
 use curl_proto::session::SessionLog;
 use curl_rules::{Phase, PowerPlay, Rules};
 use curl_sim::{Release, Sweep};
@@ -13,7 +17,7 @@ unsafe impl ExtensionLibrary for Extension {}
 #[class(base=RefCounted)]
 pub struct CurlSession {
     practice: Practice,
-    game: Option<Authority>,
+    game: Option<RecordedMatch>,
     match_release_speed: Fx,
     stroke: curl_input::Stroke,
     base: Base<RefCounted>,
@@ -94,32 +98,15 @@ impl CurlSession {
             return;
         }
         if let Some(a) = &mut self.game {
-            for _ in 0..count {
-                if a.game.phase != Phase::InFlight {
-                    break;
-                }
-                let input = Sweep {
-                    stone: a.sim.delivered.unwrap_or(0),
-                    brush: 0,
+            if let Err(e) = a.advance(
+                count as u32,
+                Some(Brush {
                     effort: effort as u8,
                     lateral_mm: lateral_mm as i16,
                     ahead_mm: ahead_mm as u16,
-                };
-                let seat = Seat {
-                    team: a.game.delivering_team(),
-                    position: a.game.throwing_seat(),
-                };
-                // Only brush while the delivered stone remains in play.
-                if a.sim.stones.iter().any(|s| s.id == input.stone && s.active)
-                    && let Err(e) = a.sweep(seat, a.sim.tick, input)
-                {
-                    godot_error!("Match sweep: {e}");
-                    break;
-                }
-                if let Err(e) = a.step() {
-                    godot_error!("Match step: {e}");
-                    break;
-                }
+                }),
+            ) {
+                godot_error!("Match step: {e}");
             }
             return;
         }
@@ -282,6 +269,37 @@ impl CurlSession {
         }
     }
     #[func]
+    fn match_hash(&self) -> GString {
+        self.game.as_ref().map_or(GString::new(), |a| {
+            GString::from(&format!("{:016x}", a.hash()))
+        })
+    }
+    #[func]
+    fn match_json(&self) -> GString {
+        let Some(a) = &self.game else {
+            return GString::new();
+        };
+        match a.json() {
+            Ok(json) => GString::from(&json),
+            Err(e) => {
+                godot_error!("Match save: {e}");
+                GString::new()
+            }
+        }
+    }
+    #[func]
+    fn load_match(&mut self, json: GString) -> GString {
+        match RecordedMatch::parse(json.to_string().as_bytes()) {
+            Ok(game) => {
+                self.match_release_speed = game.last_release_speed();
+                self.game = Some(game);
+                self.stroke.cancel();
+                GString::new()
+            }
+            Err(e) => GString::from(&e),
+        }
+    }
+    #[func]
     fn match_think(&mut self, elapsed_ms: i64) {
         if !(0..=60000).contains(&elapsed_ms) {
             return;
@@ -295,7 +313,7 @@ impl CurlSession {
     #[func]
     fn new_match(&mut self, seed: i64) {
         self.game =
-            Some(Authority::new(seed as u64, Rules::mixed(), 1).expect("built-in rules valid"));
+            Some(RecordedMatch::new(seed as u64, Rules::mixed(), 1).expect("built-in rules valid"));
         self.match_release_speed = Fx::ZERO;
         self.stroke.cancel();
     }
@@ -330,7 +348,7 @@ impl CurlSession {
         let Some(a) = &mut self.game else {
             return "No match".into();
         };
-        match a.game.set_first_thrower(team as u8, position as u8) {
+        match a.order(team as u8, position as u8) {
             Ok(()) => GString::new(),
             Err(e) => e.into(),
         }

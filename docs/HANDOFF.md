@@ -210,3 +210,23 @@ bible only. Remote: `maccam912/pebble_and_granite`, main branch.
   Full core gate: 57 tests plus unchanged golden traces pass. Full Godot match,
   input routes and practice restore pass; bridge/core clippy passes.
 - Usage checkpoint: 14% used / 86% remaining.
+
+## Verified match journals and autosave
+
+- Added match schema 1 command journals: placement, role choices, releases, compact
+  sweep/step spans, thinking time, late sweep inputs, rules choices and end changes.
+  Restore validates bounds/versions, replays the authority, and verifies full state
+  including release snapshot/pending sweeps/clocks. It never trusts a serialized Sim.
+- Local matches autosave separately from practice, using atomic temp/backup handling.
+  Entering Mixed doubles resumes its save. New match replaces it explicitly. Disk
+  tests cover interrupted continuation, backup recovery, invalid-load atomicity and
+  keeping practice unchanged. CLI now supports verify-match FILE.
+- Constant-sweep journal compression and full-end/next-placement replay tests pass.
+  Parsing has a total replay-tick budget. Replay is currently synchronous, and live
+  step batches clone authority for transactional failure handling; seek checkpoints
+  and measured low-end Android performance remain open.
+- Development Build 9 (d3f6b0b) published all four platforms successfully. Its actual
+  Android APK installed on emulator-5580, but the original self-test intent approach
+  did not run: 4.7 launcher dropped extras and direct game activity is unexported.
+  Added a one-use request in the debug app's own sandbox; source route passes.
+  Requires a newly built APK before claiming Android golden/JNI runtime success.

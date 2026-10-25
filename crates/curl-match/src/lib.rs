@@ -224,6 +224,15 @@ impl Authority {
         self.game.think(elapsed_ms);
         Ok(())
     }
+    pub fn hash(&self) -> u64 {
+        let mut h = curl_fx::Hash64::default();
+        h.u64(self.sim.hash());
+        h.u64(self.idle_remainder as u64);
+        h.bytes(&serde_json::to_vec(&self.game).expect("rules serialize"));
+        h.u64(self.release_snapshot.as_ref().map_or(0, |sim| sim.hash()));
+        h.bytes(&serde_json::to_vec(&self.accepted_sweeps()).expect("sweeps serialize"));
+        h.finish()
+    }
     pub fn accepted_sweeps(&self) -> Vec<(u32, Sweep)> {
         self.sweeps
             .iter()
@@ -402,3 +411,5 @@ mod tests {
 pub mod practice;
 
 pub mod room;
+
+pub mod recorded;

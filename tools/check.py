@@ -6,6 +6,8 @@ compat=json.loads((ROOT/'compatibility.json').read_text())
 for key,file,constant in [('model','curl-sim','MODEL_VERSION'),('protocol','curl-proto','PROTOCOL_VERSION'),('replay','curl-proto','REPLAY_VERSION'),('rules','curl-rules','RULES_VERSION')]:
     source=(ROOT/'crates'/file/'src/lib.rs').read_text()
     assert int(re.search(constant+r': u32 = (\d+)',source).group(1))==compat[key], 'Compatibility metadata mismatch'
+source=(ROOT/'crates/curl-match/src/recorded.rs').read_text()
+assert int(re.search(r'MATCH_SCHEMA: u32 = (\d+)',source).group(1))==compat['match'], 'Match schema mismatch'
 def run(args):subprocess.run(args,cwd=ROOT,check=True)
 run(['cargo','fmt','--all','--','--check'])
 run(['cargo','test','--locked','--workspace','--exclude','curl-godot','--exclude','curl-transport'])

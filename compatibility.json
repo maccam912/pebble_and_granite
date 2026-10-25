@@ -4,5 +4,6 @@
   "replay": 1,
   "input": 1,
   "session": 1,
-  "rules": 1
+  "rules": 1,
+  "match": 1
 }

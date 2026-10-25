@@ -1,7 +1,6 @@
 //! Connection identity and player seats are distinct. Callers must obtain identity
 //! from the authenticated transport, never from the client's claimed name.
 use crate::{Authority, Seat};
-use curl_fx::Hash64;
 use curl_proto::PROTOCOL_VERSION;
 use curl_rules::{Phase, PowerPlay, RULES_VERSION, Remedy, Rules};
 use curl_sim::{MODEL_VERSION, Release, Sweep};
@@ -201,14 +200,7 @@ impl Room {
     /// Hash includes rules, clocks, and choices, not merely stone positions.
     pub fn state_hash(&self) -> Result<u64, &'static str> {
         let a = self.authority.as_ref().ok_or("no game")?;
-        let mut h = Hash64::default();
-        h.u64(a.sim.hash());
-        h.u64(a.idle_remainder as u64);
-        let rules = serde_json::to_vec(&a.game).map_err(|_| "cannot encode rules")?;
-        h.bytes(&rules);
-        h.u64(a.release_snapshot.as_ref().map_or(0, |sim| sim.hash()));
-        h.bytes(&serde_json::to_vec(&a.accepted_sweeps()).map_err(|_| "cannot encode sweeps")?);
-        Ok(h.finish())
+        Ok(a.hash())
     }
     pub fn confirm_sync(&mut self, peer: i32, epoch: u32, hash: u64) -> Result<(), &'static str> {
         let index = self.index(peer)?;
