@@ -16,7 +16,7 @@ bible only. Remote: `maccam912/pebble_and_granite`, main branch.
 - [x] Installed Android golden/JNI probe using the one-use debug request route.
 - [ ] 3D delivery/cameras, spatial scrubbing, measured calibration/performance and AI.
 
-Latest local gates: 66 core Rust tests (plus native transport identity test), shared golden traces, Godot input/practice/match
+Latest local gates: 69 core Rust tests (plus native transport identity test), shared golden traces, Godot input/practice/match
 save/full-game fixtures. Live network probes are separate from offline CI because
 relay and code-directory availability are external dependencies. Four peers have
 passed a full shot and in-flight reconnect with default and forced-relay transport, but the
@@ -281,7 +281,7 @@ playable scene is still local-only. The code-directory test revoked its own entr
   synchronized-start/reconnect acknowledgement, frame presentation and room UI.
 - Snapshot reconstruction is synchronous; copy/trial cost and long-match latency
   remain profiling work. Do not claim finished online gameplay from these probes.
-- Before full online games, compress sampled sweep histories: the current 20,000
+- Resolved in the journal-format-2 milestone below: the original 20,000
   record / 16 MiB journal limits can be reached by long high-frequency network
   sweeping. Local held-brush Step spans already compact; individual network Sweep
   records do not. This is a required replication capacity gate, not polish.
@@ -310,3 +310,24 @@ playable scene is still local-only. The code-directory test revoked its own entr
 - Android evidence covers simulation/JNI initialization on an emulator. Actual
   cross-device Iroh play, physical touch feel and store signing remain unverified.
 - Usage checkpoint: 18% used / 82% remaining.
+
+## Compact bounded match journals
+
+- Match format 2 seals 256 validated input records per compressed block; an active
+  tail retains the existing step/think run compaction. State copies share immutable
+  sealed blocks instead of copying the entire match history. Saves remain bounded
+  to 16 MiB, 2 million records and 4 million simulated flight ticks.
+- Legacy format-1 saves still load and verify through replay, then save as format 2.
+  Protocol 4 isolates new reconnect journals from older room builds. Model 2 and
+  all golden physics traces are unchanged.
+- A storage-capacity fixture representing 80 thirty-second throws, two independently
+  varying brush streams sampled at 60 Hz and intervening steps produced 432,001
+  records in 5,421,862 bytes. This is a codec workload, not a whole-game physics or
+  network latency benchmark. Actual recorded sweeps and compressed reconnect chunks
+  also restore to identical hashes, including late-input history.
+- Decompression is capped at 128 KiB per block; malformed encoding, oversized
+  expansion and invalid counts reject the save. Native match restore/replica checks,
+  69 core tests, golden traces and clippy pass.
+- Synchronous reconstruction and live simulation-copy costs still need Android
+  profiling. Input sampling/continuous brush-span semantics must be finalized when
+  the online input route is wired; the capacity fixture does not approve feel.

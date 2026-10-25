@@ -83,7 +83,7 @@ reserved seat. The room remains paused until replay synchronization is verified.
 This is not yet a complete reconnect gameplay flow. Hosts remain ephemeral and
 host loss ends the room; host migration is explicitly out of scope.
 
-## Authoritative replication contract (protocol 3)
+## Authoritative replication contract (protocol 4)
 
 Room gameplay now runs through the same recorded match used by local saves. Each
 accepted update carries an epoch, monotonically increasing revision, before/after
@@ -107,3 +107,14 @@ acknowledgement; transfers expire after 60 seconds. A four-peer live test covers
 placement, a complete shot and in-flight reconnect under default/relay routing.
 The scene still needs room UI, presentation frames and online input routing. Restore remains synchronous and live updates currently copy/trial state;
 measure Android cost before shipping long-match reconnect as finished.
+
+## Journal storage
+
+Match format 2 stores immutable, independently compressed blocks of 256 input
+records plus an active tail. Blocks use pinned pure-Rust zlib compression and
+base64 encoding inside JSON. Loading bounds each expansion to 128 KiB and replays
+all records through the authority. Format 1 remains readable for existing saves.
+Whole archives remain limited to 16 MiB; decoded records and flight ticks are
+bounded separately at 2 million and 4 million. Immutable blocks are shared across
+transactional state copies. The 80-throw/two-brush/60-Hz capacity fixture measures
+5.42 MB for 432,001 records; it is a storage test, not a full online game test.

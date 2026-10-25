@@ -364,7 +364,7 @@ mod tests {
                 release: Release::draw(),
             },
         );
-        for i in 0..20 {
+        for i in 0..150 {
             room.advance(1, 0).unwrap();
             send(
                 &mut room,
@@ -375,6 +375,7 @@ mod tests {
                     input: Sweep::centered(2, 200),
                 },
             );
+            while room.take_commit().is_some() {}
         }
         let mut sender = SnapshotSender::new(
             room.epoch(),

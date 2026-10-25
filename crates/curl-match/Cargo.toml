@@ -10,3 +10,5 @@ curl-rules.workspace = true
 serde.workspace = true
 curl-proto.workspace = true
 serde_json.workspace = true
+miniz_oxide = "=0.8.9"
+base64 = "=0.23.1"

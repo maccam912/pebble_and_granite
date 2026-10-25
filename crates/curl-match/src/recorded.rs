@@ -1,12 +1,16 @@
 //! Command-only match journal. Restores validate by replaying the shared authority.
 use crate::{Authority, Seat};
+use base64::prelude::*;
 use curl_rules::{Phase, PowerPlay, RULES_VERSION, Remedy, Rules};
 use curl_sim::{MAX_TICKS, MODEL_VERSION, Release, Sweep};
 use serde::{Deserialize, Serialize};
 use std::ops::Deref;
-pub const MATCH_SCHEMA: u32 = 1;
+use std::sync::Arc;
+pub const MATCH_SCHEMA: u32 = 2;
 const MAX_BYTES: usize = 16 * 1024 * 1024;
-const MAX_RECORDS: usize = 20000;
+const MAX_RECORDS: usize = 2_000_000;
+const BLOCK_RECORDS: usize = 256;
+const BLOCK_BYTES: usize = 128 * 1024;
 const MAX_REPLAY_TICKS: u64 = 4_000_000;
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
@@ -54,7 +58,7 @@ pub enum Record {
 }
 #[derive(Clone, Debug, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
-pub struct MatchLog {
+struct MatchLog {
     pub schema: u32,
     pub model: u32,
     pub rules_version: u32,
@@ -69,6 +73,36 @@ pub struct RecordedMatch {
     authority: Authority,
     log: MatchLog,
     replay_ticks: u64,
+    blocks: Arc<Vec<Arc<str>>>,
+    sealed_records: usize,
+    sealed_bytes: usize,
+    last_speed: curl_fx::Fx,
+}
+type PreparedJournal = (MatchLog, Arc<Vec<Arc<str>>>, usize, usize);
+#[derive(Deserialize)]
+#[serde(deny_unknown_fields)]
+struct Archive {
+    schema: u32,
+    model: u32,
+    rules_version: u32,
+    seed: u64,
+    rules: Rules,
+    hammer: u8,
+    blocks: Vec<String>,
+    tail: Vec<Record>,
+    hash: u64,
+}
+#[derive(Serialize)]
+struct ArchiveView<'a> {
+    schema: u32,
+    model: u32,
+    rules_version: u32,
+    seed: u64,
+    rules: &'a Rules,
+    hammer: u8,
+    blocks: Vec<&'a str>,
+    tail: &'a [Record],
+    hash: u64,
 }
 impl Deref for RecordedMatch {
     type Target = Authority;
@@ -92,12 +126,25 @@ impl RecordedMatch {
                 hash: 0,
             },
             replay_ticks: 0,
+            blocks: Arc::new(Vec::new()),
+            sealed_records: 0,
+            sealed_bytes: 0,
+            last_speed: curl_fx::Fx::ZERO,
         })
     }
     pub fn json(&self) -> Result<String, String> {
-        let mut log = self.log.clone();
-        log.hash = self.authority.hash();
-        let json = serde_json::to_string(&log).map_err(|e| e.to_string())?;
+        let archive = ArchiveView {
+            schema: MATCH_SCHEMA,
+            model: MODEL_VERSION,
+            rules_version: RULES_VERSION,
+            seed: self.log.seed,
+            rules: &self.log.rules,
+            hammer: self.log.hammer,
+            blocks: self.blocks.iter().map(|b| b.as_ref()).collect(),
+            tail: &self.log.records,
+            hash: self.authority.hash(),
+        };
+        let json = serde_json::to_string(&archive).map_err(|e| e.to_string())?;
         if json.len() > MAX_BYTES {
             return Err("match save exceeds byte limit".into());
         }
@@ -107,33 +154,57 @@ impl RecordedMatch {
         if bytes.len() > MAX_BYTES {
             return Err("match save exceeds byte limit".into());
         }
-        let log: MatchLog = serde_json::from_slice(bytes).map_err(|e| e.to_string())?;
-        if log.schema != MATCH_SCHEMA
-            || log.model != MODEL_VERSION
-            || log.rules_version != RULES_VERSION
-            || log.records.len() > MAX_RECORDS
+        #[derive(Deserialize)]
+        struct Version {
+            schema: u32,
+        }
+        let version: Version = serde_json::from_slice(bytes).map_err(|e| e.to_string())?;
+        if version.schema == 1 {
+            let log: MatchLog = serde_json::from_slice(bytes).map_err(|e| e.to_string())?;
+            if log.model != MODEL_VERSION
+                || log.rules_version != RULES_VERSION
+                || log.records.len() > 20000
+            {
+                return Err("incompatible legacy match log".into());
+            }
+            let mut restored = Self::new(log.seed, log.rules, log.hammer)?;
+            for record in log.records {
+                restored.apply(record)?;
+            }
+            if restored.hash() != log.hash {
+                return Err("match state verification failed".into());
+            }
+            return Ok(restored);
+        }
+        let archive: Archive = serde_json::from_slice(bytes).map_err(|e| e.to_string())?;
+        if archive.schema != MATCH_SCHEMA
+            || archive.model != MODEL_VERSION
+            || archive.rules_version != RULES_VERSION
+            || archive.blocks.len() > MAX_RECORDS / BLOCK_RECORDS
+            || archive.tail.len() > BLOCK_RECORDS
         {
             return Err("incompatible or oversized match log".into());
         }
-        let budget: u64 = log
-            .records
-            .iter()
-            .map(|r| {
-                if let Record::Step { ticks, .. } = r {
-                    *ticks as u64
-                } else {
-                    0
-                }
-            })
-            .sum();
-        if budget > MAX_REPLAY_TICKS {
-            return Err("match replay tick limit exceeded".into());
+        let mut restored = Self::new(archive.seed, archive.rules, archive.hammer)?;
+        for block in archive.blocks {
+            let compressed = BASE64_STANDARD
+                .decode(block)
+                .map_err(|_| "invalid journal block encoding")?;
+            let raw =
+                miniz_oxide::inflate::decompress_to_vec_zlib_with_limit(&compressed, BLOCK_BYTES)
+                    .map_err(|_| "invalid or oversized journal block")?;
+            let records: Vec<Record> = serde_json::from_slice(&raw).map_err(|e| e.to_string())?;
+            if records.len() != BLOCK_RECORDS {
+                return Err("invalid journal block count".into());
+            }
+            for record in records {
+                restored.apply(record)?;
+            }
         }
-        let mut restored = Self::new(log.seed, log.rules, log.hammer)?;
-        for record in log.records {
+        for record in archive.tail {
             restored.apply(record)?;
         }
-        if restored.authority.hash() != log.hash {
+        if restored.hash() != archive.hash {
             return Err("match state verification failed".into());
         }
         Ok(restored)
@@ -191,8 +262,35 @@ impl RecordedMatch {
         }
         a.step()
     }
-    fn append(&mut self, r: Record) {
-        if let Some(previous) = self.log.records.last_mut() {
+    fn prepare_append(&self, r: Record) -> Result<PreparedJournal, &'static str> {
+        if self.sealed_records + self.log.records.len() >= MAX_RECORDS {
+            return Err("match record limit reached");
+        }
+        let mut log = self.log.clone();
+        let mut blocks = self.blocks.clone();
+        let mut sealed_records = self.sealed_records;
+        let mut sealed_bytes = self.sealed_bytes;
+        if log.records.len() == BLOCK_RECORDS {
+            let raw = serde_json::to_vec(&log.records).map_err(|_| "journal encoding failed")?;
+            if raw.len() > BLOCK_BYTES {
+                return Err("journal block too large");
+            }
+            let encoded =
+                BASE64_STANDARD.encode(miniz_oxide::deflate::compress_to_vec_zlib(&raw, 3));
+            // Reserve room for the bounded tail and JSON metadata/commas.
+            if sealed_bytes + encoded.len() + blocks.len() * 4 > MAX_BYTES - BLOCK_BYTES {
+                return Err("match byte limit reached");
+            }
+            sealed_bytes += encoded.len();
+            sealed_records += log.records.len();
+            Arc::make_mut(&mut blocks).push(Arc::from(encoded));
+            log.records.clear();
+        }
+        Self::append(&mut log, r);
+        Ok((log, blocks, sealed_records, sealed_bytes))
+    }
+    fn append(log: &mut MatchLog, r: Record) {
+        if let Some(previous) = log.records.last_mut() {
             match (previous, &r) {
                 (Record::Step { ticks, brush }, Record::Step { ticks: n, brush: b })
                     if brush == b && *ticks + *n <= MAX_TICKS =>
@@ -207,7 +305,7 @@ impl RecordedMatch {
                 _ => {}
             }
         }
-        self.log.records.push(r);
+        log.records.push(r);
     }
     pub fn apply(&mut self, r: Record) -> Result<(), &'static str> {
         let ticks = if let Record::Step { ticks, .. } = &r {
@@ -215,14 +313,23 @@ impl RecordedMatch {
         } else {
             0
         };
-        if self.log.records.len() >= MAX_RECORDS || self.replay_ticks + ticks > MAX_REPLAY_TICKS {
+        if self.replay_ticks + ticks > MAX_REPLAY_TICKS {
             return Err("match journal limit reached");
         }
+        let journal = self.prepare_append(r.clone())?;
         let mut next = self.authority.clone();
         Self::execute(&mut next, &r)?;
+        if let Record::Release { release, .. } = &r {
+            self.last_speed = release.vel.length();
+        }
         self.authority = next;
         self.replay_ticks += ticks;
-        self.append(r);
+        (
+            self.log,
+            self.blocks,
+            self.sealed_records,
+            self.sealed_bytes,
+        ) = journal;
         Ok(())
     }
     pub fn advance(&mut self, count: u32, brush: Option<Brush>) -> Result<(), &'static str> {
@@ -232,9 +339,7 @@ impl RecordedMatch {
         if self.game.phase != Phase::InFlight || count == 0 {
             return Ok(());
         }
-        if self.log.records.len() >= MAX_RECORDS
-            || self.replay_ticks + count as u64 > MAX_REPLAY_TICKS
-        {
+        if self.replay_ticks + count as u64 > MAX_REPLAY_TICKS {
             return Err("match journal limit reached");
         }
         let mut next = self.authority.clone();
@@ -243,9 +348,15 @@ impl RecordedMatch {
             Self::tick(&mut next, brush)?;
             ticks += 1;
         }
+        let journal = self.prepare_append(Record::Step { ticks, brush })?;
         self.authority = next;
         self.replay_ticks += ticks as u64;
-        self.append(Record::Step { ticks, brush });
+        (
+            self.log,
+            self.blocks,
+            self.sealed_records,
+            self.sealed_bytes,
+        ) = journal;
         Ok(())
     }
     pub fn release(&mut self, seat: Seat, release: Release) -> Result<(), &'static str> {
@@ -270,31 +381,23 @@ impl RecordedMatch {
         if ms == 0 || self.game.phase != Phase::Calling {
             return Ok(());
         }
-        if self.log.records.len() >= MAX_RECORDS {
-            return Err("match journal limit reached");
-        }
+        let journal = self.prepare_append(Record::Think { ms })?;
         // Authority::think checks before mutating; it needs no copy of the last
         // throw's sweep history on each idle render frame.
         self.authority.think(ms)?;
-        self.append(Record::Think { ms });
+        (
+            self.log,
+            self.blocks,
+            self.sealed_records,
+            self.sealed_bytes,
+        ) = journal;
         Ok(())
     }
     pub fn next_end(&mut self) -> Result<(), &'static str> {
         self.apply(Record::NextEnd {})
     }
     pub fn last_release_speed(&self) -> curl_fx::Fx {
-        self.log
-            .records
-            .iter()
-            .rev()
-            .find_map(|r| {
-                if let Record::Release { release, .. } = r {
-                    Some(release.vel.length())
-                } else {
-                    None
-                }
-            })
-            .unwrap_or(curl_fx::Fx::ZERO)
+        self.last_speed
     }
 }
 
@@ -386,14 +489,17 @@ mod tests {
         );
         assert_eq!(m.hash(), hash);
         assert_eq!(m.json().unwrap(), json);
-        let mut log: MatchLog = serde_json::from_str(&json).unwrap();
-        log.hash ^= 1;
+        let mut log: serde_json::Value = serde_json::from_str(&json).unwrap();
+        log["hash"] = (log["hash"].as_u64().unwrap() ^ 1).into();
         assert!(RecordedMatch::parse(&serde_json::to_vec(&log).unwrap()).is_err());
-        log.hash ^= 1;
-        log.records.push(Record::Step {
-            ticks: u32::MAX,
-            brush: None,
-        });
+        log["hash"] = (log["hash"].as_u64().unwrap() ^ 1).into();
+        log["tail"].as_array_mut().unwrap().push(
+            serde_json::to_value(Record::Step {
+                ticks: u32::MAX,
+                brush: None,
+            })
+            .unwrap(),
+        );
         assert!(RecordedMatch::parse(&serde_json::to_vec(&log).unwrap()).is_err());
         assert_eq!(m.hash(), hash);
     }
@@ -415,5 +521,102 @@ mod tests {
         m.advance(64, None).unwrap();
         restored.advance(64, None).unwrap();
         assert_eq!(m.hash(), restored.hash());
+    }
+    #[test]
+    fn sealed_sweep_history_restores_and_clones_share_blocks() {
+        let mut m = game();
+        release(&mut m);
+        for i in 0..400 {
+            m.apply(Record::Sweep {
+                seat: Seat {
+                    team: 0,
+                    position: 0,
+                },
+                tick: m.sim.tick,
+                input: Sweep::centered(2, (i % 255) as u8),
+            })
+            .unwrap();
+            m.advance(4, None).unwrap();
+        }
+        assert!(m.blocks.len() >= 3);
+        let copy = m.clone();
+        assert!(Arc::ptr_eq(&copy.blocks, &m.blocks));
+        let json = m.json().unwrap();
+        assert!(
+            json.len() < 16000,
+            "sampled sweeps must compact: {}",
+            json.len()
+        );
+        let restored = RecordedMatch::parse(json.as_bytes()).unwrap();
+        assert_eq!(restored.hash(), m.hash());
+        assert_eq!(restored.last_release_speed(), m.last_release_speed());
+        assert_eq!(copy.hash(), m.hash());
+    }
+    #[test]
+    fn legacy_saves_migrate_and_expansion_bombs_are_bounded() {
+        let mut m = game();
+        m.think(137).unwrap();
+        let mut legacy = m.log.clone();
+        legacy.schema = 1;
+        legacy.hash = m.hash();
+        let restored = RecordedMatch::parse(&serde_json::to_vec(&legacy).unwrap()).unwrap();
+        assert_eq!(restored.hash(), m.hash());
+        assert!(restored.json().unwrap().contains("\"schema\":2"));
+        let mut archive: serde_json::Value = serde_json::from_str(&m.json().unwrap()).unwrap();
+        let bomb = BASE64_STANDARD.encode(miniz_oxide::deflate::compress_to_vec_zlib(
+            &vec![0; BLOCK_BYTES + 1],
+            3,
+        ));
+        archive["blocks"] = serde_json::json!([bomb]);
+        assert!(RecordedMatch::parse(&serde_json::to_vec(&archive).unwrap()).is_err());
+        archive["blocks"] = serde_json::json!(["invalid!"]);
+        assert!(RecordedMatch::parse(&serde_json::to_vec(&archive).unwrap()).is_err());
+    }
+    #[test]
+    fn full_match_sample_capacity_stays_below_transfer_limit() {
+        // Storage-capacity fixture, not a physics/calibration claim: 80 throws,
+        // 30 s each, two varying brush streams sampled at 60 Hz, plus step spans.
+        let mut m = game();
+        let mut random = curl_fx::Rng(7);
+        for tick in (0..80 * 30 * 240).step_by(4) {
+            for team in 0..2 {
+                let value = random.next_u64();
+                let record = Record::Sweep {
+                    seat: Seat {
+                        team,
+                        position: (value % 2) as u8,
+                    },
+                    tick,
+                    input: Sweep {
+                        stone: 2,
+                        brush: 0,
+                        effort: value as u8,
+                        lateral_mm: ((value >> 8) % 701) as i16 - 350,
+                        ahead_mm: 80 + ((value >> 20) % 621) as u16,
+                    },
+                };
+                let prepared = m.prepare_append(record).unwrap();
+                (m.log, m.blocks, m.sealed_records, m.sealed_bytes) = prepared;
+            }
+            let prepared = m
+                .prepare_append(Record::Step {
+                    ticks: 4,
+                    brush: None,
+                })
+                .unwrap();
+            (m.log, m.blocks, m.sealed_records, m.sealed_bytes) = prepared;
+        }
+        let json = m.json().unwrap();
+        assert!(m.sealed_records > 400_000);
+        assert!(
+            json.len() < 8 * 1024 * 1024,
+            "capacity fixture bytes={}",
+            json.len()
+        );
+        eprintln!(
+            "80-throw two-brush capacity fixture: {} bytes, {} records",
+            json.len(),
+            m.sealed_records + m.log.records.len()
+        );
     }
 }
