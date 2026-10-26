@@ -883,3 +883,32 @@ and release completion remain unverified. Weekly quota remaining is 87 percent.
 The broad photographic polish objective remains active. This pass addressed the
 user's priority ice criticism through several reviewed material trials, without
 new gameplay features or changes to simulation ice, input or painted dimensions.
+
+## Brush-head proportions and molded edges
+
+Compared the existing brush with the manufacturer's [Air head](https://www.goldlinecurling.com/air-curling-broom-head)
+and [Air Pro X pad](https://www.goldlinecurling.com/WCF-Approved-Air-Pro-Curling-Pad)
+photographs. The old 9 cm tall capsule read as a foam roll, with a square black
+bar intersecting it. Recommended a lower fabric pad and a rounded molded housing.
+The photos are retained only under ignored `build/reference/`, not game assets.
+
+Replaced the two existing head parts with original rounded meshes. The gold pad
+keeps its 27 by 7.2 cm footprint but is 2.4 cm tall, with its bottom 1 mm above the
+ice. The black housing follows the same rounded plan and has a small smooth
+perimeter bevel. Lowered the existing socket to meet it, and reduced the pad's
+specular response while retaining its color and matte roughness. There are still
+three parts per head; no additional instances, shaders or image textures were
+added. The parked and active brushes use the same geometry. Shaft transforms,
+parent positions, animations, input targets and brush-to-ice calculations did not
+change. Stone materials, the forward handle, ice and room bake are untouched.
+
+Reviewed before/after close-ups and the normal Sweeper/Skip/House presentation.
+Corrected initial triangle winding before accepting the closed top/side surfaces.
+The retained close-up and ten-screen run report `BROOM_INSPECTION_OK after` and
+`VISUAL_REVIEW_OK` with no errors/warnings. The superseded first capture run did
+not finish and was closed after the corrected run completed; its partial log is
+not acceptance evidence. `RINK_VIEW_OK` and `SWEEPING_OK` pass, including the
+unchanged projected sweep point (629.7709, 445.0732), aiming round-trip and native
+state isolation. Source backups, captures and final `*-fixed.log` files are in
+`build/broom-polish-review/`. Installed Android review follows the source commit.
+Weekly quota remaining is 87 percent.

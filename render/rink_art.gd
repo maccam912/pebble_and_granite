@@ -21,6 +21,54 @@ static func handle_cap() -> ArrayMesh:
 		Vector2(.103, .136), Vector2(.10, .140), Vector2(.086, .145),
 		Vector2(.045, .149), Vector2(0, .15)]))
 
+static func rounded_pad(dimensions: Vector3, radius: float, bevel: float) -> ArrayMesh:
+	# A low rounded housing/pad, with a flat face and smooth perimeter bevel.
+	var half := Vector2(dimensions.x, dimensions.z) * .5
+	var r := minf(radius, minf(half.x, half.y) * .98)
+	var b := minf(bevel, minf(dimensions.y * .49, r * .5))
+	var centers := [Vector2(1, 1), Vector2(-1, 1), Vector2(-1, -1), Vector2(1, -1)]
+	var vertices := PackedVector3Array()
+	var normals := PackedVector3Array()
+	var uvs := PackedVector2Array()
+	var indices := PackedInt32Array()
+	const PERIMETER := 36
+	for row in range(6):
+		var angle := float(row % 3 - 2 if row < 3 else row % 3) * PI / 4.0
+		var y := (-dimensions.y * .5 + b if row < 3 else dimensions.y * .5 - b) + b * sin(angle)
+		var inset := b * (1.0 - cos(angle))
+		for corner in range(4):
+			var center: Vector2 = centers[corner] * (half - Vector2.ONE * r)
+			for step in range(9):
+				var turn := (float(corner) + float(step) / 8.0) * PI * .5
+				var radial := Vector2(cos(turn), sin(turn))
+				var point := center + radial * (r - inset)
+				vertices.append(Vector3(point.x, y, point.y))
+				normals.append(Vector3(radial.x * cos(angle), sin(angle), radial.y * cos(angle)))
+				uvs.append(point / (half * 2.0) + Vector2.ONE * .5)
+	for row in range(5):
+		for column in range(PERIMETER):
+			var a := row * PERIMETER + column
+			var next := row * PERIMETER + (column + 1) % PERIMETER
+			indices.append_array(PackedInt32Array([a, next, a + PERIMETER, next, next + PERIMETER, a + PERIMETER]))
+	for end in [-1.0, 1.0]:
+		var center := vertices.size()
+		vertices.append(Vector3(0, end * dimensions.y * .5, 0))
+		normals.append(Vector3.UP * end)
+		uvs.append(Vector2.ONE * .5)
+		var ring := 0 if end < 0 else PERIMETER * 5
+		for column in range(PERIMETER):
+			var next := (column + 1) % PERIMETER
+			indices.append_array(PackedInt32Array([center, ring + next, ring + column] if end < 0 else [center, ring + column, ring + next]))
+	var arrays := []
+	arrays.resize(Mesh.ARRAY_MAX)
+	arrays[Mesh.ARRAY_VERTEX] = vertices
+	arrays[Mesh.ARRAY_NORMAL] = normals
+	arrays[Mesh.ARRAY_TEX_UV] = uvs
+	arrays[Mesh.ARRAY_INDEX] = indices
+	var result := ArrayMesh.new()
+	result.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, arrays)
+	return result
+
 static func steel_beam(length: float) -> ArrayMesh:
 	# One mesh for the existing roof member, with a visible web and flanges.
 	var profile := PackedVector2Array([

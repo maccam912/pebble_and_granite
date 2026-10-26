@@ -179,15 +179,14 @@ func cylinder(parent: Node3D, radius: float, height: float, pos: Vector3, mat: M
 func plank(parent: Node3D, dimensions: Vector3, pos: Vector3, mat: Material, radius := .004) -> MeshInstance3D:
 	return mesh(parent, CurlRinkArt.rounded_plank(dimensions, radius), pos, mat)
 func brush_head(parent: Node3D) -> void:
-	var pad := CapsuleMesh.new()
-	pad.radius = .045
-	pad.height = .27
-	var head := mesh(parent, pad, Vector3(0, .035, 0), material("d5b25e", .88))
-	head.rotation.z = PI / 2
-	head.scale.z = .8
-	var backing := box(parent, Vector3(.23, .018, .065), Vector3(0, .062, 0), material("26343b", .35))
+	var fabric := material("d5b25e", .88)
+	fabric.metallic_specular = .18
+	var pad := CurlRinkArt.rounded_pad(Vector3(.27, .024, .072), .034, .006)
+	mesh(parent, pad, Vector3(0, .013, 0), fabric)
+	var shell := CurlRinkArt.rounded_pad(Vector3(.252, .020, .071), .032, .006)
+	var backing := mesh(parent, shell, Vector3(0, .032, 0), material("26343b", .35))
 	backing.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
-	cylinder(parent, .025, .035, Vector3(0, .082, 0), material("26343b", .35))
+	cylinder(parent, .025, .035, Vector3(0, .0575, 0), material("26343b", .35))
 
 func build_club() -> void:
 	var wood := CurlRinkArt.shader_material("res://render/oak.gdshader")
