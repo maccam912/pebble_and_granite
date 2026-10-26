@@ -945,3 +945,40 @@ existing accessible-hold contact, so installed visual reviews can inspect the
 active brush. Gameplay assertions are unchanged. Installed validation of the
 marked material follows its source commit. Physical-phone GPU performance and
 human feel remain separate validation. Weekly quota remaining is 87 percent.
+
+## Android 71 brush checkpoint and lighting comparison
+
+Clean Android build 71 (`4cfcb75`, `source_dirty: false`, SHA-256
+`4b03cb6cda963b19a40d6333929fe9f34900aa20a315df1a8945f2038635411c`)
+passed the complete direct-touch probe. Both curl directions, spatial scrub/lift,
+accessible hold, held pause/resume/regrip and exactly one hog fault passed; fresh
+acknowledgement took 0.44-0.46 seconds. The matching result and active-brush
+`hold-sweeping.png` are in `build/probes/touch-74f9d99c7e664f3d8db21b6b57f531dd/`.
+The full probe log is `build/android-71-full-probe.log`; its Godot log is preserved
+as `build/evidence/polish/android-71/probe-app-log.txt`.
+
+Reviewed installed camera/menu captures and overhead brush contrast on blue,
+red and white ice. The first contrast harness mistakenly captured Delivery after
+a broom drag, because releasing the target intentionally returns to Auto. Those
+captures were rejected. The corrected harness explicitly cycles back to House
+after each drag; the final `07-house-blue`, `08-house-red` and `09-house-white`
+images show the intended overhead views. The original P/G marks remain visible
+on each surface. This correction only affects the ignored review harness, not
+camera behavior or input. The final review reports
+`ANDROID_71_REVIEW_CAPTURED_ORIGINAL_STATE_RESTORED`; both probe and review restore
+all four original saves/backups byte for byte and stop the app. The emulator was
+restarted for this final review and reported one cached-shader recompilation
+warning after its renderer changed; there were no script errors.
+
+A separate unsaved native fixture compared the existing Linear tonemapping with
+Filmic, ACES and AgX at unchanged exposure. Filmic/ACES reduced visible ice relief
+and brightened the gold toward yellow; AgX made the ice and room gray. Rejected
+all three trials and retained Linear. Captures and the clean positive
+`TONE_COMPARISON_CAPTURED` log are in `build/lighting-review/`; no lighting source
+or bake changed. This is a still-image material comparison, not a performance
+benchmark.
+
+CI run `40414732645` for source `4cfcb75` completed successfully: all four core
+jobs, Android/macOS/Linux/Windows packages and publication. Physical-phone GPU
+performance and human feel remain separate validation. Weekly quota remaining
+is 86 percent; the broader photographic presentation review remains active.
