@@ -4,6 +4,7 @@ var online: CurlOnline
 var network_time := 0.0
 var last_brush_tick := -12
 var waiting_release := false
+var waiting_count := -1
 func _ready() -> void:
 	persistence_enabled = false
 	allow_online = false
@@ -27,7 +28,7 @@ func refresh_online() -> void:
 	var old_phase: String = frame.get("match_phase", "")
 	frame = next
 	run_active = frame.match_phase == "InFlight"
-	if run_active: waiting_release = false
+	if run_active or int(frame.get("delivered_count", -1)) != waiting_count: waiting_release = false
 	if old_phase != frame.match_phase:
 		pointer = -99
 		session.cancel_stroke()
@@ -85,6 +86,7 @@ func _process(delta: float) -> void:
 	if run_active and not delivered_stone().is_empty():
 		var pos: Vector2 = delivered_stone().position
 		if path.is_empty() or path[-1] != pos: path.append(pos)
+	update_delivery()
 	update_spatial(delta)
 	queue_redraw()
 func begin_pointer(id: int, pos: Vector2) -> void:
@@ -101,12 +103,19 @@ func end_pointer(pos: Vector2) -> void:
 	if sweeping or run_active: sweeping = false; return
 	var q := units(pos)
 	release_report = session.lift(input_clock.call(), q.x, q.y)
-	if not release_report.valid:
+	if release_report.get("hog_violation", false):
+		waiting_count = int(frame.get("delivered_count", -1))
+		var error := online.send_command({"kind": "HogViolation"})
+		waiting_release = error.is_empty()
+		phase = "Ready"
+		report = "Hog-line violation. The delivery counts." if error.is_empty() else error
+	elif not release_report.valid:
 		phase = "Ready"
 		report = "Make one smooth forward stroke, then lift. A click does not throw."
 	else:
-		var error := online.release_stone(int(release_report.speed_mm_s), clampi(broom_mm + int(release_report.line_mm), -2200, 2200), turn)
+		var error := online.release_slide(int(release_report.speed_um_s), int(release_report.y_um), clampi(broom_mm + int(release_report.line_mm), -2200, 2200), turn)
 		if error.is_empty():
+			waiting_count = int(frame.get("delivered_count", -1))
 			waiting_release = true
 			phase = "Releasing…"
 			path.clear()

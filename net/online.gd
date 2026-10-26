@@ -361,6 +361,22 @@ func release_stone(speed: int, broom: int, turn: int) -> String:
 	queue_packet(1, bytes, false, 1)
 	return ""
 
+func release_slide(speed_um_s: int, y_um: int, broom: int, turn: int) -> String:
+	if peer == null or state.get("paused", true): return "Match is not ready"
+	var index := seat_index()
+	if index < 0: return "No player seat"
+	sequence = maxi(sequence, int(state.players[index].sequence))
+	if sequence >= 4294967295: return "Command sequence exhausted"
+	sequence += 1
+	var bytes: PackedByteArray = ClassDB.class_call_static("CurlRoom", "slide_packet", int(state.epoch), sequence, speed_um_s, y_um, broom, turn)
+	if bytes.is_empty(): return "Invalid delivery"
+	if is_host:
+		var result: String = authority.command_peer(1, bytes)
+		if result.is_empty(): flush_commits()
+		return result
+	queue_packet(1, bytes, false, 1)
+	return ""
+
 func next_end() -> String:
 	if not is_host or authority == null: return "Only the host can begin the next end"
 	var result: String = authority.next_end()

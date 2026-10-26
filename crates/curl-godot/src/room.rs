@@ -114,6 +114,25 @@ impl CurlRoom {
         serde_json::to_vec(&envelope).map_or(PackedByteArray::new(), |b| b.as_slice().into())
     }
     #[func]
+    fn slide_packet(
+        epoch: u32,
+        sequence: u32,
+        speed_um_s: i64,
+        y_um: i64,
+        broom: i64,
+        turn: i64,
+    ) -> PackedByteArray {
+        let Ok(release) = crate::input_release_at(speed_um_s, y_um, broom, turn) else {
+            return PackedByteArray::new();
+        };
+        let envelope = curl_match::room::Envelope {
+            epoch,
+            sequence,
+            command: curl_match::room::Command::Release { release },
+        };
+        serde_json::to_vec(&envelope).map_or(PackedByteArray::new(), |b| b.as_slice().into())
+    }
+    #[func]
     fn rematch(&mut self) -> GString {
         let Some(room) = &mut self.room else {
             return "No hosted room".into();

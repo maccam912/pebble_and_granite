@@ -19,7 +19,7 @@ pub struct CurlSession {
     practice: Practice,
     game: Option<RecordedMatch>,
     match_release_speed: Fx,
-    stroke: curl_input::Stroke,
+    stroke: curl_input::delivery::Delivery,
     base: Base<RefCounted>,
 }
 #[godot_api]
@@ -29,7 +29,7 @@ impl IRefCounted for CurlSession {
             practice: Practice::new(42),
             game: None,
             match_release_speed: Fx::ZERO,
-            stroke: curl_input::Stroke::default(),
+            stroke: curl_input::delivery::Delivery::default(),
             base,
         }
     }
@@ -48,10 +48,21 @@ impl CurlSession {
     /// All public input units are integers: mm/s, millimetres, milli-revolutions/s.
     #[func]
     fn deliver(&mut self, speed_mm_s: i64, broom_mm: i64, turn: i64) -> GString {
-        let mut r = match input_release(speed_mm_s, broom_mm, turn) {
+        let r = match input_release(speed_mm_s, broom_mm, turn) {
             Ok(release) => release,
             Err(error) => return error.into(),
         };
+        self.apply_delivery(r)
+    }
+    #[func]
+    fn deliver_slide(&mut self, speed_um_s: i64, y_um: i64, broom_mm: i64, turn: i64) -> GString {
+        let r = match input_release_at(speed_um_s, y_um, broom_mm, turn) {
+            Ok(release) => release,
+            Err(error) => return error.into(),
+        };
+        self.apply_delivery(r)
+    }
+    fn apply_delivery(&mut self, mut r: Release) -> GString {
         let id = if let Some(a) = &self.game {
             a.game.next_stone_id()
         } else {
@@ -325,16 +336,19 @@ impl CurlSession {
     }
     #[func]
     fn grip(&mut self, us: i64, x: i64, y: i64, one_push: bool) {
-        self.stroke.one_push = one_push;
-        self.stroke.grip(curl_input::Sample {
-            us: us.max(0) as u64,
-            x,
-            y,
-        });
+        self.stroke.grip(
+            curl_input::Sample {
+                us: us.max(0) as u64,
+                x,
+                y,
+            },
+            one_push,
+            1000,
+        );
     }
     #[func]
     fn motion(&mut self, us: i64, x: i64, y: i64) {
-        self.stroke.sample(curl_input::Sample {
+        self.stroke.motion(curl_input::Sample {
             us: us.max(0) as u64,
             x,
             y,
@@ -342,7 +356,18 @@ impl CurlSession {
     }
     #[func]
     fn stroke_phase(&self) -> GString {
-        GString::from(&format!("{:?}", self.stroke.phase))
+        GString::from(&format!("{:?}", self.stroke.phase()))
+    }
+    #[func]
+    fn delivery_pose(&self, us: i64) -> VarDictionary {
+        let pose = self.stroke.pose(us.max(0) as u64);
+        let mut d = VarDictionary::new();
+        d.set("y_um", pose.y_um);
+        d.set("in_play", pose.in_play);
+        d.set("hog_warning", pose.hog_warning);
+        d.set("hog_violation", pose.hog_violation);
+        d.set("slide_tick", pose.slide_tick as i64);
+        d
     }
     #[func]
     fn cancel_stroke(&mut self) {
@@ -350,14 +375,24 @@ impl CurlSession {
     }
     #[func]
     fn lift(&mut self, us: i64, x: i64, y: i64) -> VarDictionary {
-        let r = self.stroke.release(curl_input::Sample {
+        let delivery = self.stroke.release(curl_input::Sample {
             us: us.max(0) as u64,
             x,
             y,
         });
         let mut d = VarDictionary::new();
-        d.set("valid", r.valid);
-        d.set("speed_mm_s", r.speed_mm_s);
+        let r = delivery.stroke;
+        d.set(
+            "valid",
+            delivery.outcome == curl_input::delivery::Outcome::Released,
+        );
+        d.set(
+            "hog_violation",
+            delivery.outcome == curl_input::delivery::Outcome::HogViolation,
+        );
+        d.set("y_um", delivery.pose.y_um);
+        d.set("speed_um_s", delivery.speed_um_s);
+        d.set("speed_mm_s", delivery.speed_um_s / 1000);
         d.set("line_mm", r.line_mm);
         d.set("push_mm_s", r.push_mm_s);
         d.set("drive_us", r.drive_us as i64);
@@ -452,5 +487,28 @@ pub(crate) fn input_release(
     release.vel =
         V2::new(Fx::ratio(broom_mm, 1000), -release.pos.y).unit() * Fx::ratio(speed_mm_s, 1000);
     release.spin = Fx::ratio(12 * turn, 100);
+    Ok(release)
+}
+
+/// Integer input boundary shared by local play and authenticated online packets.
+pub(crate) fn input_release_at(
+    speed_um_s: i64,
+    y_um: i64,
+    broom_mm: i64,
+    turn: i64,
+) -> Result<Release, &'static str> {
+    if !(100_000..=6_000_000).contains(&speed_um_s)
+        || !(curl_input::delivery::START_Y_UM..curl_input::delivery::HOG_CENTER_UM).contains(&y_um)
+        || !(-2200..=2200).contains(&broom_mm)
+        || ![-1, 1].contains(&turn)
+    {
+        return Err("Invalid delivery");
+    }
+    let mut release = Release::draw();
+    release.pos.y = Fx::ratio(y_um, 1_000_000);
+    release.vel = V2::new(Fx::ratio(broom_mm, 1000), -release.pos.y).unit()
+        * Fx::ratio(speed_um_s, 1_000_000);
+    release.spin = Fx::ratio(12 * turn, 100);
+    release.validate()?;
     Ok(release)
 }

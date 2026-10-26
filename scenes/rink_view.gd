@@ -11,6 +11,7 @@ var brush: Node3D
 var preview: Node3D
 var stones: Dictionary = {}
 var preview_team := 0
+var delivery_y := -37.8
 var mode := 0
 var current_camera := "Delivery"
 var last_tick := -1
@@ -181,6 +182,7 @@ func render_frame(frame: Dictionary, running: bool, sweep: bool, broom_mm: int, 
 		world.add_child(preview)
 		preview.position = Vector3(0, 0, 29)
 		preview_team = team
+	preview.position = Vector3(0, 0, -delivery_y)
 	preview.visible = aiming
 	preview.rotation.y = -float(turn) * PI / 6.0
 	brush.visible = running and sweep and has_followed
@@ -205,8 +207,8 @@ func set_camera(selected: String, followed: Vector3) -> void:
 		camera.position = followed + Vector3(.55, 1.6, 2.6)
 		camera.look_at(followed + Vector3(0, .08, -.8))
 	else:
-		camera.position = Vector3(.65, 1.25, 32)
-		camera.look_at(Vector3(0, .15, 25))
+		camera.position = Vector3(.65, 1.25, -delivery_y + 3)
+		camera.look_at(Vector3(0, .15, -delivery_y - 4))
 func broom_point() -> Vector2:
 	return position + camera.unproject_position(broom.position + Vector3(0, .05, 0)) if camera != null else Vector2.ZERO
 func aim_x(screen: Vector2) -> float:

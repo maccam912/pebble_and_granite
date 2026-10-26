@@ -533,3 +533,31 @@ async replica restore and practice hog-fault save roundtrip passed. The model-3
 late-brush probe simulated 26.012 seconds in 91.152 ms, worst span 0.323 ms on the
 local macOS machine (headless core workload, not a device/render benchmark).
 Weekly usage at this checkpoint: 68% remaining; continue substantive work.
+
+## Playable delivery-slide integration
+
+- Replaced the playable native stroke with the deterministic Delivery model;
+  lift reports actual micrometre position/speed and an explicit hog-fault outcome.
+  Local deliver_slide and online slide_packet share a validated integer factory.
+  Diagnostic fixed-origin APIs remain available for controlled physics fixtures.
+- Local and online card controls submit those variable-origin releases. Holding
+  through the line consumes a delivery automatically, including replica state.
+  The 3D preview and Delivery camera follow the slide, starting ahead of the hack.
+  Input mapping metadata is now version 2.
+- Added delivery_slide Godot gate to CI: early/late timing, native/packet origin
+  equality, invalid boundary rejection, visible slide pose, automatic fault and
+  exactly-once handling. Core 84 tests, goldens, clippy and all ten native/Godot
+  gates passed. Rendered hack/slide screenshots were inspected on macOS.
+- Updated the live room-flow probe to use the real gesture for its first release
+  and a held-pointer hog fault on the next turn before completing the match.
+- Next critical foundation: synchronize the in-hand lifecycle so thinking time
+  stops at delivery-tee crossing and suspend/disconnect cannot silently cancel an
+  in-play stone. Direct 3D hand/body interaction, Android validation of this new
+  path, and device/curler calibration remain open. These are not covered by the
+  older model-2 Android evidence.
+
+Live validation completed: four local Iroh peers accepted the slide gesture and
+held hog fault, finished nine ends (5:4), and synchronized rematch. The first
+continuously swept slide shot took 27.037 s wall / 27.046 s simulated; observed
+maximum headless frame gap 10.151 ms. This is not Android/GPU performance evidence.
+Weekly remaining usage: 67%; continue development.

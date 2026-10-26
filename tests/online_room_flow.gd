@@ -49,9 +49,8 @@ func run() -> void:
 	at_seat(2).game.apply_placement()
 	if not check(await until(func(): return panels.all(func(p): return p.room.frame().get("match_phase") == "Calling"), 10), "UI placement timed out"):
 		await cleanup(); quit(1); return
-	# Fixed release isolates simulation/transport timing; timestamped mouse/touch
-	# strokes through this same view are covered by online_ui/input_routes.
-	check(host.room.release_stone(2050, -900, 1).is_empty(), "UI delivery rejected")
+	# Exercise the actual card-to-slide-to-packet path, with reproducible input time.
+	deliver_gesture(host.game, 3000000)
 	check(await until(func(): return panels.all(func(p): return p.game.run_active), 10), "Flight state not delivered")
 	var sweeper := at_seat(1)
 	sweeper.game.sweep_button.button_down.emit()
@@ -73,10 +72,28 @@ func run() -> void:
 	check(final_frame.get("delivered_count") == 1, "Wrong delivered count")
 	check(rejects.is_empty(), "Gameplay requests rejected: " + str(rejects))
 	print("ONLINE_ROOM_TIMING wall_seconds=", elapsed, " simulation_seconds=", float(final_frame.get("tick", 0)) / 240.0, " max_frame_ms=", float(timing[1]) / 1000.0, " frames=", timing[2])
+	var fault_player := at_seat(int(final_frame.team) * 2 + int(final_frame.thrower))
+	deliver_gesture(fault_player.game, 6000000, true)
+	check(await until(func(): return host.room.frame().get("delivered_count") == 2 and synchronized(host), 10), "Held online hog fault did not synchronize")
+	check(host.room.frame().get("violation") == "HogRelease", "Online held fault lost rule resolution")
 	if "--full-match" in OS.get_cmdline_user_args() and not failed: await finish_match(host)
 	await cleanup()
 	print("ONLINE_ROOM_FLOW_OK" if not failed else "ONLINE_ROOM_FLOW_FAILED")
 	quit(1 if failed else 0)
+
+func deliver_gesture(game: Control, release_us: int, hold := false) -> void:
+	var clock := [0]
+	game.input_clock = func(): return clock[0]
+	game.one_push = true
+	var handle: Vector2 = game.handle_point()
+	game.begin_pointer(-1, handle)
+	clock[0] = 20000
+	game.move_pointer(handle + Vector2(0, -4.2))
+	clock[0] = 120000
+	game.move_pointer(handle + Vector2(0, -25.2))
+	clock[0] = release_us
+	if hold: game.update_delivery()
+	else: game.end_pointer(handle + Vector2(0, -25.2))
 
 func synchronized(host: CurlRoomPanel) -> bool:
 	return panels.slice(1).all(func(p): return p.room.replica != null and p.room.replica.state_hash() == host.room.state.hash)

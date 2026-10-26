@@ -151,6 +151,7 @@ func create_spatial_view() -> void:
 func update_spatial(delta: float) -> void:
 	if rink == null or not spatial_view: return
 	var aiming: bool = not run_active and phase != "Stone at rest" and frame.get("match_phase", "Calling") == "Calling"
+	rink.delivery_y = float(session.delivery_pose(input_clock.call()).y_um) / 1000000.0 if aiming else -37.8
 	rink.render_frame(frame, run_active, hold_sweep or sweeping, broom_mm, turn, aiming, delta)
 func broom_screen_point() -> Vector2:
 	return rink.broom_point() if spatial_view and rink != null else house_point(Vector2(float(broom_mm) / 1000.0, 0))
@@ -341,8 +342,19 @@ func _process(delta: float) -> void:
 				update_labels()
 			if frame.resting or frame.global_tick - last_save_tick >= 240:
 				save_practice()
+	update_delivery()
 	update_spatial(delta)
 	queue_redraw()
+
+func update_delivery() -> void:
+	if pointer == -99 or dragging_broom or sweeping or run_active: return
+	var pose: Dictionary = session.delivery_pose(input_clock.call())
+	if pose.hog_violation and not stroke_trace.is_empty():
+		end_pointer(stroke_trace[-1])
+	elif pose.slide_tick > 0:
+		phase = "Slide"
+		report = "Release the handle before the hog line." if pose.hog_warning else "Keep your hand steady as you slide. Lift to release before the hog line."
+		update_labels()
 
 func _notification(what: int) -> void:
 	if what == NOTIFICATION_APPLICATION_FOCUS_IN or what == NOTIFICATION_APPLICATION_RESUMED:
@@ -420,11 +432,17 @@ func end_pointer(p: Vector2) -> void:
 		return
 	var q := units(p)
 	release_report = session.lift(input_clock.call(), q.x, q.y)
-	if not release_report.valid:
+	if release_report.get("hog_violation", false):
+		var error: String = session.hog_violation()
+		frame = session.frame()
+		phase = "Stone at rest" if error.is_empty() else "Ready"
+		report = "Hog-line violation. The stone is removed; the delivery counts." if error.is_empty() else error
+		save_practice()
+	elif not release_report.valid:
 		phase = "Ready"
 		report = "Try a smooth pull-back, then forward stroke. Lift after the push. A simple click does not throw."
 	else:
-		var error: String = session.deliver(release_report.speed_mm_s, clampi(broom_mm + release_report.line_mm, -2200, 2200), turn)
+		var error: String = session.deliver_slide(release_report.speed_um_s, release_report.y_um, clampi(broom_mm + release_report.line_mm, -2200, 2200), turn)
 		if error.is_empty():
 			run_active = true
 			phase = "Travel"

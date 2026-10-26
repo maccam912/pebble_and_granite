@@ -1,9 +1,12 @@
 # Delivery model work in progress
 
-`curl-input::delivery` is a tested Rust foundation; it is not yet connected to
-the playable Godot gesture. The authority now supports a journaled hog fault. The currently playable card still uses the original
-stroke-to-fixed-release route. Do not claim hog-release enforcement in the game
-until the integration items below are complete.
+`curl-input::delivery` now drives the playable card gesture in both local and
+online scenes. `lift` returns actual integer release position and speed; both
+native simulation and the online packet builder share the same validated factory.
+A held pointer crossing the hog line automatically submits a consumed-stone fault.
+The 3D preview and delivery camera follow the read-only pose, without feeding
+rendered coordinates back into simulation. Direct 3D hand/body interaction is
+still pending, as are the clock/background rules listed below.
 
 The model derives a slide from the measured drive speed. Target speed is at the
 near hog; an integer square root derives an initial speed for a provisional
@@ -26,11 +29,11 @@ into a retry. Malformed input and cancelled gestures do not produce a valid shot
 Tests cover early/late releases, exact boundary ticks, render-frequency independence,
 stationary-hand continuation, cancellation, invalid input and repeated release.
 
-## Integration required before enabling
+## Integration status
 
 - [x] Seat-owned, journaled hog-violation command consumes the delivery without
   moving existing stones, including end scoring and replay/replica tests.
-- Pass actual release position and speed through the native and online boundaries.
+- [x] Pass actual release position and speed through the native and online boundaries.
   Model 3 now accepts centres from -37.8 m up to (excluding) -28.593 m.
   The diagnostic fixed release moved 244 mm earlier to obey this bound.
   Model 3 / rules 2 / protocol 7 / practice schema 2 explicitly reject old
@@ -42,3 +45,14 @@ stationary-hand continuation, cancellation, invalid input and repeated release.
   coherently; a visual slide alone does not establish those rules.
 - Add installed Android touch and full-match/network regression coverage before
   calling the new delivery path playable.
+
+Input mapping metadata is version 2. The old fixed-origin `deliver` and
+`delivery_packet` entry points remain diagnostic fixture APIs; playable local
+and online scenes use `deliver_slide` and `slide_packet`. No power meter was added.
+The card is still the interaction surface. Body pose, direct handle picking and
+spatial sweeping are not implemented by this integration.
+
+Known rule gap: thinking time still ends at final release rather than delivery-tee
+crossing, and focus loss currently cancels the held gesture. A network-aware
+in-hand lifecycle is needed before claiming faithful delivery clocks or fault
+handling across suspend/disconnect. This is an explicit next foundation task.
