@@ -479,3 +479,13 @@ playable scene now includes experimental online rooms. The code-directory test r
   networking/scene regression check, not a rendering benchmark.
 - Reused stone IDs refresh team colors and snap on end changes. Camera switching
   is blocked during a held pointer gesture, so a second touch cannot redirect aim.
+
+- Installed the 7bbb9fa local Android build and visually inspected the actual
+  Compatibility renderer on Android 35 ARM64. Camera taps, overhead broom drag
+  across the tee, and a one-push touch release all worked; the automatic follow
+  camera tracked the travelling stone. Evidence: `build/evidence/rink-android*.png`.
+  This is an emulator render/input check, not a physical-device or FPS benchmark.
+  APK SHA-256: `9a3f3c3ec0f41d064c5a24bdff71703f312d23c6a141ae94538ae02c86d2c5d9`;
+  package metadata records clean 7bbb9fa sources and installed Android templates.
+- Added `docs/PRESENTATION.md` with the coordinate/render-input boundary and the
+  still-missing delivery mechanics. Weekly checkpoint: 30% used / 70% remaining.
