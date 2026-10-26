@@ -31,11 +31,16 @@ def executable():
         with zipfile.ZipFile(asset(name+'.zip')) as z:z.extractall(folder)
         if platform.system()!='Windows':binary.chmod(0o755)
     return str(binary)
-def templates():
+def templates(installed_android=False):
     if platform.system()=='Darwin':base=pathlib.Path.home()/'Library/Application Support/Godot/export_templates'
     elif platform.system()=='Windows':base=pathlib.Path(os.environ['APPDATA'])/'Godot/export_templates'
     else:base=pathlib.Path.home()/'.local/share/godot/export_templates'
     dest=base/LOCK['godot'].replace('-','.')
+    if installed_android:
+        for name in ['android_debug.apk','android_source.zip']:
+            if not (dest/name).is_file(): raise RuntimeError('Missing installed Android template: '+str(dest/name))
+        print('Using existing Android templates at',dest)
+        return dest
     if not (dest/'version.txt').exists():
         with zipfile.ZipFile(asset('Godot_v'+LOCK['godot']+'_export_templates.tpz')) as z:
             for member in z.infolist():

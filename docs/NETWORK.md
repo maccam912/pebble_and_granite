@@ -142,3 +142,32 @@ brush timestamps predating the current release, including before defending-span
 retiming. Normal stale brush arrivals after settlement are consumed without a
 user-facing rejection; they cannot mutate the match. A bounded derived rewind
 cache now accelerates accepted late spans without changing canonical state.
+
+## Installed Android network probe
+
+`tools/network_probe.py --apk <debug.apk> --serial <adb-serial>` installs the
+selected development APK and starts a desktop host plus two desktop clients. A
+one-use, nonce-bound request in the app's private diagnostics directory starts
+an Android client in the fourth seat. It readies up, disconnects and reclaims its
+identity during a shot, rebuilds the snapshot, and sends an authorized concession
+on its team's next turn. The runner compares the final host/client hashes and
+writes APK-hashed evidence under `build/probes/<nonce>/result.json`.
+
+Use `--relay-only` to force relay routing, or `--desktop` for a separate-process
+local rehearsal without Android. `GODOT_BIN` can select the already-installed
+4.7 editor. These external-network probes are deliberately separate from offline
+CI. They test direct endpoint connections; the room-code service has its own
+probe. Diagnostic identities are isolated from the player's key and removed on
+completion. The request is accepted only by development builds, is size/field
+bounded, is consumed once, and never enables local practice/match persistence.
+
+For a local APK when Android templates are already installed, use
+`tools/package.py android --use-installed-android-templates`. This explicit option
+skips downloading the entire template bundle; package metadata labels that source
+and whether the checkout was dirty. CI keeps the default pinned-template route.
+The Android bridge compiles against the same selected template archive.
+
+An Android 35 ARM64 emulator and three macOS peers passed default-route and
+forced-relay probes with exact final hash `571ae17d15022973`. This is installed OS-to-OS transport
+and reconstruction evidence, not physical-device touch, full-match Android timing,
+room-code UI, or background/resume validation.

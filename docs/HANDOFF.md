@@ -14,7 +14,8 @@ bible only. Remote: `maccam912/pebble_and_granite`, main branch.
 - [x] CI cross-platform core tests, native exports and published numbered releases.
 - [x] Online replication, replay transfer, room UI and initial playable controls.
 - [x] Full online room/match/rematch flow on four local Iroh endpoints.
-- [ ] Cross-device tests, Android latency profiling and input refinement.
+- [x] Installed Android ↔ macOS short-shot/reconnect probes, default and forced relay.
+- [ ] Physical-device tests, Android full-match latency profiling and input refinement.
 - [x] Installed Android golden/JNI probe using the one-use debug request route.
 - [ ] 3D delivery/cameras, spatial scrubbing, measured calibration/performance and AI.
 
@@ -416,3 +417,35 @@ playable scene now includes experimental online rooms. The code-directory test r
 - Both ec86c7c and d4fc29c release pipelines passed all jobs. The 68278dd rewind
   milestone is pushed and its pipeline is still running at this checkpoint.
 - Usage checkpoint: 26% used / 74% remaining; requested work continues.
+
+## Android-to-desktop live transport
+
+- Added a repeatable installed-APK probe with an isolated identity and a bounded,
+  consumed-once development request. Android joins three desktop peers, readies,
+  reconnects in flight, verifies reconstruction, and sends its own team's
+  concession. The host and Android final hashes must match. No local saves or
+  player identity are used. A separate-process desktop rehearsal also passed.
+- Default-route Android 35 ARM64 emulator probe passed with final host/client hash
+  `571ae17d15022973`. Evidence: `build/probes/8ef64ce6e89543bb8e73821b82f6a740/result.json`.
+  APK SHA-256: `e966a2cc9e7da25355a11caf33116fae0f98329896f57808f83b4c6aa45d4acc`.
+- The diagnostic APK was built locally from d392ab6 plus this milestone's edits;
+  metadata explicitly records `source_dirty: true` and installed Android templates.
+  The optional local installed-template route now feeds the same archive into the
+  JNI plugin build. CI retains its pinned download/default behavior.
+- The first rehearsal failures identified harness sequencing: repeated Ready packets
+  outlived lobby start, and the placement sender's unpause view lagged the host.
+  The harness now sends readiness once and awaits all local views before placement.
+- Normal lab/input fixtures and the original one-use golden-probe route still pass.
+  Physical-device touch feel, Android full-match/long-journal performance,
+  background/resume and room-code UI on Android remain open.
+- Rewind milestone 68278dd passed every CI job; d392ab6's pipeline is running.
+
+- Forced-relay Android probe also passed with the same exact hash; evidence:
+  `build/probes/92eacfacdbc54c5a9063bcc59c386bb6/result.json`. The same installed APK
+  passed all six golden traces and JNI readiness again; latest evidence is
+  `build/evidence/android-self-test.json`.
+- Usage checkpoint: 28% used / 72% remaining. Continue toward the requested cutoff.
+- Next priorities: develop the bible's 3D delivery/camera/brush feel slice atop
+  these verified input/authority boundaries; preserve the 2D lab for diagnostics.
+  Local async loading, jitter/stall UX and long Android recovery remain tracked
+  reliability work, alongside physical-device and curler evaluation.

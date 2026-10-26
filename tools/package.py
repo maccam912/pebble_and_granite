@@ -5,7 +5,9 @@ from godot import executable,templates
 from verify_export import verify
 from android_services import build as build_android_services, verify_package as verify_android_services
 ROOT=pathlib.Path(__file__).resolve().parents[1]
-p=argparse.ArgumentParser();p.add_argument('platform',choices=['linux','windows','macos','android']);p.add_argument('--number',default='1');a=p.parse_args()
+p=argparse.ArgumentParser();p.add_argument('platform',choices=['linux','windows','macos','android']);p.add_argument('--number',default='1');p.add_argument('--use-installed-android-templates',action='store_true',help='Local diagnostics: use existing Android templates instead of downloading the full pinned bundle');a=p.parse_args()
+if a.use_installed_android_templates and a.platform!='android':p.error('Installed Android templates require android platform')
+source_dirty=bool(subprocess.check_output(['git','status','--porcelain'],cwd=ROOT,text=True).strip())
 if not a.number.isdigit() or int(a.number)<1: p.error('number must be positive')
 def run(args,env=None):subprocess.run(args,cwd=ROOT,check=True,env=env)
 libdir=ROOT/'native/bin';libdir.mkdir(exist_ok=True,parents=True)
@@ -27,9 +29,9 @@ elif a.platform=='macos':
         paths=[str(ROOT/'target'/target/('release/lib'+name+'.dylib')) for target in targets]
         run(['lipo','-create',*paths,'-output',str(libdir/('lib'+name+'.dylib'))])
 else:run([sys.executable,'tools/build_native.py','--release'])
-template_dir=templates();godot=executable()
+template_dir=templates(a.use_installed_android_templates);godot=executable()
 if a.platform=='android':
-    build_android_services()
+    build_android_services(template_dir/'android_source.zip')
 # Set export-only version metadata in a temporary modified preset, restoring it.
 presets=ROOT/'export_presets.cfg';original=presets.read_text()
 settings=None;original_settings=None
@@ -65,7 +67,7 @@ try:
     digest=hashlib.sha256(result.read_bytes()).hexdigest()
     (downloads/(name+'.sha256')).write_text(digest+'  '+result.name+'\n')
     revision=subprocess.check_output(['git','rev-parse','HEAD'],cwd=ROOT,text=True).strip()
-    (downloads/(name+'.json')).write_text(json.dumps({'commit':revision,'platform':a.platform,'build':a.number,'sha256':digest,'godot':'4.7-stable',**json.loads((ROOT/'compatibility.json').read_text()),'status':'development feel lab'},indent=2)+'\n')
+    (downloads/(name+'.json')).write_text(json.dumps({'commit':revision,'source_dirty':source_dirty,'template_source':'installed-android' if a.use_installed_android_templates else 'pinned','platform':a.platform,'build':a.number,'sha256':digest,'godot':'4.7-stable',**json.loads((ROOT/'compatibility.json').read_text()),'status':'development feel lab'},indent=2)+'\n')
 finally:
     presets.write_text(original)
     if settings:

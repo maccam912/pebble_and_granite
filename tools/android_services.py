@@ -48,14 +48,14 @@ def verify_package(path):
     print('PEBBLE_MOBILE_MANIFEST_AND_DEX_VERIFIED '+Path(path).name, flush=True)
 
 
-def build():
+def build(source_path=None):
     WORK.mkdir(parents=True, exist_ok=True)
     OUTPUT.parent.mkdir(parents=True, exist_ok=True)
     sdk = Path(os.environ.get('ANDROID_HOME', str(Path.home()/'Library/Android/sdk')))
     jdk = Path(os.environ.get('JAVA_HOME', '/opt/homebrew/opt/openjdk@17'))
     javac = jdk/'bin'/('javac.exe' if os.name == 'nt' else 'javac')
     android = sdk/'platforms/android-36/android.jar'
-    with zipfile.ZipFile(source_archive()) as source:
+    with zipfile.ZipFile(source_path or source_archive()) as source:
         library = source.read('libs/release/godot-lib.template_release.aar')
     library_hash = hashlib.sha256(library).hexdigest()
     files = [ROOT/'native/android/PebbleMobile.java', ROOT/'native/android/AndroidManifest.xml', Path(__file__)]

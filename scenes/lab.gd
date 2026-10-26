@@ -7,6 +7,7 @@ const CYAN := Color("64cdd1")
 var allow_online := true
 var room_panel: CurlRoomPanel
 var self_test_nonce := ""
+var network_probe_request: Dictionary = {}
 var session: Object
 var frame: Dictionary = {}
 var previous: Dictionary = {}
@@ -65,10 +66,22 @@ func _ready() -> void:
 		if request_file != null and request_file.get_length() <= 256:
 			var request = JSON.parse_string(request_file.get_as_text())
 			var nonce_pattern := RegEx.create_from_string("^[a-f0-9]{32}$")
-			if request is Dictionary and request.get("schema") == 1 and request.get("nonce") is String and nonce_pattern.search(request.nonce) != null:
-				self_test_nonce = request.nonce
+			if request is Dictionary and request.get("nonce") is String and nonce_pattern.search(request.nonce) != null:
+				if request.get("schema") == 1:
+					self_test_nonce = request.nonce
+				elif request.get("schema") == 2 and request.get("endpoint") is String and CurlTransport.valid_endpoint(request.endpoint) and request.get("relay_only") is bool:
+					network_probe_request = request
 		if request_file != null: request_file.close()
 		DirAccess.remove_absolute(ProjectSettings.globalize_path(probe_path))
+	if not network_probe_request.is_empty():
+		persistence_enabled = false
+		set_process(false)
+		set_process_input(false)
+		hide()
+		var probe = load("res://net/network_probe.gd").new()
+		probe.request = network_probe_request
+		add_child(probe)
+		return
 	if not self_test_nonce.is_empty() or "--self-test" in OS.get_cmdline_user_args():
 		persistence_enabled = false
 		call_deferred("run_self_test")
