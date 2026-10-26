@@ -642,3 +642,29 @@ Input-route, delivery-slide, held-resume and online-UI gates also pass. Logs are
 clean. Before source/screens and pose comparisons are in ignored
 `build/forward-handle-review/`. Installed Android validation follows this source
 commit. Weekly quota remaining is 89 percent; photographic polish is ongoing.
+
+
+## Installed forward-handle checkpoint: build 65
+
+Clean Android build 65 (`4da119d`, `source_dirty: false`, SHA-256
+`badb0bd8873df183584e03ac57273e225ec03a72d07813fd13487c90be46c441`)
+passed the complete direct-touch probe: both curl directions, spatial scrub and
+lift, accessible hold sweeping, held pause/resume and regrip, and exactly one
+held hog fault. Reviewed the installed held-delivery screenshot with the forward
+handle and adjusted glove. Fresh-ice acknowledgement took 0.44-0.45 seconds on
+the existing emulator. The captured Godot runtime log has no warning/error.
+
+Evidence is in `build/probes/touch-e24d218a5a0844149e61334097ed619c/`,
+`build/evidence/polish/android-65/` and `build/android-65-full-probe.log`.
+The result records the APK hash above. The wrapper verified restoration of all
+four original practice/match files and backups byte for byte and stopped the app.
+LFS integrity passes and the source matched the pushed branch.
+
+Remote CI completed every core, package and publish job for `509a1e7`. The finer
+bake `9aace04` has all four OS core jobs green, with packages still running;
+the forward-handle commit remains queued. This checkpoint does not claim
+latest-head release completion, physical-device GPU performance or human feel.
+Weekly quota remaining is 89 percent. The photographic polish objective stays
+active. Further comparisons can focus on the granite crown/plastic highlights
+against the reference photos and the depth of the existing setup overlay.
+The requested forward handle orientation is now implemented and must be retained.
