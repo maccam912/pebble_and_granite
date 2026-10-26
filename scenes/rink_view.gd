@@ -29,6 +29,11 @@ var last_tick := -1
 var last_end := -1
 var was_running := false
 var brush_time := 0.0
+var stone_shape: ArrayMesh
+var granite_material: ShaderMaterial
+var shadow_material: ShaderMaterial
+var handle_materials: Array[StandardMaterial3D] = []
+var material_cache: Dictionary = {}
 func _ready() -> void:
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
 	stretch = true
@@ -36,19 +41,27 @@ func _ready() -> void:
 	view.size = Vector2i(size)
 	view.own_world_3d = true
 	view.render_target_update_mode = SubViewport.UPDATE_WHEN_VISIBLE
-	view.msaa_3d = Viewport.MSAA_2X
+	view.msaa_3d = Viewport.MSAA_4X
 	add_child(view)
 	world = Node3D.new()
 	view.add_child(world)
 	var environment := WorldEnvironment.new()
 	var settings := Environment.new()
 	settings.background_mode = Environment.BG_COLOR
-	settings.background_color = Color("17272c")
+	settings.background_color = Color("384249")
 	settings.ambient_light_source = Environment.AMBIENT_SOURCE_COLOR
-	settings.ambient_light_color = Color("c6d8de")
-	settings.ambient_light_energy = .55
+	settings.ambient_light_color = Color("e0e8eb")
+	settings.ambient_light_energy = .58
+	settings.tonemap_mode = Environment.TONE_MAPPER_LINEAR
 	environment.environment = settings
 	world.add_child(environment)
+	stone_shape = CurlRinkArt.stone_body()
+	granite_material = CurlRinkArt.shader_material("res://render/granite.gdshader")
+	granite_material.set_shader_parameter("granite_texture", load("res://assets/textures/curling-granite.png"))
+	shadow_material = CurlRinkArt.shader_material("res://render/contact_shadow.gdshader")
+	for color in ["e5ac24", "28a6b3"]:
+		var handle_mat := material(color, .22)
+		handle_materials.append(handle_mat)
 	build_club()
 	camera = Camera3D.new()
 	camera.near = .05
@@ -58,22 +71,31 @@ func _ready() -> void:
 	camera.current = true
 	broom = Node3D.new()
 	world.add_child(broom)
-	box(broom, Vector3(.34, .045, .10), Vector3(0, .04, 0), material("e9bb61"))
-	var shaft := cylinder(broom, .018, 1.1, Vector3(.10, .57, 0), material("253b43"))
+	brush_head(broom)
+	var shaft := cylinder(broom, .012, 1.1, Vector3(.10, .57, 0), material("253038", .28))
 	shaft.rotation.z = -.18
 	brush = Node3D.new()
 	world.add_child(brush)
-	box(brush, Vector3(.30, .05, .09), Vector3(0, .04, 0), material("e9bb61"))
-	var brush_shaft := cylinder(brush, .013, .8, Vector3(.30, .34, 0), material("d8e5e5"))
+	brush_head(brush)
+	var brush_shaft := cylinder(brush, .011, .8, Vector3(.30, .34, 0), material("c7d1d3", .25))
 	brush_shaft.rotation.z = -.8
 	selection = Node3D.new()
 	world.add_child(selection)
-	cylinder(selection, .205, .003, Vector3(0, .018, 0), material("f7d989"))
+	var selection_shape := TorusMesh.new()
+	selection_shape.inner_radius = .178
+	selection_shape.outer_radius = .191
+	selection_shape.rings = 48
+	selection_shape.ring_segments = 8
+	mesh(selection, selection_shape, Vector3(0, .012, 0), material("e5bc60"))
 	selection.visible = false
 	hand = Node3D.new()
 	world.add_child(hand)
-	box(hand, Vector3(.095, .045, .11), Vector3(0, .305, .015), material("384849"))
-	var sleeve := cylinder(hand, .055, .48, Vector3(.10, .355, .26), material("203c4a"))
+	var glove := SphereMesh.new()
+	glove.radius = .05
+	glove.height = .08
+	var palm := mesh(hand, glove, Vector3(0, .218, .015), material("303a40", .9))
+	palm.scale.z = 1.25
+	var sleeve := cylinder(hand, .048, .48, Vector3(.10, .27, .26), material("203c4a", .9))
 	sleeve.rotation_degrees = Vector3(90, 16, 0)
 	hand.visible = false
 	preview = stone_mesh(0)
@@ -81,9 +103,12 @@ func _ready() -> void:
 	preview.position = Vector3(0, 0, 29)
 	set_camera("Delivery", Vector3.ZERO)
 func material(color: String, roughness := .65) -> StandardMaterial3D:
+	var key := color + ":" + str(roughness)
+	if material_cache.has(key): return material_cache[key]
 	var mat := StandardMaterial3D.new()
 	mat.albedo_color = Color(color)
 	mat.roughness = roughness
+	material_cache[key] = mat
 	return mat
 func mesh(parent: Node3D, shape: Mesh, pos: Vector3, mat: Material) -> MeshInstance3D:
 	var instance := MeshInstance3D.new()
@@ -103,71 +128,132 @@ func cylinder(parent: Node3D, radius: float, height: float, pos: Vector3, mat: M
 	shape.height = height
 	shape.radial_segments = 48
 	return mesh(parent, shape, pos, mat)
+func brush_head(parent: Node3D) -> void:
+	var pad := CapsuleMesh.new()
+	pad.radius = .045
+	pad.height = .27
+	var head := mesh(parent, pad, Vector3(0, .035, 0), material("d5b25e", .88))
+	head.rotation.z = PI / 2
+	head.scale.z = .8
+	var backing := box(parent, Vector3(.23, .018, .065), Vector3(0, .062, 0), material("26343b", .35))
+	backing.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	cylinder(parent, .025, .035, Vector3(0, .082, 0), material("26343b", .35))
+
 func build_club() -> void:
-	var ice := material("c4d7dc", .45)
-	var wood := material("554840")
-	box(world, Vector3(18, .2, 47), Vector3(0, -.16, 17.2), material("25363b"))
+	var wood := CurlRinkArt.shader_material("res://render/oak.gdshader")
+	var steel := material("66727a", .46)
+	var plaster := material("aeb5b5", .87)
+	var boards := material("d2d6d4", .7)
+	var rubber := material("273238", .94)
+	box(world, Vector3(18, .2, 47), Vector3(0, -.16, 17.2), rubber)
 	for lane in [-6.0, 0.0, 6.0]:
+		var ice := CurlRinkArt.shader_material("res://render/ice.gdshader")
+		ice.set_shader_parameter("lane_center", lane)
 		box(world, Vector3(4.75, .06, 43), Vector3(lane, -.03, 17.3), ice)
-		for tee in [0.0, 34.75]:
-			var layer := .004
-			for ring in [[1.829, "37768d"], [1.219, "ecf1ec"], [.610, "b86660"], [.152, "ecf1ec"]]:
-				cylinder(world, ring[0], .002, Vector3(lane, layer, tee), material(ring[1], .4))
-				layer += .003
-			box(world, Vector3(4.75, .002, .013), Vector3(lane, .02, tee), material("647d83"))
-		for hog in [6.350, 28.400]: box(world, Vector3(4.75, .005, .102), Vector3(lane, .006, hog), material("aa5252"))
-		for back in [-1.8225, 36.5725]: box(world, Vector3(4.75, .004, .013), Vector3(lane, .006, back), material("647d83"))
-		box(world, Vector3(.013, .002, 42), Vector3(lane, .021, 17.3), material("82999d"))
 		for end in [-3.658, 38.408]:
-			for x in [-.17, .17]: box(world, Vector3(.14, .06, .22), Vector3(lane + x, .03, end), material("263437"))
-		for edge in [-2.48, 2.48]: box(world, Vector3(.15, .18, 43.2), Vector3(lane + edge, .07, 17.3), wood)
-	box(world, Vector3(18, 3.6, .25), Vector3(0, 1.8, -4.5), material("344c53"))
-	for side in [-9.0, 9.0]: box(world, Vector3(.25, 3.6, 47), Vector3(side, 1.8, 17.2), material("344c53"))
+			for x in [-.17, .17]:
+				box(world, Vector3(.14, .05, .22), Vector3(lane + x, .025, end), rubber)
+		for edge in [-2.48, 2.48]:
+			box(world, Vector3(.15, .18, 43.2), Vector3(lane + edge, .07, 17.3), wood)
+			box(world, Vector3(.16, .025, 43.2), Vector3(lane + edge, .17, 17.3), material("b29670", .4))
+			box(world, Vector3(.035, .045, 43.2), Vector3(lane + edge - signf(edge) * .065, .05, 17.3), material("c9cecb"))
+	for end in [-4.5, 40.0]:
+		box(world, Vector3(18, 3.8, .25), Vector3(0, 1.9, end), plaster)
+		box(world, Vector3(18, .8, .06), Vector3(0, .4, end + (.15 if end < 0 else -.15)), material("2e4851"))
+		box(world, Vector3(18, .065, .08), Vector3(0, .83, end + (.16 if end < 0 else -.16)), wood)
+	for side in [-9.0, 9.0]:
+		box(world, Vector3(.25, 3.8, 47), Vector3(side, 1.9, 17.2), plaster)
+		box(world, Vector3(.07, .9, 47), Vector3(side - signf(side) * .15, .45, 17.2), material("344f58"))
+		box(world, Vector3(.09, .06, 47), Vector3(side - signf(side) * .16, .92, 17.2), wood)
+		for z in range(0, 40, 6):
+			box(world, Vector3(.18, 3.8, .13), Vector3(side - signf(side) * .19, 1.9, z), steel)
+			box(world, Vector3(.20, 1.0, 3.6), Vector3(side - signf(side) * .21, 2.45, z + 2.5), material("526e79", .2))
+			for division in [-1.8, 0.0, 1.8]:
+				box(world, Vector3(.23, 1.08, .045), Vector3(side - signf(side) * .23, 2.45, z + 2.5 + division), steel)
+			box(world, Vector3(.24, .045, 3.7), Vector3(side - signf(side) * .22, 1.93, z + 2.5), steel)
+			box(world, Vector3(.24, .045, 3.7), Vector3(side - signf(side) * .22, 2.97, z + 2.5), steel)
+	# Benches, kickboards and sheet signs give familiar scale to the existing club.
+	for lane in [-6.0, 0.0, 6.0]:
+		box(world, Vector3(2.7, .075, .35), Vector3(lane, .45, -4.05), wood)
+		for x in [-1.05, 1.05]: box(world, Vector3(.06, .45, .25), Vector3(lane + x, .20, -4.05), steel)
+		club_sign(str(int(lane / 6) + 2).pad_zeros(2), Vector3(lane, 1.12, -4.31), 44, .004, "e2d2ae")
+	box(world, Vector3(6.2, .95, .06), Vector3(0, 2.35, -4.31), material("19333e"))
+	club_sign("PEBBLE & GRANITE", Vector3(0, 2.48, -4.265), 84, .005, "e5dfcf")
+	club_sign("C U R L I N G   C L U B", Vector3(0, 2.13, -4.26), 35, .004, "bfad84")
 	ceiling = Node3D.new()
 	world.add_child(ceiling)
+	box(ceiling, Vector3(18, .10, 47), Vector3(0, 3.95, 17.2), material("8f999e", .9))
+	var lamp := material("f8f4e7")
+	lamp.emission_enabled = true
+	lamp.emission = Color("fff8e8")
+	lamp.emission_energy_multiplier = 1.25
 	for z in range(-2, 42, 6):
-		box(ceiling, Vector3(18, .16, .18), Vector3(0, 3.6, z), material("526569"))
-		var lamp := material("fff1cf")
-		lamp.emission_enabled = true
-		lamp.emission = Color("fff1cf")
-		box(ceiling, Vector3(3.0, .05, .18), Vector3(0, 3.48, z), lamp)
-		# Eight overlapping indoor fixtures, below the beams. Keep the light
-		# nodes outside the ceiling group so House view hides only its meshes.
+		box(ceiling, Vector3(18, .12, .10), Vector3(0, 3.66, z), steel)
+		for x in [-6.0, 0.0, 6.0]:
+			box(ceiling, Vector3(2.6, .08, .27), Vector3(x, 3.49, z), material("3b454d", .5))
+			box(ceiling, Vector3(2.45, .018, .18), Vector3(x, 3.44, z), lamp)
+		for x in [-7.0, -3.5, 0.0, 3.5, 7.0]:
+			CurlRinkArt.capsule_between(ceiling, Vector3(x, 3.7, z), Vector3(x + 1.75, 3.92, z), .023, steel)
+		# Keep eight overlapping fixtures and soft indoor shadows on Compatibility.
 		var light := SpotLight3D.new()
 		light.position = Vector3(0, 3.40, z)
 		light.rotation_degrees.x = -90
-		light.light_color = Color("fff4e4")
-		light.light_energy = .24
-		light.light_specular = .15
-		light.spot_range = 12.0
-		light.spot_angle = 72.0
+		light.light_color = Color("fff5e8")
+		light.light_energy = .15
+		light.light_specular = .65
+		light.spot_range = 13.0
+		light.spot_angle = 76.0
 		light.spot_attenuation = .5
-		light.spot_angle_attenuation = .4
+		light.spot_angle_attenuation = .35
 		light.shadow_enabled = true
 		light.shadow_opacity = .22
 		light.shadow_blur = 1.5
 		world.add_child(light)
-	var sign := Label3D.new()
-	sign.text = "PEBBLE & GRANITE"
-	sign.font_size = 70
-	sign.pixel_size = .008
-	sign.position = Vector3(0, 2.2, -4.34)
-	sign.modulate = Color("ebcf97")
-	world.add_child(sign)
+	var reflection := ReflectionProbe.new()
+	reflection.position = Vector3(0, 1.7, 17.2)
+	reflection.size = Vector3(18, 4, 47)
+	reflection.box_projection = true
+	reflection.interior = true
+	reflection.ambient_mode = ReflectionProbe.AMBIENT_DISABLED
+	reflection.intensity = .65
+	reflection.cull_mask = 1 # Static club only; exclude moving stones and brooms.
+	reflection.max_distance = 55
+	world.add_child(reflection)
+
+func club_sign(text: String, pos: Vector3, font_size: int, pixel_size: float, color: String) -> void:
+	var sign_label := Label3D.new()
+	sign_label.text = text
+	sign_label.font_size = font_size
+	sign_label.pixel_size = pixel_size
+	sign_label.position = pos
+	sign_label.modulate = Color(color)
+	sign_label.outline_size = 0
+	world.add_child(sign_label)
+
 func stone_mesh(team: int) -> Node3D:
 	var stone := Node3D.new()
 	stone.set_meta("team", team)
-	var granite := SphereMesh.new()
-	granite.radius = .142
-	granite.height = .22
-	granite.radial_segments = 32
-	granite.rings = 12
-	mesh(stone, granite, Vector3(0, .11, 0), material("839096", .38))
-	cylinder(stone, .105, .027, Vector3(0, .213, 0), material("cad4d4", .3))
-	var color := material("e9bb61" if team == 0 else "64cdd1", .28)
-	for x in [-.065, .065]: cylinder(stone, .018, .045, Vector3(x, .245, 0), color)
-	box(stone, Vector3(.16, .027, .035), Vector3(0, .274, 0), color)
-	if team == 1: box(stone, Vector3(.025, .008, .042), Vector3(0, .293, 0), material("173942"))
+	mesh(stone, stone_shape, Vector3.ZERO, granite_material).layers = 2
+	var shadow := PlaneMesh.new()
+	shadow.size = Vector2(.40, .40)
+	var contact := mesh(stone, shadow, Vector3(0, .002, 0), shadow_material)
+	contact.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	contact.layers = 2
+	var color: StandardMaterial3D = handle_materials[team]
+	var cap := cylinder(stone, .082, .014, Vector3(0, .132, 0), color)
+	cap.layers = 2
+	var collar := TorusMesh.new()
+	collar.inner_radius = .078
+	collar.outer_radius = .085
+	collar.rings = 48
+	collar.ring_segments = 8
+	mesh(stone, collar, Vector3(0, .136, 0), color).layers = 2
+	for x in [-.057, .057]:
+		CurlRinkArt.capsule_between(stone, Vector3(x, .14, 0), Vector3(x * .85, .181, 0), .015, color).layers = 2
+	CurlRinkArt.capsule_between(stone, Vector3(-.052, .184, 0), Vector3(.052, .184, 0), .0175, color).layers = 2
+	if team == 1:
+		var stripe := box(stone, Vector3(.014, .002, .027), Vector3(0, .202, 0), material("143943", .5))
+		stripe.layers = 2
 	return stone
 func cycle_camera() -> String:
 	mode = (mode + 1) % MODES.size()
@@ -266,7 +352,7 @@ func set_camera(selected: String, followed: Vector3) -> void:
 		camera.position = origin - heading * 1.1 + Vector3(0, .9, 0)
 		camera.look_at(origin + heading * 1.4 + Vector3(0, .18, 0))
 func handle_point() -> Vector2:
-	return position + camera.unproject_position(preview.position + Vector3(0, .274, 0)) if camera != null else Vector2.ZERO
+	return position + camera.unproject_position(preview.position + Vector3(0, .184, 0)) if camera != null else Vector2.ZERO
 func broom_point() -> Vector2:
 	return position + camera.unproject_position(broom.position + Vector3(0, .05, 0)) if camera != null else Vector2.ZERO
 func aim_x(screen: Vector2) -> float:

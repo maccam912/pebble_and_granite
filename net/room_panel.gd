@@ -25,30 +25,35 @@ var ready_value := false
 var view_match := true
 var was_restoring := false
 func _ready() -> void:
+	theme = CurlPresentation.make_theme()
 	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	mouse_filter = Control.MOUSE_FILTER_STOP
 	directory = CurlRendezvous.new()
 	add_child(directory)
 	var shade := ColorRect.new()
-	shade.color = Color(0.015, .04, .06, .97)
+	shade.color = Color(0.025, .055, .075, .92)
 	shade.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	add_child(shade)
 	body = Panel.new()
 	body.position = Vector2(260, 90)
 	body.size = Vector2(760, 620)
-	var background := StyleBoxFlat.new()
-	background.bg_color = Color("102b37")
-	background.set_corner_radius_all(14)
+	var background := CurlPresentation.surface(Color("122731"), Color("56635e"), 12)
+	background.shadow_color = Color(0, 0, 0, .35)
+	background.shadow_size = 24
 	body.add_theme_stylebox_override("panel", background)
 	add_child(body)
 	heading = label_at("ONLINE MIXED DOUBLES", Vector2(30, 24), 27)
-	label_at("Host stays open. Four players • two per team.", Vector2(30, 68), 18)
+	heading.add_theme_color_override("font_color", CurlPresentation.GOLD)
+	var subtitle := label_at("Host stays open. Four players • two per team.", Vector2(30, 68), 18)
+	subtitle.add_theme_color_override("font_color", CurlPresentation.MUTED)
 	host_button = action("Host by code", Vector2(30, 116), host_room)
+	host_button.theme_type_variation = "PrimaryButton"
 	code_input = LineEdit.new()
 	code_input.position = Vector2(275, 116)
 	code_input.size = Vector2(180, 48)
-	code_input.placeholder_text = "ROOM CODE"
+	code_input.placeholder_text = "CODE"
 	code_input.max_length = 4
+	code_input.alignment = HORIZONTAL_ALIGNMENT_CENTER
 	code_input.add_theme_font_size_override("font_size", 24)
 	body.add_child(code_input)
 	join_button = action("Join by code", Vector2(480, 116), join_room)
@@ -60,6 +65,7 @@ func _ready() -> void:
 	message.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	ready_button = action("Ready", Vector2(30, 478), toggle_ready)
 	start_button = action("Start match", Vector2(275, 478), start_match)
+	start_button.theme_type_variation = "PrimaryButton"
 	renew_button = action("New room code", Vector2(480, 478), register_code)
 	reconnect_button = action("Reconnect", Vector2(275, 548), reconnect)
 	action("Leave / back", Vector2(30, 548), leave)

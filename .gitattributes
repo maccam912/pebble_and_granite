@@ -4,3 +4,4 @@
 *.ogg binary
 *.wav binary
 *.ttf binary
+assets/textures/*.png filter=lfs diff=lfs merge=lfs -text

@@ -9,9 +9,14 @@ then sweep during travel and inspect the release report. No power sliders.
 Install Rust 1.98.1 and Godot 4.7, then:
 
 ```sh
+git lfs pull
 python3 tools/build_native.py
 godot --path .
 ```
+
+Install Git LFS before cloning. Original generated material textures are stored
+in LFS; their provenance and exact generation prompts are in
+[assets/textures/README.md](assets/textures/README.md).
 
 The native build defaults to optimized code for playable simulation performance.
 Use `python3 tools/build_native.py --debug` only for native debugging; it is much slower.

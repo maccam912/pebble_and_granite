@@ -62,9 +62,11 @@ var mode_button: Button
 var fresh_button: Button
 var save_path := "user://practice-session.json"
 var match_save_path := "user://match-session.json"
+var brand: Label
 
 func _ready() -> void:
 	Input.use_accumulated_input = false
+	theme = CurlPresentation.make_theme()
 	if not ClassDB.class_exists("CurlSession"):
 		push_error("Build the Rust bridge: python3 tools/build_native.py")
 		return
@@ -97,12 +99,19 @@ func _ready() -> void:
 		return
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
 	status = Label.new()
-	status.position = Vector2(40, 26)
-	status.add_theme_font_size_override("font_size", 27)
+	status.position = Vector2(40, 62)
+	status.add_theme_font_size_override("font_size", 16)
+	status.add_theme_color_override("font_color", CurlPresentation.GOLD)
 	add_child(status)
+	brand = Label.new()
+	brand.text = "PEBBLE & GRANITE"
+	brand.position = Vector2(40, 20)
+	brand.add_theme_font_size_override("font_size", 29)
+	add_child(brand)
 	hint = Label.new()
-	hint.position = Vector2(40, 68)
-	hint.add_theme_color_override("font_color", Color("92acb7"))
+	hint.position = Vector2(40, 87)
+	hint.add_theme_font_size_override("font_size", 13)
+	hint.add_theme_color_override("font_color", CurlPresentation.MUTED)
 	add_child(hint)
 	report_label = Label.new()
 	report_label.position = Vector2(800, 510)
@@ -111,15 +120,17 @@ func _ready() -> void:
 	report_label.add_theme_font_size_override("font_size", 18)
 	add_child(report_label)
 	new_button = button("Next stone", Vector2(40, 726), func(): next_throw())
+	new_button.theme_type_variation = "PrimaryButton"
 	turn_button = button("Turn: clockwise ↻", Vector2(225, 726), func(): turn *= -1; update_labels())
 	sweep_button = button("Hold to sweep", Vector2(500, 726), func(): pass)
+	sweep_button.theme_type_variation = "SweepButton"
 	sweep_button.button_down.connect(func(): hold_sweep = true)
 	sweep_button.button_up.connect(func(): hold_sweep = false)
 	one_button = button("One-push: off", Vector2(710, 726), func(): one_push = not one_push; update_labels())
 	fresh_button = button("Fresh ice", Vector2(920, 726), func(): reset())
-	mode_button = button("Mixed doubles", Vector2(1030, 30), func(): switch_mode())
+	mode_button = button("Mixed doubles", Vector2(1040, 30), func(): switch_mode())
 	clock_label = Label.new()
-	clock_label.position = Vector2(40, 88)
+	clock_label.position = Vector2(500, 87)
 	clock_label.add_theme_font_size_override("font_size", 14)
 	add_child(clock_label)
 	create_match_controls()
@@ -134,11 +145,11 @@ func _ready() -> void:
 
 func create_spatial_view() -> void:
 	rink = CurlRinkView.new()
-	rink.position = Vector2(40, 110)
-	rink.size = Vector2(1200, 590)
+	rink.position = Vector2(40, 118)
+	rink.size = Vector2(1200, 582)
 	add_child(rink)
 	move_child(rink, 0)
-	camera_button = button("Camera: Auto", Vector2(52, 122), func():
+	camera_button = button("Camera: Auto", Vector2(56, 134), func():
 		if pointer == -99: camera_button.text = "Camera: " + rink.cycle_camera())
 	camera_button.custom_minimum_size = Vector2(190, 40)
 	var toggle := button("2D lab", Vector2(600, 122), func(): pass)
@@ -164,6 +175,13 @@ func create_spatial_view() -> void:
 	report_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	turn_button.hide()
 	view_button.hide()
+	new_button.custom_minimum_size.x = 220
+	sweep_button.position.x = 278
+	sweep_button.custom_minimum_size.x = 290
+	one_button.position.x = 830
+	one_button.custom_minimum_size.x = 200
+	fresh_button.position.x = 1048
+	fresh_button.custom_minimum_size.x = 192
 	update_spatial(0.0)
 func update_spatial(delta: float) -> void:
 	if rink == null or not spatial_view: return
@@ -231,22 +249,17 @@ func reset(persist := true) -> void:
 	if persist: save_practice()
 
 func update_labels() -> void:
-	status.text = "PEBBLE & GRANITE  /  " + phase
+	status.text = "Practice  /  " + phase
 	hint.text = "CLUB ICE     •     Mouse / trackpad / touch" if spatial_view else "FEEL LAB     •     Seed 42     •     Mouse / trackpad / touch"
 	turn_button.text = "Turn: clockwise ↻" if turn == 1 else "Turn: counterclockwise ↺"
 	one_button.text = "One-push: on" if one_push else "One-push: off"
+	one_button.theme_type_variation = "SweepButton" if one_push else "Button"
 	new_button.disabled = run_active
 	new_button.text = "Next stone" if frame.get("can_deliver_next", true) else "Clear stones"
 	turn_button.size.x = 255
 	turn_button.disabled = run_active
 	one_button.disabled = run_active
 	report_label.text = report
-	if feedback_bg != null:
-		var compact := phase == "Slide"
-		feedback_bg.position = Vector2(50, 642) if compact else Vector2(50, 580)
-		feedback_bg.size = Vector2(365, 70) if compact else Vector2(565, 110)
-		report_label.position = feedback_bg.position + Vector2(12, 11)
-		report_label.size = feedback_bg.size - Vector2(24, 12)
 	clock_label.visible = match_mode
 	sweep_button.disabled = not can_sweep()
 	mode_button.text = "Practice" if match_mode else "Mixed doubles"
@@ -257,7 +270,7 @@ func update_labels() -> void:
 		clock_label.text = "Thinking time   Gold %s   •   Cyan %s" % [clock_text(frame.clock_gold), clock_text(frame.clock_cyan)]
 		hint.text = "LOCAL DOUBLES  •  End %d/%d  •  Gold %d : %d Cyan  •  Autosaved" % [frame.end, frame.scheduled_ends, frame.score_gold, frame.score_cyan]
 		if frame.match_phase == "Placement":
-			status.text = "PEBBLE & GRANITE  /  Choose placement"
+			status.text = "Mixed doubles  /  Choose placement"
 			new_button.text = "Next stone"
 			setup_label.text = "%s chooses the placement" % team_name(frame.placement_team)
 			house_button.text = "Take the house" if own_house else "Take the guard"
@@ -268,13 +281,13 @@ func update_labels() -> void:
 			new_button.disabled = true
 			report_label.text = "Pass the device between players. Select each team's first/last thrower, then choose where to place the stones."
 		elif frame.match_phase in ["Calling", "InFlight"]:
-			status.text = "PEBBLE & GRANITE  /  %s • Player %d • %s" % [team_name(frame.team), frame.thrower + 1, phase]
+			status.text = "Mixed doubles  /  %s • Player %d • %s" % [team_name(frame.team), frame.thrower + 1, phase]
 		elif frame.match_phase == "EndComplete":
 			new_button.text = "Next end"
-			status.text = "PEBBLE & GRANITE  /  End complete"
+			status.text = "Mixed doubles  /  End complete"
 		elif frame.match_phase == "GameComplete":
 			new_button.text = "Rematch"
-			status.text = "PEBBLE & GRANITE  /  %s wins" % team_name(frame.winner)
+			status.text = "Mixed doubles  /  %s wins" % team_name(frame.winner)
 		if frame.get("violation", "") == "HogRelease":
 			report_label.text += "\nHog-line violation: stone removed; delivery counts."
 		elif not frame.get("violation", "").is_empty():
@@ -282,6 +295,16 @@ func update_labels() -> void:
 	if authoritative_delivery and not frame.get("in_hand", {}).is_empty():
 		new_button.text = "Stone in play" if frame.in_hand.in_play else "Return to hack"
 		new_button.disabled = frame.in_hand.in_play
+	layout_feedback()
+
+func layout_feedback() -> void:
+	if feedback_bg == null: return
+	var width := 365.0 if phase == "Slide" else 490.0
+	report_label.size = Vector2(width - 24, 0)
+	var height := maxf(report_label.get_minimum_size().y + 24, 72)
+	feedback_bg.size = Vector2(width, height)
+	feedback_bg.position = Vector2(56, 684 - height)
+	report_label.position = feedback_bg.position + Vector2(12, 11)
 
 func clock_text(ms: int) -> String:
 	var seconds := int(ceil(float(ms) / 1000.0))
@@ -294,7 +317,7 @@ func create_match_controls() -> void:
 	setup_panel = Panel.new()
 	setup_panel.position = Vector2(800, 110)
 	setup_panel.size = Vector2(440, 380)
-	setup_panel.add_theme_stylebox_override("panel", panel(Color("102b37")))
+	setup_panel.add_theme_stylebox_override("panel", panel(Color("122832")))
 	add_child(setup_panel)
 	setup_label = Label.new()
 	setup_label.position = Vector2(20, 18)
@@ -306,6 +329,9 @@ func create_match_controls() -> void:
 	cyan_order = setup_button(Vector2(20, 244), func(): change_order(1))
 	var apply_button := setup_button(Vector2(20, 310), func(): apply_placement())
 	apply_button.text = "Place stones & begin"
+	apply_button.theme_type_variation = "PrimaryButton"
+	gold_order.add_theme_color_override("font_color", GOLD)
+	cyan_order.add_theme_color_override("font_color", CYAN)
 
 func setup_button(pos: Vector2, action: Callable) -> Button:
 	var b := button("", Vector2.ZERO, action)
@@ -590,6 +616,9 @@ func end_pointer(p: Vector2) -> void:
 	update_labels()
 
 func _draw() -> void:
+	draw_rect(Rect2(Vector2.ZERO, size), Color("0b1820"))
+	draw_line(Vector2(40, 11), Vector2(145, 11), CurlPresentation.GOLD, 2)
+	draw_line(Vector2(40, 712), Vector2(1240, 712), Color("2b4149"), 1)
 	if not spatial_view:
 		draw_style_box(panel(Color("102b37")), Rect2(800, 110, 440, 380))
 		# Broad, quiet panels preserve contrast on desktop and landscape phones.
@@ -642,10 +671,7 @@ func stone(center: Vector2, radius: float, turns: float, team := 0) -> void:
 	draw_circle(center, radius * 0.13, INK)
 
 func panel(color: Color) -> StyleBoxFlat:
-	var p := StyleBoxFlat.new()
-	p.bg_color = color
-	p.set_corner_radius_all(14)
-	return p
+	return CurlPresentation.surface(color, Color("3c535b"), 10)
 
 func delivered_stone() -> Dictionary:
 	for s in frame.get("stones", []):
