@@ -5,6 +5,46 @@
 Foundation work started 25 October 2026. Original repository contained the design
 bible only. Remote: `maccam912/pebble_and_granite`, main branch.
 
+## Pick up here
+
+Latest gameplay checkpoint: `ea1ee40` (rules 4 / protocol 10, physics model 3).
+The main scene is a 3D curler's view with direct handle grip, pull/push/held slide,
+finishing curl flick and small weight feedback. Practice and local matches save
+held/in-flight state. Online mixed doubles has four seats, per-player sweeping,
+hash-checked reconnect and held regrip. Physics coefficients and input gains are
+provisional; this is a playable development slice, not the complete design bible.
+
+On this Mac, from the repository root:
+
+```sh
+python3 tools/build_native.py
+GODOT_BIN=/Applications/Godot.app/Contents/MacOS/Godot python3 tools/godot.py --path .
+```
+
+Portable checks: `python3 tools/check.py`, then the Godot gates in
+`.github/workflows/build.yml`. Use optimized native builds for gameplay. Never
+replace loaded native libraries while a Godot test/game process is running.
+Live room/relay probes require external discovery/relay availability and are
+separate from offline CI. Artifact provenance and installed emulator evidence
+are in `docs/ANDROID_INPUT.md`; full chronological evidence follows below.
+
+Next priorities, in order:
+
+1. Spatial scrub input and selecting moving own-stone targets; authority already
+   accepts bounded lateral/ahead offsets and per-player brushes. Keep the hold
+   button as the accessible steady-effort route. Avoid power/fatigue bars.
+2. Physical Android and trackpad feel/latency tests; tune gains and camera/body
+   presentation with curlers. Emulator and synthetic input tests cannot approve feel.
+3. Measured real-ice/contact/curl calibration and a complete rules clause audit.
+4. Quick calls and teammate roles, then drills/AI and broader game modes; polished
+   art/audio, career content and store publishing are later work.
+
+Compatibility: older rules-3 match files are preserved but rejected. Model-3
+practice saves still load. New constants/mapping require explicit version review;
+never regenerate golden traces merely to make a failure disappear. Reference
+projects remain read-only. Host migration/public server deployment are not part of
+the current listen-server slice; publisher signing/physical devices remain open.
+
 ## Work order
 
 - [x] Deterministic arithmetic/physics/ice and versioned replay contracts.
@@ -766,3 +806,17 @@ by the thrower, after two earlier runs exposed the consumed/future span overlap
 cases now covered in tests. Evidence: build/probes/1b775e5277c247c198ee78ddf6a6d906/.
 Installed Android rules-4 validation follows the clean build. Weekly remaining
 usage at this checkpoint: 51%; prioritize final validation and handoff.
+
+Clean ea1ee40 Android local build 5 passed installed golden/JNI checks, direct
+touch including pause/regrip/hog handling, and forced-relay held/in-flight
+reconnect with continuous thrower sweeping. Final host/client hash
+27700e67832af91f; exact provenance/evidence in docs/ANDROID_INPUT.md. GitHub run
+40264853866 has passed all four OS core jobs; platform exports are still running
+at this note. Prior gameplay checkpoints through a1ddb7c published successfully.
+
+Observed follow-up: occasional immediate "No addressing information available"
+when joining a just-created Iroh endpoint. The failed probe was terminal before
+retry; this appears to be initial discovery publication timing. A narrowly bounded
+background retry for that recoverable condition is a useful transport hardening
+task; do not retry malformed identity, incompatible protocol or authentication
+errors, and preserve cancellation/handshake deadlines.

@@ -106,3 +106,20 @@ Evidence: `build/probes/5671d030ca1346f099bf2a9eaa686286/result.json`.
 This closes the installed in-hand reconnect gate. Gesture timing here is injected
 through the actual online scene methods; separate touch probes cover Android
 touchscreen routing. It is not a physical-device or uncontrolled-latency playtest.
+
+## Rules-4 / per-player sweeping package
+
+Clean `ea1ee40`, local build 5, is model 3 / protocol 10 / rules 4 / input 4.
+APK SHA-256: `5a1598eb27e51b0ae4862926fe8b8a00013e750df051564dc3fdfed8c9391c49`.
+It passed all six installed native golden/JNI traces, the complete direct-touch
+probe (both curl signs, Home/pause/regrip and exact-once hog fault), and the
+two-delivery forced-relay probe with continuous sweeping by the remote thrower.
+
+- Touch: `build/probes/touch-fb7b55c23dad4a0a96870bee55f3cfaa/`.
+- Relay: `build/probes/1376eefd8bd943ceb945e748ff2153e2/result.json`; host/client
+  hash `27700e67832af91f`, both held/in-flight reconnect flags and
+  `swept_as_thrower` true.
+
+Desktop full-match coverage also swept with both teammates. The installed probe
+does not establish a physical two-device full-match/performance result. Local
+APK build numbers are diagnostic labels; GitHub release numbers are independent.
