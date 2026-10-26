@@ -159,6 +159,7 @@ func create_spatial_view() -> void:
 	camera_button = button("Camera: Auto", Vector2(56, 134), func():
 		if pointer == -99: camera_button.text = "Camera: " + rink.cycle_camera())
 	camera_button.custom_minimum_size = Vector2(208, 52) if mobile_ui else Vector2(190, 40)
+	camera_button.size = camera_button.custom_minimum_size
 	var toggle := button("2D lab", Vector2(600, 122), func(): pass)
 	view_button = toggle
 	toggle.custom_minimum_size = Vector2(165, 40)
@@ -372,6 +373,7 @@ func setup_button(pos: Vector2, action: Callable) -> Button:
 	b.reparent(setup_panel)
 	b.position = pos
 	b.custom_minimum_size = Vector2(400, 52 if mobile_ui else 48)
+	b.size = b.custom_minimum_size
 	return b
 
 func switch_mode() -> void:

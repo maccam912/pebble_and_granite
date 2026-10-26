@@ -124,3 +124,32 @@ between five and ten seconds on a launch after reinstall. This is a shader
 warm-up observation, not a physical-device startup or frame-rate benchmark.
 Compatibility does not support the export shader baker. No arbitrary timed
 delay or new loading/gameplay flow was added.
+
+Clean local Android export 47 (`b10c95b`, `source_dirty: false`, SHA-256
+`b32087781b080bb13cc7368ce671cd8c4f1d3c4dedba0b6c08b376909ddaa17e`)
+was installed. Its actual system splash is dark; APK resource inspection confirms
+`windowSplashScreenBackground=#ff0b1820`. Phone captures of the lobby and setup
+are in `build/evidence/polish/android-47/`.
+
+That phone setup capture caught overlapping rows: lowering a Button's minimum
+height did not shrink its existing size. Set the actual setup/camera sizes too.
+The review now supports `-- --mobile-ui` for a native preview of phone typography
+and control sizes in `build/evidence/polish-mobile/`, and checks row separation.
+This preview is a Mac render of the mobile layout, separate from installed-APK
+evidence. The corrected preview passes all eight captures; rink/match gates pass.
+
+## Next photographic critique
+
+The major remaining gap is the room's illumination: materials and stone shapes
+are more convincing, but the ceiling/walls still lack realistic indirect bounce
+and structural shadows. Investigate baked static club lighting while retaining
+the Compatibility renderer and existing input/simulation. This is art/rendering
+work; no gameplay or quality-options menu is authorized by this polish task.
+
+[LightmapGI](https://docs.godotengine.org/en/stable/classes/class_lightmapgi.html)
+is a candidate: baked lighting is suitable for mobile runtime, but baking requires
+an editor with a RenderingDevice renderer. Existing generated PrimitiveMeshes
+would first need ArrayMesh conversion and UV2 unwrap; LightmapGI baking is an
+editor operation, not an exposed runtime GDScript method. Keep experiments
+isolated until they produce a reviewed improvement, and repeat Android rendering
+checks before publishing a lighting change.

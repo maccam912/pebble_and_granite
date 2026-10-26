@@ -21,9 +21,12 @@ func run() -> void:
 		push_error("Visual review requires a real renderer")
 		quit(1)
 		return
+	var mobile_preview := "--mobile-ui" in OS.get_cmdline_user_args()
+	if mobile_preview: output = "res://build/evidence/polish-mobile"
 	DirAccess.make_dir_recursive_absolute(output)
 	game = load("res://scenes/play.tscn").instantiate()
 	game.persistence_enabled = false
+	if mobile_preview: game.mobile_ui = true
 	root.add_child(game)
 	game.set_process(false)
 	game.set_process_input(false)
@@ -71,6 +74,14 @@ func run() -> void:
 	for label in [game.gold_score, game.end_score, game.cyan_score]:
 		if not game.scoreboard.get_global_rect().encloses(label.get_global_rect()):
 			push_error("Score text exceeds the score panel")
+			failed = true
+	var setup_controls := [game.house_button, game.power_button, game.gold_order,
+		game.cyan_order, game.setup_panel.get_child(game.setup_panel.get_child_count() - 1)]
+	for index in range(1, setup_controls.size()):
+		var prior: Rect2 = setup_controls[index - 1].get_global_rect()
+		var next: Rect2 = setup_controls[index].get_global_rect()
+		if next.position.y - prior.end.y < 4:
+			push_error("Match setup controls lack separation")
 			failed = true
 	game.queue_free()
 	await process_frame
