@@ -34,8 +34,8 @@ void fragment() {
 	float pebble = surface_noise(p * 160.0);
 	float ice_grain = texture(ice_texture, p * 2.0).r;
 	ALBEDO = (mix(paint, vec3(0.64, 0.68, 0.70), 0.035) + cloud - 0.015) * mix(0.96, 1.025, ice_grain);
-	ROUGHNESS = 0.42 + ice_grain * 0.13;
-	SPECULAR = 0.32;
+	ROUGHNESS = 0.30 + ice_grain * 0.12;
+	SPECULAR = 0.38;
 	NORMAL_MAP = vec3(0.5 + (pebble - 0.5) * 0.065 * detail, 0.5 + (surface_noise(p * 160.0 + 0.6) - 0.5) * 0.065 * detail, 1.0);
 	NORMAL_MAP_DEPTH = 0.32;
 }

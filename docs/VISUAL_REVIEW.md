@@ -196,3 +196,25 @@ reflection exclusion layer and dynamic GI mode. The test verifies that all
 baked paths resolve, ice has no diffuse lightmap, and props remain excluded.
 Installed Android validation is pending at this source checkpoint. No claim of
 photorealism, physical-device performance, or completed remote CI is made.
+
+Clean Android build 49 (`d06a0ef`, SHA-256
+`7740d2a8b2084a8c4612d23d3e64c05eeef5e705b78d9efee16b95555cee35ce`)
+was installed and reviewed on `emulator-5554`. The baked room renders correctly.
+The complete touch probe passed both curl directions, scrub/stop, accessible
+hold, pause/regrip, and the one-time hog violation check. Evidence is in
+`build/probes/touch-43678eb08cbe44b6b1bbaac85c637a03/`; original practice files
+were restored byte for byte afterward and the app stopped.
+
+## Material highlight comparison
+
+Compared the new room against the [Carleton Place club photograph](https://cpcurling.ca/index.php/about-the-club/club-photos)
+and [Richmond lighting photographs](https://www.bchydro.com/news/conservation/2021/richmond-curling-lighting-savings.html).
+These are visual references only, downloaded into ignored `build/reference/`;
+no reference photograph is shipped. The ice needed a clearer glancing sheen and
+the plastic cap had a distracting white hotspot. Lower ice roughness from
+0.42-0.55 to 0.30-0.42, raise cap roughness from 0.22 to 0.32, and reduce the
+point-source specular contribution from 0.65 to 0.35. The room probe retains
+the broad reflections. All eight native screenshots pass after comparing three
+material variants. The base lighting captures are retained in
+`build/evidence/lighting/integrated-base/`. Android validation of these material
+adjustments remains pending at this checkpoint. Weekly quota is 94% remaining.
