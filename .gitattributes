@@ -6,3 +6,5 @@
 *.ttf binary
 assets/textures/*.png filter=lfs diff=lfs merge=lfs -text
 assets/branding/*.png filter=lfs diff=lfs merge=lfs -text
+render/club/*.exr filter=lfs diff=lfs merge=lfs -text
+render/club/*.lmbake filter=lfs diff=lfs merge=lfs -text

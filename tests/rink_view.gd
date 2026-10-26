@@ -30,12 +30,24 @@ func run() -> void:
 	scene.broom_mm = -900
 	scene.update_spatial(0)
 	var lights := 0
-	for node in scene.rink.world.get_children():
+	for node in scene.rink.world.find_children("*", "Light3D", true, false):
 		check(not node is DirectionalLight3D, "Outdoor directional light returned")
 		if node is SpotLight3D:
 			lights += 1
-			check(node.position.y < 3.48 and node.shadow_opacity <= .25, "Arena light is above the fixture or has harsh shadows")
+			check(node.global_position.y < 3.48 and node.shadow_opacity <= .25, "Arena light is above the fixture or has harsh shadows")
 	check(lights > 1 and lights <= 8, "Expected overlapping arena lights within the Compatibility limit")
+	var lightmap: LightmapGI = scene.rink.world.find_child("LightmapGI", true, false)
+	check(lightmap != null and lightmap.light_data != null, "Club lighting bake is missing")
+	if lightmap != null and lightmap.light_data != null:
+		check(lightmap.light_data.get_user_count() == 248, "Static club bake has an unexpected mesh count")
+		for index in range(lightmap.light_data.get_user_count()):
+			var baked: MeshInstance3D = lightmap.get_node_or_null(lightmap.light_data.get_user_path(index))
+			check(baked != null, "Baked lighting references missing club geometry")
+			if baked != null and baked.material_override is ShaderMaterial:
+				check(baked.material_override.shader.resource_path != "res://render/ice.gdshader", "Reflective ice received a diffuse-only lightmap")
+	for prop in [scene.rink.broom, scene.rink.brush, scene.rink.hand, scene.rink.preview]:
+		for geometry in prop.find_children("*", "MeshInstance3D", true, false):
+			check(geometry.layers == 2 and geometry.gi_mode == GeometryInstance3D.GI_MODE_DYNAMIC, "Moving prop entered the static club reflection or bake")
 	# A pulled-back hand must not reset when the drive becomes a slide.
 	scene.rink.hand_held = true
 	scene.rink.pull_offset = .16

@@ -172,3 +172,27 @@ remaining. The polish goal remains active for the lighting critique above.
 Also review static reflection culling during that pass: stones use layer 2, but
 the broom/brush/hand meshes still default to layer 1 and can enter the one-time
 club probe. Exclude those transient props before reviewing the final cubemap.
+
+## Static room lighting pass
+
+Reviewed six isolated Compatibility renders in `build/evidence/lighting/`.
+The first was too dark. Strong emission from the small lamp meshes produced
+blotchy illumination; increasing the eight center sources instead blew out the
+center sheet while leaving the side walls dark. The selected bake aligns 24
+offline sources with the existing visible fixtures, at energy 1.5, high quality
+and four bounces. This adds soft wall illumination and structural shadows.
+
+A full diffuse bake made the ice look dull. Keep the three reflective ice
+materials under their existing real-time lighting, with 248 room meshes using
+the lightmap. The finalized native review preserves the ice highlights and stone
+readability while giving the room more depth. All eight review captures pass.
+The lightmap is an original Godot-generated HDR atlas (seven 256-square layers),
+not a downloaded asset. Its uncompressed import avoids compressed-HDR fallback
+warnings on this Mac. Runtime still uses Compatibility and eight soft lights.
+
+`tools/club_lighting.gd` prepares and finalizes future editor bakes; the workflow
+and provenance are in `render/club/README.md`. Moving props now share the stones'
+reflection exclusion layer and dynamic GI mode. The test verifies that all
+baked paths resolve, ice has no diffuse lightmap, and props remain excluded.
+Installed Android validation is pending at this source checkpoint. No claim of
+photorealism, physical-device performance, or completed remote CI is made.

@@ -36,6 +36,8 @@ var granite_material: ShaderMaterial
 var shadow_material: ShaderMaterial
 var handle_materials: Array[StandardMaterial3D] = []
 var material_cache: Dictionary = {}
+# The lighting preparation tool regenerates the same original club geometry.
+var prepare_lighting_source := false
 func _ready() -> void:
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
 	stretch = true
@@ -71,7 +73,12 @@ func _ready() -> void:
 	for color in ["e5ac24", "28a6b3"]:
 		var handle_mat := material(color, .22)
 		handle_materials.append(handle_mat)
-	build_club()
+	if prepare_lighting_source:
+		build_club()
+	else:
+		var club: Node3D = load("res://render/club/club.tscn").instantiate()
+		world.add_child(club)
+		ceiling = club.get_node("Ceiling")
 	camera = Camera3D.new()
 	camera.near = .05
 	camera.far = 100
@@ -124,6 +131,9 @@ func mesh(parent: Node3D, shape: Mesh, pos: Vector3, mat: Material) -> MeshInsta
 	instance.mesh = shape
 	instance.position = pos
 	instance.material_override = mat
+	if parent in [broom, brush, selection, hand] or parent.has_meta("team"):
+		instance.layers = 2
+		instance.gi_mode = GeometryInstance3D.GI_MODE_DYNAMIC
 	parent.add_child(instance)
 	return instance
 func box(parent: Node3D, dimensions: Vector3, pos: Vector3, mat: Material) -> MeshInstance3D:
