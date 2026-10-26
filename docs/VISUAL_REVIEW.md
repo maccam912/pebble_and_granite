@@ -378,3 +378,26 @@ Reviewed Delivery, Skip and House: brighter ice separates the dark blue house
 and granite while retaining the broad glancing fixture reflection. All ten native
 captures pass with a clean runtime log. Before images and shader are retained in
 ignored `build/ice-white-review/`. Android validation follows the source commit.
+
+
+Clean Android build 57 (`1645bcf`, `source_dirty: false`, SHA-256
+`380dd171f2ac6f5dc9707370ca81bba111c6a28a79b37d41a024c36266e26248`)
+passed the installed Delivery/four-camera review of the brighter ice. House view
+retains line/ring contrast; the app log has no Godot warning/error. Evidence is in
+`build/evidence/polish/android-57/` and `build/android-57-review.log`. All four
+original save files/backups were restored byte for byte, and the app stopped.
+
+## Granite striking-band separation
+
+The [Kays manufacturer reference](https://www.kaysscotland.com/curling-stones)
+shows a pale matte striking band against a warmer polished granite crown. The
+existing shader's band had insufficient colour separation at normal game scale.
+Retained its exact position, width and roughness, while increasing the pale
+mineral mix and adding a restrained green-grey crown tint. The original generated
+granite texture remains in use. No mesh, stone dimensions, physics or input changed.
+The Kays photo stays in ignored `build/reference/`, for observation only.
+
+Reviewed Delivery and the close Sweeper fixture; the band is now visible without
+new mesh edges or texture assets. All ten native captures pass with clean logs.
+Before images/shader remain in ignored `build/granite-band-review/`. Installed
+Android validation follows the source commit.
