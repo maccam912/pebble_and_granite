@@ -668,3 +668,24 @@ Weekly quota remaining is 89 percent. The photographic polish objective stays
 active. Further comparisons can focus on the granite crown/plastic highlights
 against the reference photos and the depth of the existing setup overlay.
 The requested forward handle orientation is now implemented and must be retained.
+
+
+## Granite scale and polished equipment finish
+
+Critique: the crown still read as coarse, dry stone at delivery scale. Compared
+the existing generated texture at 35 cm and 22 cm mapping scales against the
+Kays manufacturer reference already retained for observation. The finer mapping
+keeps the mineral pattern more cohesive and closer to the reference grain.
+Reduced only crown roughness from its 0.23-0.36 range to 0.15-0.24, and plastic
+roughness from 0.32 to 0.24. Band roughness stays 0.61. Base colours, geometry,
+forward handle orientation, lighting, input and simulation are unchanged.
+
+The roughness-only change was subtle at ordinary delivery scale. A separate,
+unsaved close-up inspection camera makes the resulting crown highlights clear;
+the camera is review tooling in ignored build output, not a game camera change.
+Retained after comparing normal Delivery/Sweeper and close-up before/after
+captures: the crown reads polished while the equatorial band stays matte.
+All ten ordinary captures and the close-up run have clean logs. Before sources,
+normal crops and close-up evidence are in `build/stone-polish-review/`.
+No new image assets or shader texture fetches were added. Installed Android
+validation follows the source commit. Weekly quota remaining is 89 percent.

@@ -7,6 +7,9 @@ with triplanar sampling; roughness, contact shadows and ice markings are origina
 procedural shaders in `render/`. The ice texture supplies subtle albedo detail
 under the procedural markings. All three textures use mipmaps and VRAM compression.
 
+The granite is now mapped at 22 cm after comparing the rendered mineral size
+against the manufacturer reference; the original generated image is unchanged.
+
 The PNGs are tracked with Git LFS. Run `git lfs pull` after checkout; CI fetches LFS
 objects before import/export. No repository history was rewritten.
 

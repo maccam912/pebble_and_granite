@@ -76,7 +76,7 @@ func _ready() -> void:
 	granite_material.set_shader_parameter("granite_texture", load("res://assets/textures/curling-granite.png"))
 	shadow_material = CurlRinkArt.shader_material("res://render/contact_shadow.gdshader")
 	for color in ["c99426", "28a6b3"]:
-		var handle_mat := material(color, .32)
+		var handle_mat := material(color, .24)
 		handle_materials.append(handle_mat)
 	if prepare_lighting_source:
 		build_club()
