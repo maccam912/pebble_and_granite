@@ -982,3 +982,26 @@ CI run `40414732645` for source `4cfcb75` completed successfully: all four core
 jobs, Android/macOS/Linux/Windows packages and publication. Physical-phone GPU
 performance and human feel remain separate validation. Weekly quota remaining
 is 86 percent; the broader photographic presentation review remains active.
+
+## Shallow painted wall cladding
+
+Compared the current Delivery/Skip walls with the retained [Carleton Place club
+photograph](https://cpcurling.ca/index.php/about-the-club/club-photos). The reference
+has shallow vertical metal ribs; the existing large flat panels looked more like
+smooth plaster. Added an original procedural normal profile to the existing wall
+finish: 15 cm pitch and 4 mm amplitude, with restrained trough shading and a
+slightly lower painted-surface roughness. Screen derivatives fade the relief
+before the ribs become subpixel. The ceiling retains its previous finish.
+
+Reviewed Delivery, Skip, Sweeper and setup captures. The ribs give the nearer
+walls visible relief and merge into the distant panels, without taking attention
+from the ice. Additional Delivery/Skip stills with a 2 cm camera translation show
+no broad interference bands; these stills do not prove temporal stability on
+all GPUs. `VISUAL_REVIEW_OK`, `RINK_VIEW_OK` and `CLADDING_ANGLE_CAPTURED` pass with
+clean native Compatibility logs. Evidence and the original shader are under
+`build/cladding-review/`.
+
+This changes only the shared finish shader: no new geometry, image assets, draw
+calls, gameplay features, baked-light data or compatibility versions. The
+reference photo remains ignored review material. Installed Android verification
+follows the source commit. Weekly quota remaining is 86 percent.

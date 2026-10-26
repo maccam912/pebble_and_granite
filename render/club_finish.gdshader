@@ -15,7 +15,18 @@ void fragment() {
 	float joint = min(fract(p.x / 1.2), 1.0 - fract(p.x / 1.2));
 	float seam = 1.0 - smoothstep(0.002, 0.006 + fwidth(p.x), joint);
 	ALBEDO = paint_color.rgb * (1.0 - seam * 0.12) + grain * 0.012 + cloud * 0.015;
-	ROUGHNESS = 0.84;
+	if (!ceiling) {
+		// 15 cm pitch, 4 mm amplitude; fade before ribs become subpixel.
+		float rib_phase = p.x / 0.15;
+		float rib_visibility = 1.0 - smoothstep(0.22, 0.65, fwidth(rib_phase));
+		float rib = cos(rib_phase * 6.2831853);
+		float rib_slope = -sin(rib_phase * 6.2831853) * 0.16755 * rib_visibility;
+		vec3 gradient = (VIEW_MATRIX * vec4(1.0, 0.0, 1.0, 0.0)).xyz;
+		gradient -= NORMAL * dot(gradient, NORMAL);
+		NORMAL = normalize(NORMAL - gradient * rib_slope);
+		ALBEDO *= 1.0 - (1.0 - rib) * 0.018 * rib_visibility;
+	}
+	ROUGHNESS = ceiling ? 0.84 : 0.74;
 	// Restrained baked material occlusion where the cladding meets structure.
 	float structure = ceiling ? min(abs(mod(world_position.z + 2.0, 6.0)), abs(mod(world_position.z + 2.0, 6.0) - 6.0))
 		: min(abs(mod(world_position.x + world_position.z, 6.0)), abs(mod(world_position.x + world_position.z, 6.0) - 6.0));
