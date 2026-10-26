@@ -51,6 +51,14 @@ func run() -> void:
 	for i in range(40): game._process(.05)
 	check(game.frame.in_hand.in_play, "Held authority did not cross delivery tee")
 	var thinking: int = game.frame.clock_gold
+	var cancelled := InputEventScreenTouch.new()
+	cancelled.index = 0
+	cancelled.pressed = false
+	cancelled.canceled = true
+	cancelled.position = start
+	game._input(cancelled)
+	game.refresh_online()
+	check(not game.run_active and game.frame.in_hand.suspended, "Online canceled touch released instead of suspending")
 	game._notification(NOTIFICATION_APPLICATION_PAUSED)
 	game.refresh_online()
 	check(game.frame.in_hand.suspended, "Focus loss did not suspend authority delivery")

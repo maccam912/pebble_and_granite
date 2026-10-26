@@ -424,28 +424,34 @@ func update_legacy_delivery() -> void:
 		report = "Release now — hog line." if pose.hog_warning else weight + " weight. Hold steady; finish left or right for curl. A small forward/back finish trims weight."
 		update_labels()
 
+func cancel_pointer() -> void:
+	# An OS-cancelled contact is an interruption, not a voluntary finger lift.
+	if authoritative_delivery and session != null and pointer != -99: advance_local_held()
+	save_practice()
+	pointer = -99
+	held_last_us = -1
+	hold_sweep = false
+	sweeping = false
+	dragging_broom = false
+	if session != null:
+		session.cancel_stroke()
+		if status != null and not run_active and phase != "Stone at rest":
+			phase = "Ready"
+			update_labels()
 func _notification(what: int) -> void:
 	if what == NOTIFICATION_APPLICATION_FOCUS_IN or what == NOTIFICATION_APPLICATION_RESUMED:
 		suspended = false
 	if what == NOTIFICATION_APPLICATION_FOCUS_OUT or what == NOTIFICATION_APPLICATION_PAUSED or what == NOTIFICATION_WM_CLOSE_REQUEST:
-		if authoritative_delivery and session != null and pointer != -99: advance_local_held()
 		suspended = true
-		save_practice()
-		pointer = -99
-		held_last_us = -1
-		hold_sweep = false
-		sweeping = false
-		dragging_broom = false
-		if session != null:
-			session.cancel_stroke()
-			if status != null and not run_active and phase != "Stone at rest":
-				phase = "Ready"
-				update_labels()
+		cancel_pointer()
 
 func _input(event: InputEvent) -> void:
 	if room_panel != null and room_panel.visible: return
 	if session == null: return
 	if event is InputEventScreenTouch:
+		if event.canceled:
+			if pointer == event.index: cancel_pointer()
+			return
 		if event.pressed: begin_pointer(event.index, event.position)
 		elif pointer == event.index: end_pointer(event.position)
 	elif event is InputEventScreenDrag and pointer == event.index:

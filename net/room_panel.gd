@@ -201,12 +201,8 @@ func _process(_delta: float) -> void:
 func show_lobby() -> void:
 	view_match = false
 	if game != null:
-		game.suspend_online_delivery()
+		game.cancel_pointer()
 		game.hide()
-		game.pointer = -99
-		game.hold_sweep = false
-		game.sweeping = false
-		game.session.cancel_stroke()
 	body.show()
 	refresh()
 func leave() -> void:

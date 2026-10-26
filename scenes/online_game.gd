@@ -99,10 +99,9 @@ func suspend_online_delivery() -> void:
 	if online != null and owns_delivery() and (begin_sent or not frame.get("in_hand", {}).is_empty()):
 		var error := online.send_command({"kind": "SuspendDelivery", "suspended": true})
 		if not error.is_empty(): report = error
-func _notification(what: int) -> void:
-	if what in [NOTIFICATION_APPLICATION_FOCUS_OUT, NOTIFICATION_APPLICATION_PAUSED, NOTIFICATION_WM_CLOSE_REQUEST]:
-		suspend_online_delivery()
-	super._notification(what)
+func cancel_pointer() -> void:
+	suspend_online_delivery()
+	super.cancel_pointer()
 func update_delivery() -> void:
 	if pointer == -99 or dragging_broom or sweeping or run_active: return
 	if online.state.get("paused", true): return

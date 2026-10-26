@@ -42,6 +42,20 @@ func run() -> void:
 		check(not game.frame.in_hand.is_empty() and game.frame.in_hand.in_play, "Held stone never crossed tee")
 		var held_y: int = game.frame.in_hand.y_um
 		var thinking: int = game.frame.get("clock_gold", 0)
+		var cancelled := InputEventScreenTouch.new()
+		cancelled.pressed = false
+		cancelled.canceled = true
+		cancelled.position = point + Vector2(0, -25.2)
+		cancelled.index = 1
+		game._input(cancelled)
+		check(game.pointer == 0, "Another cancelled finger interrupted delivery")
+		cancelled.index = 0
+		game._input(cancelled)
+		check(not game.run_active and game.pointer == -99 and not game.frame.in_hand.is_empty(), "Cancelled contact released held stone")
+		check(not game.suspended, "Cancelled contact without focus loss blocked regrip")
+		game.update_spatial(0)
+		game.begin_pointer(0, game.handle_point())
+		check(game.pointer == 0, "Cancelled contact could not be regripped")
 		game.persistence_enabled = true
 		game._notification(Node.NOTIFICATION_WM_CLOSE_REQUEST if match_mode else NOTIFICATION_APPLICATION_PAUSED)
 		var frozen := hash_of(game)

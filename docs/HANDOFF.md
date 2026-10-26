@@ -665,3 +665,13 @@ run verified remote lift before begin acknowledgement, then an automatic held ho
 fault. First-shot wall/simulation were 27.128/27.138 s in that run, max headless
 frame gap 10.176 ms; not a physical-device performance claim. Added the Android
 pause/regrip probe case, pending a clean APK run. Weekly remaining usage: 58%.
+
+## OS-cancelled contacts
+
+An explicit InputEventScreenTouch.canceled event reproduced an unintended release
+after a valid held slide. The input router now treats cancellation as interruption,
+preserves the held plan and allows regrip without waiting for a focus notification.
+Other fingers cannot cancel the active delivery. Local practice/match and online
+fixtures cover this path; online cancellation journals suspension. Room-panel exit
+shares the same interruption path. Held resume, online UI, input routing and
+delivery slide gates passed. Installed Android rerun follows the clean build.
