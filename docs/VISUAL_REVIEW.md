@@ -483,3 +483,20 @@ LFS integrity passed. `c744a20` completed all remote core/package/publish jobs
 successfully; newer frame/sleeve CI remains in progress or queued at this checkpoint.
 Weekly quota remaining is 91 percent. The broader photographic polish goal stays
 active; this checkpoint does not claim physical-device feel or full photorealism.
+
+
+## Gold handle tonal range
+
+The delivery capture's bright yellow handle lost most red-channel shading to
+clipping. Darkened only its base pigment from `e5ac24` to `c99426`, keeping the
+molded geometry, roughness, specular response and all rink lighting unchanged.
+The cap and cantilever now retain more surface shading while remaining clearly
+gold beside cyan. Reviewed Delivery and the close Sweeper fixture; all ten native
+captures pass with a clean runtime log.
+
+Within the fixed delivery handle crop `(600,546)-(676,595)`, using the same yellow
+pixel mask (`R>170, G>110, B<100`), red-channel clipping dropped from 61.29 percent
+to 8.69 percent. This is a screenshot comparison, not a display-calibration claim.
+Before images/source are in ignored `build/handle-tone-review/`. No gameplay,
+shader variant, texture or baked lightmap changed. Android review follows the
+source commit. Weekly quota remaining: 91 percent.
