@@ -310,3 +310,19 @@ The boards and bench seats still have mathematically sharp edges. Review a small
 rounded-edge treatment on those existing wooden pieces before deciding whether
 it earns another geometry/lightmap pass. Keep all simulation geometry, input and
 camera contracts unchanged. The broader photographic polish goal remains active.
+
+## Rounded timber review
+
+Replaced only the existing wooden pieces' sharp long edges with 4-9 mm roundovers,
+using original generated meshes inside the same dimensions. The near rails and
+bench rims now have softer silhouettes and edge highlights. No collision,
+simulation, input, camera or material parameters changed. The mesh check verifies
+the exact bounds, non-degenerate faces and clockwise winding for both board axes.
+
+Reprepared the source and baked/finalized the room (3.50 seconds locally). The
+atlas remains seven 256-square HDR layers, and all 248 baked mesh references
+resolve. All ten native review views and the rink gate pass. The before images
+and original club are retained in ignored `build/bevel-review/base-screenshots/`
+and `base-club/`. Compared Delivery and the close Sweeper view before retaining
+the change. The offline editor again reports seven texture RIDs at shutdown;
+the finalized Compatibility runtime is clean. Installed Android review is next.

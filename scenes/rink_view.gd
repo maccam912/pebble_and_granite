@@ -176,6 +176,8 @@ func cylinder(parent: Node3D, radius: float, height: float, pos: Vector3, mat: M
 	shape.height = height
 	shape.radial_segments = 48
 	return mesh(parent, shape, pos, mat)
+func plank(parent: Node3D, dimensions: Vector3, pos: Vector3, mat: Material, radius := .004) -> MeshInstance3D:
+	return mesh(parent, CurlRinkArt.rounded_plank(dimensions, radius), pos, mat)
 func brush_head(parent: Node3D) -> void:
 	var pad := CapsuleMesh.new()
 	pad.radius = .045
@@ -206,17 +208,17 @@ func build_club() -> void:
 			for x in [-.17, .17]:
 				box(world, Vector3(.14, .05, .22), Vector3(lane + x, .025, end), rubber)
 		for edge in [-2.48, 2.48]:
-			box(world, Vector3(.15, .18, 43.2), Vector3(lane + edge, .07, 17.3), wood)
-			box(world, Vector3(.16, .025, 43.2), Vector3(lane + edge, .17, 17.3), wood)
+			plank(world, Vector3(.15, .18, 43.2), Vector3(lane + edge, .07, 17.3), wood, .006)
+			plank(world, Vector3(.16, .025, 43.2), Vector3(lane + edge, .17, 17.3), wood)
 			box(world, Vector3(.035, .045, 43.2), Vector3(lane + edge - signf(edge) * .065, .05, 17.3), material("c9cecb"))
 	for end in [-4.5, 40.0]:
 		box(world, Vector3(18, 3.8, .25), Vector3(0, 1.9, end), plaster)
 		box(world, Vector3(18, .8, .06), Vector3(0, .4, end + (.15 if end < 0 else -.15)), material("2e4851"))
-		box(world, Vector3(18, .065, .08), Vector3(0, .83, end + (.16 if end < 0 else -.16)), cross_wood)
+		plank(world, Vector3(18, .065, .08), Vector3(0, .83, end + (.16 if end < 0 else -.16)), cross_wood)
 	for side in [-9.0, 9.0]:
 		box(world, Vector3(.25, 3.8, 47), Vector3(side, 1.9, 17.2), plaster)
 		box(world, Vector3(.07, .9, 47), Vector3(side - signf(side) * .15, .45, 17.2), material("344f58"))
-		box(world, Vector3(.09, .06, 47), Vector3(side - signf(side) * .16, .92, 17.2), wood)
+		plank(world, Vector3(.09, .06, 47), Vector3(side - signf(side) * .16, .92, 17.2), wood)
 		for z in range(0, 40, 6):
 			box(world, Vector3(.18, 3.8, .13), Vector3(side - signf(side) * .19, 1.9, z), steel)
 			box(world, Vector3(.20, 1.0, 3.6), Vector3(side - signf(side) * .21, 2.45, z + 2.5), material("526e79", .2))
@@ -226,7 +228,7 @@ func build_club() -> void:
 			box(world, Vector3(.24, .045, 3.7), Vector3(side - signf(side) * .22, 2.97, z + 2.5), steel)
 	# Benches, kickboards and sheet signs give familiar scale to the existing club.
 	for lane in [-6.0, 0.0, 6.0]:
-		box(world, Vector3(2.7, .075, .35), Vector3(lane, .45, -4.05), cross_wood)
+		plank(world, Vector3(2.7, .075, .35), Vector3(lane, .45, -4.05), cross_wood, .009)
 		for x in [-1.05, 1.05]: box(world, Vector3(.06, .45, .25), Vector3(lane + x, .20, -4.05), steel)
 		club_sign(str(int(lane / 6) + 2).pad_zeros(2), Vector3(lane, 1.12, -4.31), 44, .004, "e2d2ae")
 	box(world, Vector3(6.2, .95, .06), Vector3(0, 2.35, -4.31), material("19333e"))

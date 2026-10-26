@@ -21,6 +21,49 @@ static func handle_cap() -> ArrayMesh:
 		Vector2(.103, .136), Vector2(.10, .140), Vector2(.086, .145),
 		Vector2(.045, .149), Vector2(0, .15)]))
 
+static func rounded_plank(dimensions: Vector3, radius: float) -> ArrayMesh:
+	# Round the four long edges within the original timber's exact bounds.
+	# Three segments per corner keep the silhouette soft at normal game scale.
+	var along_x := dimensions.x > dimensions.z
+	var width := dimensions.z if along_x else dimensions.x
+	var length := dimensions.x if along_x else dimensions.z
+	var half := Vector2(width, dimensions.y) * .5
+	var r := minf(radius, minf(half.x, half.y) * .8)
+	var profile := PackedVector2Array()
+	var normals := PackedVector2Array()
+	var centers := [Vector2(1, 1), Vector2(-1, 1), Vector2(-1, -1), Vector2(1, -1)]
+	for corner in range(4):
+		var center: Vector2 = centers[corner] * (half - Vector2.ONE * r)
+		for step in range(4):
+			var angle := (float(corner) + float(step) / 3.0) * PI * .5
+			var normal := Vector2(cos(angle), sin(angle))
+			profile.append(center + normal * r)
+			normals.append(normal)
+	var surface := SurfaceTool.new()
+	surface.begin(Mesh.PRIMITIVE_TRIANGLES)
+	for index in range(profile.size()):
+		var next := (index + 1) % profile.size()
+		for vertex in [[index, -1], [index, 1], [next, -1], [next, -1], [index, 1], [next, 1]]:
+			var p: Vector2 = profile[vertex[0]]
+			var n: Vector2 = normals[vertex[0]]
+			plank_vertex(surface, Vector3(p.x, p.y, vertex[1] * length * .5),
+				Vector3(n.x, n.y, 0), Vector2(float(vertex[0]) / profile.size(), (vertex[1] + 1) * .5), along_x)
+		for end in [-1.0, 1.0]:
+			var cap_normal := Vector3(0, 0, end)
+			plank_vertex(surface, Vector3(0, 0, end * length * .5), cap_normal, Vector2(.5, .5), along_x)
+			for point in [next, index] if end > 0 else [index, next]:
+				var p := profile[point]
+				plank_vertex(surface, Vector3(p.x, p.y, end * length * .5), cap_normal, p / (half * 2) + Vector2.ONE * .5, along_x)
+	return surface.commit()
+
+static func plank_vertex(surface: SurfaceTool, point: Vector3, normal: Vector3, uv: Vector2, along_x: bool) -> void:
+	if along_x:
+		point = Vector3(point.z, point.y, -point.x)
+		normal = Vector3(normal.z, normal.y, -normal.x)
+	surface.set_normal(normal)
+	surface.set_uv(uv)
+	surface.add_vertex(point)
+
 static func lathe(profile: PackedVector2Array) -> ArrayMesh:
 	var vertices := PackedVector3Array()
 	var normals := PackedVector3Array()
