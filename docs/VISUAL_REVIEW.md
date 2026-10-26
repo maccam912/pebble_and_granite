@@ -609,3 +609,36 @@ The offline editor retains its known seven-texture-RID shutdown warning; the
 ignored preparation scene can also report an old lightmap UID with text-path
 fallback after finalization. Neither occurs in the finalized runtime review.
 Installed Android validation follows the source commit.
+
+
+## Installed finer-bake checkpoint: build 64
+
+Clean Android build 64 (`9aace04`, `source_dirty: false`, SHA-256
+`1e5a7a0d3b0d6a696c120e457a25336951f6bccc136083a6ac44c2b32fa1665d`)
+passed the installed Delivery/four-camera review. The sharper timber shading and
+new atlas render correctly on Compatibility/GLES. The captured Godot runtime
+log has no warning/error. Evidence is in `build/evidence/polish/android-64/`
+and `build/android-64-review.log`. The wrapper restored all four original save
+files/backups byte for byte and stopped the app.
+
+## Forward-facing handle
+
+The user requested the final stone handle point forward rather than sideways.
+Rotated the existing grip mesh, rounded tip and cyan identification stripe by
+90 degrees. The neutral ready pose now aligns the handle's free end along the
+delivery sightline. Existing simulated turns and the selected curl pose remain
+relative to that new visual baseline; no recorded state or replay angle changes.
+
+Reposed the existing palm, curled fingers, thumb and wrist around the longitudinal
+grip, retaining the sleeve's body-side endpoint. Seated the hand 14 mm lower to
+close the contact gap seen in the first neutral/curl-pose comparison. The input
+hit point and stone position remain unchanged. No new mesh, texture, lightmap,
+physics, networking or input behavior was added.
+
+Reviewed the ready/held delivery at normal game scale and neutral/left/right curl
+poses at 1920 x 1200. All ten final review captures and the rink gate pass; the
+gate now checks forward handle alignment for all three tested broom sightlines.
+Input-route, delivery-slide, held-resume and online-UI gates also pass. Logs are
+clean. Before source/screens and pose comparisons are in ignored
+`build/forward-handle-review/`. Installed Android validation follows this source
+commit. Weekly quota remaining is 89 percent; photographic polish is ongoing.

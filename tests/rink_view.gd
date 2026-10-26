@@ -47,6 +47,8 @@ func run() -> void:
 		forward.y = 0
 		check(forward.normalized().dot(scene.rink.delivery_heading()) > .99999, "Delivery camera does not face the selected broom")
 		check(absf(scene.broom_screen_point().x - scene.handle_point().x) < 1, "Selected broom is off the delivery sightline")
+		var grip: Node3D = scene.rink.preview.get_node("HandleGrip")
+		check((-grip.global_basis.x).normalized().dot(scene.rink.delivery_heading()) > .99999, "Ready handle does not point forward along the delivery sightline")
 	scene.broom_mm = -900
 	scene.update_spatial(0)
 	var lights := 0
