@@ -853,3 +853,33 @@ the ice is excluded from diffuse lightmapping, so the room bake is unchanged.
 No physics, input, cameras, rules or compatibility versions changed. The requested
 forward handle orientation remains intact. Installed Android validation follows
 the source commit. Weekly quota remaining is 88 percent.
+
+## Installed priority-ice checkpoint: build 69
+
+Clean Android build 69 (`0e3f99b`, `source_dirty: false`, SHA-256
+`fe1cfdac3e20da6d29baff1a749ef729eada64bf61941ff8d2a9d155ceccfddc`)
+passed the complete direct-touch probe: both curl directions, spatial scrub/lift,
+accessible hold sweeping, held pause/resume and regrip, and exactly one held hog
+fault. Fresh-ice acknowledgement took 0.45-0.46 seconds on the existing warm
+emulator. The result records the matching APK hash. Evidence is in
+`build/probes/touch-f6b5751785774839a54b770ae72c547e/` and
+`build/android-69-full-probe.log`.
+
+Reviewed the installed Delivery, actual moving-stone Sweeper, camera selections,
+Skip/House rings, setup and room dialog. The grain and uneven sheen render on
+Android, with the deeper roof geometry and forward handle retained. The capture
+logs have no Godot warning/error. The full-probe runtime log is preserved as
+`build/evidence/polish/android-69/probe-app-log.txt`; `app-log.txt` is the later
+camera/menu review. Both wrappers restored the four original saves/backups byte
+for byte and stopped the app. The installed review log is
+`build/android-69-review.log`. No physical-phone GPU or human-feel claim is made.
+
+LFS integrity passes and the implementation matched the pushed branch. Remote
+CI completed all core, package and publish jobs for `7e351a8`. The roof commit
+`f0e9200` has all four OS core jobs and the Linux package green; other packages
+are still running. The newer ice/head workflow is pending, so latest-head CI
+and release completion remain unverified. Weekly quota remaining is 87 percent.
+
+The broad photographic polish objective remains active. This pass addressed the
+user's priority ice criticism through several reviewed material trials, without
+new gameplay features or changes to simulation ice, input or painted dimensions.
