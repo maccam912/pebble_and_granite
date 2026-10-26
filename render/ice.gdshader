@@ -28,14 +28,19 @@ void fragment() {
 	float center = 1.0 - smoothstep(0.0065-max(fwidth(p.x), 0.001), 0.0065+max(fwidth(p.x), 0.001), abs(p.x));
 	paint = mix(paint, vec3(0.20, 0.27, 0.30), max(tee, center) * 0.65);
 	// A thin frozen layer softens the painted rings. Pebble is kept subtle,
-	// and fades with pixel footprint instead of sparkling in distant views.
+	// and fades with pixel footprint while retaining texture in close views.
 	float cloud = surface_noise(p * 2.0) * 0.018 + surface_noise(p * 9.0) * 0.012;
-	float detail = 1.0 - smoothstep(0.08, 0.35, length(fwidth(p * 160.0)));
-	float pebble = surface_noise(p * 160.0);
+	float detail = 1.0 - smoothstep(0.35, 1.0, length(fwidth(p * 160.0)));
+	vec2 pebble_cell = floor(p * 160.0);
+	vec2 pebble_center = (vec2(hash21(pebble_cell), hash21(pebble_cell + 17.7)) - 0.5) * 0.36;
+	float pebble_radius = 0.20 + hash21(pebble_cell + 8.1) * 0.12;
+	vec2 pebble_offset = (fract(p * 160.0) - 0.5 - pebble_center) / pebble_radius;
+	float pebble_cap = 1.0 - dot(pebble_offset, pebble_offset);
+	vec2 pebble_normal = pebble_offset * smoothstep(0.0, 0.25, pebble_cap);
 	float ice_grain = texture(ice_texture, p * 2.0).r;
 	ALBEDO = (mix(paint, vec3(0.64, 0.68, 0.70), 0.035) + cloud - 0.015) * mix(0.96, 1.025, ice_grain);
 	ROUGHNESS = 0.30 + ice_grain * 0.12;
 	SPECULAR = 0.38;
-	NORMAL_MAP = vec3(0.5 + (pebble - 0.5) * 0.065 * detail, 0.5 + (surface_noise(p * 160.0 + 0.6) - 0.5) * 0.065 * detail, 1.0);
-	NORMAL_MAP_DEPTH = 0.32;
+	NORMAL_MAP = vec3(vec2(0.5) + pebble_normal * 0.09 * detail, 1.0);
+	NORMAL_MAP_DEPTH = 0.65;
 }

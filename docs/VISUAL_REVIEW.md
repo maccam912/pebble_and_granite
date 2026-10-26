@@ -537,3 +537,41 @@ projection round trips and authoritative state. Input routes, delivery-slide,
 held-resume and online UI gates pass with clean logs. Installed Android touch and
 visual validation follows the source commit; GPU cost on physical phones remains
 unverified. Weekly quota remaining: 90 percent.
+
+
+## Installed resolution checkpoint: build 62
+
+Clean Android build 62 (`003d5fd`, `source_dirty: false`, SHA-256
+`344b908ca293bb1a1e4244b85168e187ca536bf12a03048ffff195ce6970af1f`)
+passed the complete direct-touch probe, including both curl directions, spatial
+and hold sweeping, held pause/resume and regrip, and exactly one held hog fault.
+The held-delivery capture shows the sharper rink with unchanged grip alignment.
+Fresh-ice acknowledgement took 0.44-0.46 seconds on the existing emulator.
+The runtime Godot log is clean; the wrapper restored all four original save files
+and backups byte for byte and stopped the app. Evidence is in
+`build/probes/touch-bcbd226f0c3d462a9b8dc18deace1c52/`,
+`build/evidence/polish/android-62/` and `build/android-62-full-probe.log`.
+The previous glazing commit `9aa89be` has now passed all remote core, package and
+publish jobs. This does not establish physical-phone GPU cost or human play feel.
+
+## Fine pebble sheen
+
+The photographic reference [Curling stones on rink with visible pebble, Felix](https://commons.wikimedia.org/wiki/File:Curling_stones_on_rink_with_visible_pebble.jpg)
+shows a fine broken sheen near the stones. Our close ice appeared almost smooth
+because the existing normal detail faded too early. The reference is retained
+only in ignored `build/reference/visible-pebble.jpg`; it is not an app asset.
+
+An initial stronger noise normal looked like wrinkled plastic and was rejected.
+The retained shader uses original, deterministic scattered round caps, 2.5-4 mm
+across, with a restrained normal strength and a pixel-footprint fade. This adds
+small highlights near the delivery stone while leaving distant ice readable.
+No geometry, painted markings, base colour, roughness, lightmap, simulation or
+new image asset changed. Normal strength was reduced after the second trial.
+
+Reviewed Delivery, Sweeper and House plus all ten normal and ten enlarged
+captures. Four small camera-shift captures also show the surface treatment at
+nearby viewpoints; these are still-image checks, not a frame-rate or temporal
+stability benchmark. All runtime logs are clean. Before/trial shaders, crops,
+review logs and captures remain in ignored `build/ice-pebble-review/`.
+Installed Android validation follows this source commit. Weekly quota remaining
+is 90 percent; the broader photographic polish objective remains active.
