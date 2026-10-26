@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="256" height="80" viewBox="0 0 256 80">
+  <rect width="256" height="80" fill="#26343b"/>
+  <!-- Original P/G equipment stencil; no font or third-party artwork. -->
+  <g fill="none" stroke="#eeeae0" stroke-width="11" stroke-linecap="square" stroke-linejoin="round">
+    <path d="M35 61V19H58Q73 19 73 33T58 47H35"/>
+    <path d="M222 23Q215 17 203 19Q181 21 181 40T203 61Q215 61 222 57V42H207"/>
+  </g>
+</svg>

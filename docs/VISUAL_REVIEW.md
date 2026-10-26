@@ -912,3 +912,36 @@ unchanged projected sweep point (629.7709, 445.0732), aiming round-trip and nati
 state isolation. Source backups, captures and final `*-fixed.log` files are in
 `build/broom-polish-review/`. Installed Android review follows the source commit.
 Weekly quota remaining is 87 percent.
+
+## Installed brush proportions, then overhead contrast refinement
+
+Clean Android build 70 (`9b8304c`, `source_dirty: false`, SHA-256
+`87117692b2045b2851ec189d4048039fb9b408e6237d35f444271385146e36af`)
+passed the complete direct-touch probe and camera/menu review. Both curl
+directions, spatial scrub/lift, accessible hold, held pause/resume/regrip and
+exactly one hog fault pass. Fresh acknowledgement took 0.44-0.46 seconds.
+The matching result is in `build/probes/touch-df2c5435177f47da92144670a1251303/`;
+logs are `build/android-70-full-probe.log` and `build/android-70-review.log`.
+Both wrappers verified the original four saves/backups restored byte for byte
+and stopped the app. Godot logs are clean; the full probe log is preserved as
+`build/evidence/polish/android-70/probe-app-log.txt`.
+
+A separate overhead contrast review revealed that the dark housing blends into
+the blue ring. Added an original off-white geometric P/G equipment stencil at
+its two ends, clear of the socket. It follows the visual role of printed marks
+in the manufacturer reference photographs while using only original vector paths.
+The small SVG maps onto the existing mesh and material; no additional draw call
+or geometry is required. Its lossless import uses mipmaps. Provenance is in
+`assets/equipment/README.md`.
+
+Retained after before/after House-view comparisons over blue (-1550 mm), red
+(450 mm) and white (2100 mm), a close-up, and the ten-screen native review.
+The light marks keep the target visible over blue while the dark outline remains
+clear on white. Final `mark-*.log` captures, `RINK_VIEW_OK` and `SWEEPING_OK` pass
+with clean runtime logs in `build/broom-polish-review/`. Input, mesh proportions,
+brush transforms, ice and the forward handle are unchanged by the marking pass.
+The direct-touch probe now also captures `hold-sweeping.png` before lifting the
+existing accessible-hold contact, so installed visual reviews can inspect the
+active brush. Gameplay assertions are unchanged. Installed validation of the
+marked material follows its source commit. Physical-phone GPU performance and
+human feel remain separate validation. Weekly quota remaining is 87 percent.

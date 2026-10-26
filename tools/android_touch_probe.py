@@ -172,6 +172,7 @@ for direction, label in [(1, 'right'), (-1, 'left')]:
         # centered effort through real touchscreen down/up events.
         event('DOWN', 907, 1012)
         time.sleep(1.2)
+        capture('hold-sweeping')
         event('UP', 907, 1012)
         time.sleep(1.2)
         held = [r for r in journal('hold-swept')['records'] if r['kind'] == 'Shot'][0]['data']

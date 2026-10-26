@@ -184,7 +184,9 @@ func brush_head(parent: Node3D) -> void:
 	var pad := CurlRinkArt.rounded_pad(Vector3(.27, .024, .072), .034, .006)
 	mesh(parent, pad, Vector3(0, .013, 0), fabric)
 	var shell := CurlRinkArt.rounded_pad(Vector3(.252, .020, .071), .032, .006)
-	var backing := mesh(parent, shell, Vector3(0, .032, 0), material("26343b", .35))
+	var housing := material("ffffff", .35)
+	housing.albedo_texture = load("res://assets/equipment/brush-mark.svg")
+	var backing := mesh(parent, shell, Vector3(0, .032, 0), housing)
 	backing.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	cylinder(parent, .025, .035, Vector3(0, .0575, 0), material("26343b", .35))
 
