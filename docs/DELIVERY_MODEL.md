@@ -46,12 +46,12 @@ stationary-hand continuation, cancellation, invalid input and repeated release.
 - [x] Installed Android touch and full-match/network regression coverage for the
   direct gesture; repeat lifecycle-specific Android and network checks after integration.
 
-Input mapping metadata is version 4; delivery mapping is version 3. The old fixed-origin `deliver` and
+Input mapping metadata is version 4; delivery mapping is version 4. The old fixed-origin `deliver` and
 `delivery_packet` entry points remain diagnostic fixture APIs; playable local
 and online scenes use held lifecycle commands. `slide_packet` remains diagnostic. No power meter was added.
-The main interaction surface is the projected 3D handle. The final 120 ms
-of motion selects left/right rotation above a dead zone, with forward/back speed
-trim bounded to ±70 mm/s. A quiet hand releases without rotation. Curl flicks
+The main interaction surface is the projected 3D handle. A sideways finish of four logical pixels selects rotation during the slide,
+with a 350 ms grace period before lift. Forward/back speed trim still uses the
+last 120 ms and is bounded to ±70 mm/s. A quiet hand releases without rotation. Curl flicks
 do not also change the broom aim. Spatial sweeping remains unimplemented.
 
 ## Authority lifecycle integration
@@ -98,3 +98,26 @@ non-suspended held records retain their serialized bytes and hashes.
 Online pose updates currently arrive at 20 Hz. There is no latency prediction or
 rewind of the held slide; release uses host receipt time. Physical-device latency
 and feel tuning remain an explicit follow-up, alongside spatial sweeping.
+
+## Analog launch and gentle curl (26 October 2026)
+
+Protocol 11 adds `BeginAnalogDelivery`, carrying a bounded `DeliveryLine` with
+`x_mm` (±450 mm) and `aim_mm` (±1500 mm relative to the called broom). Pullback and
+push move the stone sideways at 6 mm per logical pixel. At the fixed drive-window
+end, the mapper freezes the lateral origin and push slope; the latter maps a
+sideways/forward ratio to a target offset with gain 3000 mm. Both are provisional
+feel coefficients. A straight push follows the selected broom. Off-axis pushes
+change aim even when a later finishing gesture applies the opposite curl.
+
+Held x follows the straight ray from that captured origin toward the adjusted
+broom, using authoritative y/time. Practice and match release start at that same
+x/y and use the same ray, so lifting cannot snap the stone to the center line.
+Finish line trim is rejected for analog plans: after slide start, lateral motion
+only selects curl. The live curl label and handle preview use the same read-only
+recognizer as the release. Small jitter remains neutral; old gestures expire and
+regrip starts a fresh finishing window without changing the held launch line.
+
+Old `BeginDelivery` journals and pending saves keep their exact behavior via an
+absent optional line field. Their serialized bytes/hashes and physics goldens are
+unchanged. Match/practice schemas, rules 4 and physics model 3 remain unchanged;
+protocol 11 prevents mixed-version rooms from accepting the new command.

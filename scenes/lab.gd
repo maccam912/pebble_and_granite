@@ -170,7 +170,11 @@ func update_spatial(delta: float) -> void:
 	rink.hand_held = pointer != -99 and not dragging_broom and not sweeping and not run_active
 	rink.pull_offset = clampf((stroke_trace[-1].y - stroke_trace[0].y) * .004, -.08, .18) if rink.hand_held and stroke_trace.size() > 1 and phase in ["Grip", "Pull", "Drive"] else 0.0
 	var held: Dictionary = frame.get("in_hand", {}) if authoritative_delivery else {}
-	rink.delivery_y = float(held.y_um) / 1000000.0 if not held.is_empty() else (float(session.delivery_pose(input_clock.call()).y_um) / 1000000.0 if aiming else -37.8)
+	var gesture: Dictionary = session.delivery_pose(input_clock.call())
+	rink.delivery_y = float(held.y_um) / 1000000.0 if not held.is_empty() else (float(gesture.y_um) / 1000000.0 if aiming else -37.8)
+	rink.delivery_x = float(held.get("x_um", 0)) / 1000000.0 if not held.is_empty() else (float(gesture.get("x_mm", 0)) / 1000.0 if rink.hand_held else 0.0)
+	rink.delivery_aim_mm = int(held.get("aim_mm", 0)) if not held.is_empty() else int(gesture.get("aim_mm", 0))
+	rink.sliding = not held.is_empty() or phase == "Slide"
 	rink.render_frame(frame, run_active, hold_sweep or sweeping, broom_mm, turn, aiming, delta)
 func broom_screen_point() -> Vector2:
 	return rink.broom_point() if spatial_view and rink != null else house_point(Vector2(float(broom_mm) / 1000.0, 0))
@@ -212,7 +216,7 @@ func reset(persist := true) -> void:
 	accumulator = 0.0
 	path.clear()
 	stroke_trace.clear()
-	report = ("House camera: drag the broom to aim." if spatial_view else "Drag the broom in the house.") + "\nGrab the handle on the ice. Pull back, push forward, hold, then flick left or right as you release."
+	report = ("House camera: drag the broom to aim." if spatial_view else "Drag the broom in the house.") + "\nGrip handle; pull back and push. Sideways sets aim.\nOnce sliding, nudge left/right for curl, then lift."
 	update_labels()
 	queue_redraw()
 	if match_mode:
@@ -234,7 +238,7 @@ func update_labels() -> void:
 	if feedback_bg != null:
 		var compact := phase == "Slide"
 		feedback_bg.position = Vector2(50, 642) if compact else Vector2(50, 580)
-		feedback_bg.size = Vector2(280 if report.to_lower().contains("hog") else 190, 48) if compact else Vector2(565, 110)
+		feedback_bg.size = Vector2(365, 70) if compact else Vector2(565, 110)
 		report_label.position = feedback_bg.position + Vector2(12, 11)
 		report_label.size = feedback_bg.size - Vector2(24, 12)
 	clock_label.visible = match_mode
@@ -405,7 +409,7 @@ func update_delivery() -> void:
 	if frame.get("in_hand", {}).is_empty():
 		var target: int = session.delivery_target(input_clock.call())
 		if target == 0: return
-		var error: String = session.begin_held(target, broom_mm)
+		var error: String = session.begin_analog_held(target, broom_mm) if spatial_view else session.begin_held(target, broom_mm)
 		if not error.is_empty(): report = error; return
 		frame = session.frame()
 		held_last_us = input_clock.call()
@@ -416,7 +420,7 @@ func update_delivery() -> void:
 	if held.is_empty(): return
 	phase = "Slide"
 	var weight := "Soft" if held.target_mm_s < 1950 else ("Draw" if held.target_mm_s < 2300 else "Firm")
-	report = "Release now — hog line." if held.hog_warning else weight + " weight"
+	report = delivery_feedback(weight, held.hog_warning)
 	if frame.global_tick - last_save_tick >= 240: save_practice()
 	update_labels()
 
@@ -428,8 +432,13 @@ func update_legacy_delivery() -> void:
 	elif pose.slide_tick > 0:
 		phase = "Slide"
 		var weight := "Soft" if pose.target_mm_s < 1950 else ("Draw" if pose.target_mm_s < 2300 else "Firm")
-		report = "Release now — hog line." if pose.hog_warning else weight + " weight"
+		report = delivery_feedback(weight, pose.hog_warning)
 		update_labels()
+
+func delivery_feedback(weight: String, hog_warning: bool) -> String:
+	if spatial_view: turn = int(session.delivery_pose(input_clock.call()).get("turn", 0))
+	var curl := "Curl left ←" if turn < 0 else ("Curl right →" if turn > 0 else "No curl · nudge left/right to turn")
+	return ("Release now — hog line." if hog_warning else weight + " weight") + "\n" + curl
 
 func cancel_pointer() -> void:
 	# An OS-cancelled contact is an interruption, not a voluntary finger lift.
@@ -530,7 +539,7 @@ func end_pointer(p: Vector2) -> void:
 	release_report = session.lift(input_clock.call(), q.x, q.y)
 	if spatial_view:
 		turn = int(release_report.get("turn", 0))
-		if turn != 0: release_report.line_mm = 0
+		release_report.line_mm = 0
 	if not authoritative_delivery and release_report.get("hog_violation", false):
 		var error: String = session.hog_violation()
 		frame = session.frame()
@@ -543,7 +552,8 @@ func end_pointer(p: Vector2) -> void:
 	else:
 		var error := ""
 		if authoritative_delivery:
-			if frame.get("in_hand", {}).is_empty(): error = session.begin_held(release_report.target_mm_s, broom_mm)
+			if frame.get("in_hand", {}).is_empty():
+				error = session.begin_analog_held(release_report.target_mm_s, broom_mm) if spatial_view else session.begin_held(release_report.target_mm_s, broom_mm)
 			if error.is_empty(): error = session.release_held(release_report.trim_mm_s, release_report.line_mm, turn)
 		else: error = session.deliver_slide(release_report.speed_um_s, release_report.y_um, clampi(broom_mm + release_report.line_mm, -2200, 2200), turn)
 		if error.is_empty():

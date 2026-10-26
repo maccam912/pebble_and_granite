@@ -85,6 +85,7 @@ impl Practice {
             target_mm_s,
             broom_mm,
             elapsed_ms: 0,
+            line: None,
         };
         pending.validate()?;
         if self.active.is_some()
@@ -102,6 +103,21 @@ impl Practice {
             return Err("cannot begin held practice delivery");
         }
         self.log.pending_delivery = Some(pending);
+        Ok(())
+    }
+    pub fn begin_analog_delivery(
+        &mut self,
+        target_mm_s: i64,
+        broom_mm: i64,
+        line: curl_proto::session::DeliveryLine,
+    ) -> Result<(), &'static str> {
+        line.validate()?;
+        self.begin_delivery(target_mm_s, broom_mm)?;
+        self.log
+            .pending_delivery
+            .as_mut()
+            .expect("begun delivery")
+            .line = Some(line);
         Ok(())
     }
     pub fn advance_delivery(&mut self, ms: u32) -> Result<(), &'static str> {
@@ -150,6 +166,7 @@ impl Practice {
         if !(-70..=70).contains(&trim_mm_s)
             || !(-120..=120).contains(&line_mm)
             || !(-1..=1).contains(&turn)
+            || (pending.line.is_some() && line_mm != 0)
         {
             return Err("invalid finishing gesture");
         }
@@ -158,9 +175,16 @@ impl Practice {
         let mut release = Release::draw();
         release.stone = id;
         release.team = id % 2;
+        release.pos.x = curl_fx::Fx::ratio(pending.x_um(), 1_000_000);
         release.pos.y = curl_fx::Fx::ratio(pose.y_um, 1_000_000);
+        let target = pending
+            .line
+            .as_ref()
+            .map_or((pending.broom_mm + line_mm).clamp(-2200, 2200), |line| {
+                line.target_mm(pending.broom_mm)
+            });
         release.vel = curl_fx::V2::new(
-            curl_fx::Fx::ratio((pending.broom_mm + line_mm).clamp(-2200, 2200), 1000),
+            curl_fx::Fx::ratio(target, 1000) - release.pos.x,
             -release.pos.y,
         )
         .unit()

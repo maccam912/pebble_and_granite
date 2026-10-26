@@ -118,6 +118,7 @@ impl CurlSession {
                     target_mm_s: d.target_mm_s,
                     broom_mm: d.broom_mm,
                     elapsed_ms: d.elapsed_ms,
+                    line: d.line.clone(),
                 })
         } else {
             self.practice.log.pending_delivery.clone()
@@ -140,6 +141,28 @@ impl CurlSession {
             })
         } else {
             self.practice.begin_delivery(target_mm_s, broom_mm)
+        };
+        result.map_or_else(|e| e.into(), |_| GString::new())
+    }
+    #[func]
+    fn begin_analog_held(&mut self, target_mm_s: i64, broom_mm: i64) -> GString {
+        let line = curl_proto::session::DeliveryLine {
+            x_mm: self.stroke.launch_x_mm(),
+            aim_mm: self.stroke.launch_aim_mm(),
+        };
+        let result = if let Some(game) = &mut self.game {
+            game.apply(curl_match::recorded::Record::BeginAnalogDelivery {
+                seat: Seat {
+                    team: game.game.delivering_team(),
+                    position: game.game.throwing_seat(),
+                },
+                target_mm_s,
+                broom_mm,
+                line,
+            })
+        } else {
+            self.practice
+                .begin_analog_delivery(target_mm_s, broom_mm, line)
         };
         result.map_or_else(|e| e.into(), |_| GString::new())
     }
@@ -483,6 +506,9 @@ impl CurlSession {
         let pose = self.stroke.pose(us.max(0) as u64);
         let mut d = VarDictionary::new();
         d.set("target_mm_s", self.stroke.target_mm_s());
+        d.set("turn", self.stroke.finish_turn(us.max(0) as u64));
+        d.set("x_mm", self.stroke.launch_x_mm());
+        d.set("aim_mm", self.stroke.launch_aim_mm());
         d.set("y_um", pose.y_um);
         d.set("in_play", pose.in_play);
         d.set("hog_warning", pose.hog_warning);
@@ -535,6 +561,11 @@ fn pending_frame(pending: Option<&curl_proto::session::PendingDelivery>) -> VarD
         data.set("elapsed_ms", pending.elapsed_ms as i64);
         data.set("broom_mm", pending.broom_mm);
         data.set("y_um", pose.y_um);
+        data.set("x_um", pending.x_um());
+        data.set(
+            "aim_mm",
+            pending.line.as_ref().map_or(0, |line| line.aim_mm),
+        );
         data.set("in_play", pose.in_play);
         data.set("hog_warning", pose.hog_warning);
     }
@@ -583,6 +614,7 @@ pub(crate) fn presentation_frame(
                 target_mm_s: held.target_mm_s,
                 broom_mm: held.broom_mm,
                 elapsed_ms: held.elapsed_ms,
+                line: held.line.clone(),
             });
     let mut held_frame = pending_frame(pending.as_ref());
     if let Some(held) = game.and_then(|a| a.in_hand.as_ref()) {

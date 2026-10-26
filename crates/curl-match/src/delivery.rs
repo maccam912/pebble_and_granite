@@ -22,6 +22,8 @@ pub struct InHand {
     pub elapsed_ms: u32,
     #[serde(default, skip_serializing_if = "is_false")]
     pub suspended: bool,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub line: Option<curl_proto::session::DeliveryLine>,
 }
 fn is_false(value: &bool) -> bool {
     !*value
@@ -29,6 +31,11 @@ fn is_false(value: &bool) -> bool {
 impl InHand {
     pub fn pose(&self) -> Pose {
         slide_pose(self.target_mm_s, self.elapsed_ms as u64 * HZ / 1000)
+    }
+    pub fn x_um(&self) -> i64 {
+        self.line
+            .as_ref()
+            .map_or(0, |line| line.x_um(self.broom_mm, self.pose().y_um))
     }
 }
 impl Authority {
@@ -72,8 +79,21 @@ impl Authority {
             broom_mm,
             elapsed_ms: 0,
             suspended: false,
+            line: None,
         });
         self.last_resolution = None;
+        Ok(())
+    }
+    pub fn begin_analog_delivery(
+        &mut self,
+        seat: Seat,
+        target_mm_s: i64,
+        broom_mm: i64,
+        line: curl_proto::session::DeliveryLine,
+    ) -> Result<(), &'static str> {
+        line.validate()?;
+        self.begin_delivery(seat, target_mm_s, broom_mm)?;
+        self.in_hand.as_mut().expect("begun delivery").line = Some(line);
         Ok(())
     }
     pub fn suspend_delivery(&mut self, seat: Seat, suspended: bool) -> Result<(), &'static str> {
@@ -105,6 +125,7 @@ impl Authority {
             || !(-70..=70).contains(&trim_mm_s)
             || !(-120..=120).contains(&line_mm)
             || !(-1..=1).contains(&turn)
+            || (delivery.line.is_some() && line_mm != 0)
         {
             return Err("invalid delivery release");
         }
@@ -113,9 +134,15 @@ impl Authority {
             return Err("delivery already reached hog line");
         }
         let mut release = Release::draw();
+        release.pos.x = Fx::ratio(delivery.x_um(), 1_000_000);
         release.pos.y = Fx::ratio(pose.y_um, 1_000_000);
-        let broom = (delivery.broom_mm + line_mm).clamp(-2200, 2200);
-        release.vel = V2::new(Fx::ratio(broom, 1000), -release.pos.y).unit()
+        let broom = delivery
+            .line
+            .as_ref()
+            .map_or((delivery.broom_mm + line_mm).clamp(-2200, 2200), |line| {
+                line.target_mm(delivery.broom_mm)
+            });
+        release.vel = V2::new(Fx::ratio(broom, 1000) - release.pos.x, -release.pos.y).unit()
             * Fx::ratio(pose.speed_um_s + trim_mm_s * 1000, 1_000_000);
         release.spin = Fx::ratio(12 * turn, 100);
         let mut next = self.clone();
@@ -209,6 +236,89 @@ mod tests {
         let restored = RecordedMatch::parse(m.json().unwrap().as_bytes()).unwrap();
         assert_eq!(restored.hash(), m.hash());
         assert_eq!(restored.in_hand, m.in_hand);
+    }
+    #[test]
+    fn analog_line_matches_practice_replays_and_releases_without_a_sideways_snap() {
+        use curl_proto::session::DeliveryLine;
+        for direction in [-1, 1] {
+            let mut m = game();
+            let mut practice = crate::practice::Practice::new(42);
+            let line = DeliveryLine {
+                x_mm: direction * 150,
+                aim_mm: direction * 300,
+            };
+            m.apply(Record::BeginAnalogDelivery {
+                seat: SEAT,
+                target_mm_s: 2050,
+                broom_mm: direction * 900,
+                line: line.clone(),
+            })
+            .unwrap();
+            practice
+                .begin_analog_delivery(2050, direction * 900, line)
+                .unwrap();
+            m.think(2000).unwrap();
+            practice.advance_delivery(2000).unwrap();
+            let x = m.in_hand.as_ref().unwrap().x_um();
+            assert_eq!(x, practice.log.pending_delivery.as_ref().unwrap().x_um());
+            assert!(direction * x > 150_000);
+            let restored = RecordedMatch::parse(m.json().unwrap().as_bytes()).unwrap();
+            assert_eq!(m.hash(), restored.hash());
+            let restored =
+                curl_proto::session::SessionLog::parse(&serde_json::to_vec(&practice.log).unwrap())
+                    .unwrap();
+            assert_eq!(restored.pending_delivery, practice.log.pending_delivery);
+            let before = m.hash();
+            assert!(
+                m.apply(Record::ReleaseDelivery {
+                    seat: SEAT,
+                    trim_mm_s: 0,
+                    line_mm: 1,
+                    turn: -direction
+                })
+                .is_err()
+            );
+            assert_eq!(m.hash(), before);
+            m.apply(Record::ReleaseDelivery {
+                seat: SEAT,
+                trim_mm_s: 0,
+                line_mm: 0,
+                turn: -direction,
+            })
+            .unwrap();
+            practice.release_delivery(0, 0, -direction).unwrap();
+            let stone = m
+                .sim
+                .stones
+                .iter()
+                .find(|s| Some(s.id) == m.sim.delivered)
+                .unwrap();
+            assert_eq!(stone.pos.x, Fx::ratio(x, 1_000_000));
+            assert_eq!(stone.pos, practice.sim.stones[0].pos);
+            assert_eq!(stone.vel, practice.sim.stones[0].vel);
+            let projected = stone.pos.x + stone.vel.x * -stone.pos.y / stone.vel.y;
+            assert!((projected - Fx::ratio(direction * 1200, 1000)).abs() < Fx::ratio(1, 1000));
+            assert_eq!(
+                m.hash(),
+                RecordedMatch::parse(m.json().unwrap().as_bytes())
+                    .unwrap()
+                    .hash()
+            );
+        }
+        let mut m = game();
+        let before = m.hash();
+        for (x_mm, aim_mm) in [(451, 0), (0, -1501), (i64::MAX, i64::MAX)] {
+            assert!(
+                m.apply(Record::BeginAnalogDelivery {
+                    seat: SEAT,
+                    target_mm_s: 2050,
+                    broom_mm: 0,
+                    line: DeliveryLine { x_mm, aim_mm }
+                })
+                .is_err()
+            );
+            assert_eq!(m.hash(), before);
+        }
     }
     #[test]
     fn suspended_delivery_freezes_and_resumes_from_recorded_pose() {

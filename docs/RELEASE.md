@@ -1,5 +1,10 @@
 Early Pebble & Granite 3D feel slice. Aim the broom, grip the handle directly on
 the ice, pull back, push, hold the slide, then flick left/right to release with curl.
+Pullback and push now move the stone sideways, and the push direction affects
+aim around the broom. Once sliding, a gentle left/right finish adds curl, with
+live direction feedback and a short grace period before lifting. The hand moves
+smoothly from pullback into the slide. The delivery camera faces the broom.
+Indoor arena fixtures replace the outdoor directional light, with subtler shadows.
 A small forward/back finish trims weight. Hold to sweep after release. Mouse, held-click trackpad and Android touch share the
 same stroke mapper. One-push delivery is available. Next stone keeps the stones and evolving ice;
 Fresh ice starts a new session. Practice auto-saves and can restore interrupted shots.

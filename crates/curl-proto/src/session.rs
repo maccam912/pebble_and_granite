@@ -61,13 +61,41 @@ pub enum Record {
 }
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
+pub struct DeliveryLine {
+    pub x_mm: i64,
+    pub aim_mm: i64,
+}
+impl DeliveryLine {
+    pub fn validate(&self) -> Result<(), &'static str> {
+        if !(-450..=450).contains(&self.x_mm) || !(-1500..=1500).contains(&self.aim_mm) {
+            return Err("invalid analog delivery line");
+        }
+        Ok(())
+    }
+    pub fn target_mm(&self, broom_mm: i64) -> i64 {
+        (broom_mm + self.aim_mm).clamp(-2200, 2200)
+    }
+    pub fn x_um(&self, broom_mm: i64, y_um: i64) -> i64 {
+        let start = curl_input::delivery::START_Y_UM;
+        let x = self.x_mm * 1000;
+        x + (y_um - start) * (self.target_mm(broom_mm) * 1000 - x) / -start
+    }
+}
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
 pub struct PendingDelivery {
     pub target_mm_s: i64,
     pub broom_mm: i64,
     pub elapsed_ms: u32,
+    // None retains the exact behavior and serialized bytes of old held saves.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub line: Option<DeliveryLine>,
 }
 impl PendingDelivery {
     pub fn validate(&self) -> Result<(), &'static str> {
+        if let Some(line) = &self.line {
+            line.validate()?;
+        }
         if !(1500..=5000).contains(&self.target_mm_s)
             || !(-2200..=2200).contains(&self.broom_mm)
             || self.elapsed_ms >= curl_input::delivery::crossing_ms(self.target_mm_s, true)
@@ -78,6 +106,11 @@ impl PendingDelivery {
     }
     pub fn pose(&self) -> curl_input::delivery::Pose {
         curl_input::delivery::slide_pose(self.target_mm_s, self.elapsed_ms as u64 * 240 / 1000)
+    }
+    pub fn x_um(&self) -> i64 {
+        self.line
+            .as_ref()
+            .map_or(0, |line| line.x_um(self.broom_mm, self.pose().y_um))
     }
 }
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]

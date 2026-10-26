@@ -22,6 +22,12 @@ pub struct Brush {
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(tag = "kind", deny_unknown_fields)]
 pub enum Record {
+    BeginAnalogDelivery {
+        seat: Seat,
+        target_mm_s: i64,
+        broom_mm: i64,
+        line: curl_proto::session::DeliveryLine,
+    },
     BeginDelivery {
         seat: Seat,
         target_mm_s: i64,
@@ -265,6 +271,12 @@ impl RecordedMatch {
     }
     fn execute(a: &mut Authority, r: &Record) -> Result<(), &'static str> {
         match r {
+            Record::BeginAnalogDelivery {
+                seat,
+                target_mm_s,
+                broom_mm,
+                line,
+            } => a.begin_analog_delivery(*seat, *target_mm_s, *broom_mm, line.clone()),
             Record::HogViolation { seat } => a.hog_violation(*seat),
             Record::Place {
                 seat,

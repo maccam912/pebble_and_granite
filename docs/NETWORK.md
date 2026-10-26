@@ -200,3 +200,11 @@ is a bounded startup recovery, not automatic reconnect or a guarantee that
 external discovery/relay services are available. Offline native tests cover
 recovery, fatal errors, exhaustion and dropping a pending attempt; desktop
 package jobs run those tests before publication. Gameplay versions are unchanged.
+
+## Analog delivery (protocol 11)
+
+`BeginAnalogDelivery` extends the held lifecycle with a validated lateral launch
+origin and push aim offset. The authenticated seat owns the plan; the host derives
+its x/y from accepted elapsed time and journals the command for replicas/reconnect.
+Release cannot alter that captured line. Legacy `BeginDelivery` remains available
+for old journals and diagnostics, with its original center-line held origin.

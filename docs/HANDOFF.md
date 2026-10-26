@@ -7,9 +7,10 @@ bible only. Remote: `maccam912/pebble_and_granite`, main branch.
 
 ## Pick up here
 
-Latest gameplay checkpoint: `ea1ee40` (rules 4 / protocol 10, physics model 3),
-published as [Build 38](https://github.com/maccam912/pebble_and_granite/releases/tag/v0.0.38-dev).
-The final transport checkpoint adds bounded initial address-discovery retry; see below.
+Latest published checkpoint: `188a650` (rules 4 / protocol 10, physics model 3),
+published as [Build 41](https://github.com/maccam912/pebble_and_granite/releases/tag/v0.0.41-dev).
+Its complete pipeline succeeded (run 40315368595). The current source adds analog
+launch input, gentler curl and indoor lighting on protocol 11; see the final entry.
 The main scene is a 3D curler's view with direct handle grip, pull/push/held slide,
 finishing curl flick and small weight feedback. Practice and local matches save
 held/in-flight state. Online mixed doubles has four seats, per-player sweeping,
@@ -32,7 +33,9 @@ are in `docs/ANDROID_INPUT.md`; full chronological evidence follows below.
 
 Next priorities, in order:
 
-1. Spatial scrub input and selecting moving own-stone targets; authority already
+1. Feel-test the new analog pull/push, gentle curl, broom sightline and smooth
+   transition on trackpad/physical Android. Then spatial scrub input and selecting
+   moving own-stone targets; authority already
    accepts bounded lateral/ahead offsets and per-player brushes. Keep the hold
    button as the accessible steady-effort route. Avoid power/fatigue bars.
 2. Physical Android and trackpad feel/latency tests; tune gains and camera/body
@@ -856,3 +859,44 @@ The same four offline native tests passed in optimized/release mode, matching
 CI's new command (`build/discovery-retry-release-tests.log`). Final transport
 checkpoint CI is triggered by the push and is not claimed complete at handoff;
 Build 38 is the already verified all-platform gameplay release.
+
+## Analog delivery and indoor lighting (26 October 2026)
+
+User requested small, forgiving finishing gestures, a broom-aligned viewpoint,
+no pull/push reset, and indoor arena lighting. They clarified the input split:
+sideways pullback/push moves the rock and affects aim; only after slide start does
+sideways movement select curl.
+
+- Delivery mapper 4 captures lateral position and push slope at drive-window end.
+  Protocol 11 `BeginAnalogDelivery` persists that line through authority time,
+  local saves, command replay, replicas and held reconnect. Release uses the same
+  held x/y and ray. Legacy held plans preserve their old behavior and serialized
+  hashes; physics model 3, rules 4 and the recorded schemas/goldens are unchanged.
+- Four logical pixels select curl without a speed gate, using a 350 ms recent
+  motion window. A live label and handle rotation show the recognized direction.
+  Quiet hand/jitter remain neutral. Initial push direction and finishing curl are
+  independent. Mouse/trackpad and touch use the same mapper.
+- Camera looks toward the called broom. Initial lateral motion is visible against
+  a steady camera; slide follow blends laterally. The hand's forward/back offset
+  blends into the slide rather than resetting when the phase changes.
+- Eight downward indoor fixtures replace the outdoor directional light. They sit
+  below beams, with 0.24 energy, 22% shadow opacity, subdued specular and 0.55 ambient
+  fill. House view hides ceiling meshes while retaining the lights. Desktop render
+  captures were inspected in build/evidence/rink-{delivery,sweeper,skip,house}.png.
+- Validation: 104 core Rust tests passed (one additional manual profile ignored),
+  unchanged every-tick goldens, clippy; optimized native bridge rebuilt. All eleven
+  desktop Godot CI integration scripts passed, including full local match,
+  held interruption/restore, direct mouse/touch analog gestures, camera/render
+  isolation and new gentle-curl tests. The six-pixel/150 ms finishing gesture with
+  a 150 ms pause produced ±1.022 m sideways travel and ±3.03 turns.
+- Four live Iroh peers passed the updated online room-flow test with analog
+  position/aim, held disconnect/regrip, release before begin acknowledgement,
+  continuous sweeping, matching replica hashes and exact-once hog fault. First
+  shot: 25.534 s wall / 25.533 s simulated; maximum observed headless frame gap
+  14.818 ms. This is a focused live room regression, not a new full online match
+  or physical Android validation.
+
+Latest published Build 41 and its full pipeline (40315368595) were verified before
+this work. The analog/lighting pass awaits its next numbered release; its remote
+CI and publication are not yet verified. Human feel testing and physical-device/GPU
+validation remain open.

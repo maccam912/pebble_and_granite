@@ -19,8 +19,10 @@ Use `python3 tools/build_native.py --debug` only for native debugging; it is muc
 `python3 tools/godot.py --path .` downloads the hash-pinned official editor if
 Godot is not installed. Mouse and held-click trackpad use the same stroke as
 Android touch. Drag the broom in the house to aim. Grip the stone handle directly on the ice, pull back, push forward and hold while
-sliding. Finish with a left/right flick for curl; a small forward/back finish adjusts
-weight. A quiet lift gives neutral rotation. One-push skips the initial pullback.
+sliding. Before the slide, sideways movement moves the stone and the direction of
+your push adjusts the delivery line around the broom. Once sliding, a small
+left/right finish adds curl; the live label shows the recognized direction. A
+small forward/back finish adjusts weight. A quiet lift gives neutral rotation. One-push skips the initial pullback.
 Cycle Camera for delivery, sweeper, skip or overhead house views; drag the broom in House view to aim. The separate `scenes/lab.tscn` scene retains the diagnostic 2D view. Hold the ice or the sweep button to sweep; release to stop. Next stone retains the field and evolving ice; Fresh ice starts a new session.
 Practice saves automatically, including held slides and interrupted shots, with a previous-save backup. Choose Mixed doubles for a local pass-and-play game: select positioned stones, power plays and first/last throwers, then play through scoring and extra ends. Local matches autosave separately from practice; choose Mixed doubles again to resume, including interrupted shots. Choose Online rooms to host or join by four-character code. Four players ready up for online mixed doubles; the host stays open. Both teammates
 may sweep before the far tee, with per-player fatigue; only one contributes per

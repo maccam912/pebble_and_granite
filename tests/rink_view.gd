@@ -20,6 +20,33 @@ func run() -> void:
 	await process_frame
 	await capture("delivery")
 	check(scene.rink != null and scene.spatial_view, "Default 3D scene was not created")
+	for aim in [-2200, 0, 2200]:
+		scene.broom_mm = aim
+		scene.update_spatial(0)
+		var forward: Vector3 = -scene.rink.camera.global_basis.z
+		forward.y = 0
+		check(forward.normalized().dot(scene.rink.delivery_heading()) > .99999, "Delivery camera does not face the selected broom")
+		check(absf(scene.broom_screen_point().x - scene.handle_point().x) < 1, "Selected broom is off the delivery sightline")
+	scene.broom_mm = -900
+	scene.update_spatial(0)
+	var lights := 0
+	for node in scene.rink.world.get_children():
+		check(not node is DirectionalLight3D, "Outdoor directional light returned")
+		if node is SpotLight3D:
+			lights += 1
+			check(node.position.y < 3.48 and node.shadow_opacity <= .25, "Arena light is above the fixture or has harsh shadows")
+	check(lights > 1 and lights <= 8, "Expected overlapping arena lights within the Compatibility limit")
+	# A pulled-back hand must not reset when the drive becomes a slide.
+	scene.rink.hand_held = true
+	scene.rink.pull_offset = .16
+	for i in range(30): scene.rink.render_frame(scene.frame, false, false, -900, 0, true, 1.0 / 60.0)
+	var pulled: float = scene.rink.shown_pull_offset
+	scene.rink.pull_offset = 0
+	scene.rink.render_frame(scene.frame, false, false, -900, 0, true, 1.0 / 60.0)
+	check(scene.rink.shown_pull_offset > pulled * .5, "Drive-to-slide transition snapped to the starting point")
+	for i in range(30): scene.rink.render_frame(scene.frame, false, false, -900, 0, true, 1.0 / 60.0)
+	check(scene.rink.shown_pull_offset < .001, "Pull-back offset failed to settle into the slide")
+	scene.rink.hand_held = false
 	scene.camera_button.text = "Camera: House"
 	scene.rink.mode = 4
 	scene.update_spatial(0)

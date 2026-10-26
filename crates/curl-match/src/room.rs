@@ -35,6 +35,11 @@ pub struct Player {
 #[derive(Clone, Debug, Serialize, Deserialize)]
 #[serde(tag = "kind", deny_unknown_fields)]
 pub enum Command {
+    BeginAnalogDelivery {
+        target_mm_s: i64,
+        broom_mm: i64,
+        line: curl_proto::session::DeliveryLine,
+    },
     BeginDelivery {
         target_mm_s: i64,
         broom_mm: i64,
@@ -300,6 +305,16 @@ impl Room {
         // rejected requests are consumed so retries cannot replay a failed action.
         let seat = Self::seat(index);
         let record = match envelope.command {
+            Command::BeginAnalogDelivery {
+                target_mm_s,
+                broom_mm,
+                line,
+            } => Record::BeginAnalogDelivery {
+                seat,
+                target_mm_s,
+                broom_mm,
+                line,
+            },
             Command::BeginDelivery {
                 target_mm_s,
                 broom_mm,
@@ -556,9 +571,13 @@ mod tests {
             &mut r,
             1,
             1,
-            Command::BeginDelivery {
+            Command::BeginAnalogDelivery {
                 target_mm_s: 2050,
                 broom_mm: -900,
+                line: curl_proto::session::DeliveryLine {
+                    x_mm: -150,
+                    aim_mm: 200,
+                },
             },
         )
         .unwrap();

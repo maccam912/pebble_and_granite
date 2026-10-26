@@ -11,10 +11,15 @@ var brush: Node3D
 var hand: Node3D
 var hand_held := false
 var pull_offset := 0.0
+var shown_pull_offset := 0.0
 var preview: Node3D
 var stones: Dictionary = {}
 var preview_team := 0
 var delivery_y := -37.8
+var delivery_x := 0.0
+var delivery_aim_mm := 0
+var sliding := false
+var shown_camera_x := 0.0
 var mode := 0
 var current_camera := "Delivery"
 var last_tick := -1
@@ -38,15 +43,9 @@ func _ready() -> void:
 	settings.background_color = Color("17272c")
 	settings.ambient_light_source = Environment.AMBIENT_SOURCE_COLOR
 	settings.ambient_light_color = Color("c6d8de")
-	settings.ambient_light_energy = .4
+	settings.ambient_light_energy = .55
 	environment.environment = settings
 	world.add_child(environment)
-	var light := DirectionalLight3D.new()
-	light.rotation_degrees = Vector3(-55, -20, 0)
-	light.light_color = Color("fff1d9")
-	light.light_energy = .65
-	light.shadow_enabled = true
-	world.add_child(light)
 	build_club()
 	camera = Camera3D.new()
 	camera.near = .05
@@ -125,6 +124,22 @@ func build_club() -> void:
 		lamp.emission_enabled = true
 		lamp.emission = Color("fff1cf")
 		box(ceiling, Vector3(3.0, .05, .18), Vector3(0, 3.48, z), lamp)
+		# Eight overlapping indoor fixtures, below the beams. Keep the light
+		# nodes outside the ceiling group so House view hides only its meshes.
+		var light := SpotLight3D.new()
+		light.position = Vector3(0, 3.40, z)
+		light.rotation_degrees.x = -90
+		light.light_color = Color("fff4e4")
+		light.light_energy = .24
+		light.light_specular = .15
+		light.spot_range = 12.0
+		light.spot_angle = 72.0
+		light.spot_attenuation = .5
+		light.spot_angle_attenuation = .4
+		light.shadow_enabled = true
+		light.shadow_opacity = .22
+		light.shadow_blur = 1.5
+		world.add_child(light)
 	var sign := Label3D.new()
 	sign.text = "PEBBLE & GRANITE"
 	sign.font_size = 70
@@ -191,11 +206,17 @@ func render_frame(frame: Dictionary, running: bool, sweep: bool, broom_mm: int, 
 		world.add_child(preview)
 		preview.position = Vector3(0, 0, 29)
 		preview_team = team
-	preview.position = Vector3(0, 0, -delivery_y + pull_offset)
+	# Retain the hand's current offset across Drive -> Slide; removing the
+	# pullback target immediately used to snap the stone back to its origin.
+	shown_pull_offset = lerpf(shown_pull_offset, pull_offset, 1.0 - exp(-18.0 * delta)) if hand_held else 0.0
+	preview.position = Vector3(delivery_x, 0, -delivery_y + shown_pull_offset)
+	shown_camera_x = lerpf(shown_camera_x, delivery_x if sliding else 0.0, 1.0 - exp(-12.0 * delta)) if aiming else 0.0
 	hand.position = preview.position
 	hand.visible = aiming and hand_held
 	preview.visible = aiming
-	preview.rotation.y = -float(turn) * PI / 6.0
+	var heading := delivery_heading()
+	hand.rotation.y = atan2(-heading.x, -heading.z)
+	preview.rotation.y = hand.rotation.y - float(turn) * PI / 6.0
 	brush.visible = running and sweep and has_followed
 	brush_time += delta if brush.visible else 0.0
 	brush.position = followed + Vector3(sin(brush_time * 24.0) * .13, 0, -.25)
@@ -203,6 +224,9 @@ func render_frame(frame: Dictionary, running: bool, sweep: bool, broom_mm: int, 
 	if selected == "Auto": selected = "Sweeper" if running and has_followed else ("Delivery" if aiming else "House")
 	if selected == "Sweeper" and not has_followed: selected = "Delivery"
 	set_camera(selected, followed)
+func delivery_heading() -> Vector3:
+	# Match the native release ray from the held origin to the selected broom.
+	return (broom.position + Vector3(float(delivery_aim_mm) / 1000.0, 0, 0) - Vector3(delivery_x, 0, -delivery_y)).normalized()
 func set_camera(selected: String, followed: Vector3) -> void:
 	current_camera = selected
 	ceiling.visible = selected != "House"
@@ -218,8 +242,10 @@ func set_camera(selected: String, followed: Vector3) -> void:
 		camera.position = followed + Vector3(.55, 1.6, 2.6)
 		camera.look_at(followed + Vector3(0, .08, -.8))
 	else:
-		camera.position = Vector3(0, .9, -delivery_y + 1.1)
-		camera.look_at(Vector3(0, .18, -delivery_y - 1.4))
+		var origin := Vector3(shown_camera_x, 0, -delivery_y)
+		var heading := (broom.position - origin).normalized()
+		camera.position = origin - heading * 1.1 + Vector3(0, .9, 0)
+		camera.look_at(origin + heading * 1.4 + Vector3(0, .18, 0))
 func handle_point() -> Vector2:
 	return position + camera.unproject_position(preview.position + Vector3(0, .274, 0)) if camera != null else Vector2.ZERO
 func broom_point() -> Vector2:

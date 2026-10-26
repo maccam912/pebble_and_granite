@@ -117,13 +117,14 @@ func deliver_gesture(game: Control, release_us: int, hold := false, reconnect :=
 	var handle: Vector2 = game.handle_point()
 	game.begin_pointer(-1, handle)
 	clock[0] = 20000
-	game.move_pointer(handle + Vector2(0, -4.2))
+	game.move_pointer(handle + Vector2(8, -4.2))
 	clock[0] = 120000
-	game.move_pointer(handle + Vector2(0, -25.2))
+	game.move_pointer(handle + Vector2(12, -25.2))
 	clock[0] = 220000
 	game.update_delivery()
 	var host := panels[0]
 	check(await until(func(): return not host.room.frame().get("in_hand", {}).is_empty(), 10), "BeginDelivery did not reach host")
+	check(host.room.frame().in_hand.x_um > 0 and host.room.frame().in_hand.aim_mm > 0, "Analog position and aim did not reach the online authority")
 	if reconnect:
 		check(await until(func(): return host.room.frame().in_hand.elapsed_ms >= 2000, 5), "Held slide never advanced")
 		var returning := at_seat(3)

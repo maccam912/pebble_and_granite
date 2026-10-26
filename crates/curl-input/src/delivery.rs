@@ -6,7 +6,7 @@
 use crate::{Phase, Report, Sample, Stroke, valid_sample};
 use std::collections::VecDeque;
 
-pub const DELIVERY_VERSION: u32 = 3;
+pub const DELIVERY_VERSION: u32 = 4;
 pub const HZ: u64 = 240;
 pub const START_Y_UM: i64 = -37_800_000;
 pub const RADIUS_UM: i64 = 142_000;
@@ -18,6 +18,10 @@ pub const HOG_WIDTH_UM: i64 = 102_000;
 pub const HOG_CENTER_UM: i64 = NEAR_HOG_INSIDE_UM - HOG_WIDTH_UM - RADIUS_UM;
 pub const SLIDE_DECEL_UM_S2: i64 = 70_000;
 const MAX_SLIDE_TICKS: u64 = 20 * HZ;
+// Four logical pixels on the 800-high input surface. Direction depends on
+// deliberate travel, not flick speed; allow a short pause before lifting.
+const CURL_TRAVEL: i64 = 5_000;
+const CURL_MEMORY_US: u64 = 350_000;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct Pose {
@@ -108,7 +112,9 @@ impl Delivery {
             return;
         }
         self.finish_samples.push_back(sample);
-        while self.finish_samples.len() > 2 && self.finish_samples[1].us + 160_000 < sample.us {
+        while self.finish_samples.len() > 2
+            && self.finish_samples[1].us + CURL_MEMORY_US < sample.us
+        {
             self.finish_samples.pop_front();
         }
         while self.finish_samples.len() > 256 {
@@ -117,6 +123,48 @@ impl Delivery {
     }
     pub fn target_mm_s(&self) -> i64 {
         self.stroke.speed
+    }
+    pub fn launch_x_mm(&self) -> i64 {
+        let point = self.stroke.drive_end.unwrap_or(self.stroke.last);
+        ((point.x - self.stroke.start.x) * 4800 / 1_000_000).clamp(-450, 450)
+    }
+    pub fn launch_aim_mm(&self) -> i64 {
+        let Some(end) = self.stroke.drive_end else {
+            return 0;
+        };
+        // Sideways push error shifts the target relative to the called broom.
+        // Capture only the drive: later curl gestures cannot steer this line.
+        ((end.x - self.stroke.drive.x) * 3000 / (self.stroke.drive.y - end.y).max(5000))
+            .clamp(-1500, 1500)
+    }
+    /// The same read-only direction is used by the held preview and release.
+    pub fn finish_turn(&self, us: u64) -> i64 {
+        let Some(end) = self.stroke.drive_end else {
+            return 0;
+        };
+        if matches!(self.stroke.phase, Phase::Idle | Phase::Cancelled) {
+            return 0;
+        }
+        let start = us.saturating_sub(CURL_MEMORY_US).max(end.us);
+        let Some(mut anchor) = self.finish_samples.front().copied() else {
+            return 0;
+        };
+        let mut turn = 0;
+        for point in &self.finish_samples {
+            if point.us > us {
+                break;
+            }
+            if point.us <= start {
+                anchor = *point;
+                continue;
+            }
+            let travel = point.x - anchor.x;
+            if travel.abs() >= CURL_TRAVEL {
+                turn = travel.signum();
+                anchor = *point;
+            }
+        }
+        turn
     }
     fn finish_velocity(&self, sample: Sample) -> (i64, i64) {
         let start = sample.us.saturating_sub(120_000);
@@ -191,7 +239,7 @@ impl Delivery {
             self.settle_target(sample.us);
         }
         self.remember(sample);
-        let (side_velocity, forward_velocity) = if valid_sample(sample) {
+        let (_, forward_velocity) = if valid_sample(sample) {
             self.finish_velocity(sample)
         } else {
             (0, 0)
@@ -214,11 +262,7 @@ impl Delivery {
         // Arm extension is a bounded adjustment; it cannot retroactively move
         // the slide or change the time at which the stone touches the hog line.
         let trim = (forward_velocity / 4000).clamp(-70, 70) * 1000;
-        let turn = if side_velocity.abs() >= 80_000 {
-            side_velocity.signum()
-        } else {
-            0
-        };
+        let turn = self.finish_turn(sample.us);
         let report = DeliveryReport {
             turn,
             trim_mm_s: trim / 1000,
@@ -354,6 +398,121 @@ mod tests {
         });
         assert_eq!(r.turn, 0, "old sideways movement is not a release flick");
         assert_eq!(r.trim_mm_s, 0);
+    }
+    #[test]
+    fn gentle_finishes_survive_a_short_lift_pause_at_different_event_rates() {
+        for direction in [-1, 1] {
+            for step in [10_000, 25_000, 50_000] {
+                let mut d = draw();
+                d.motion(sample(2_700_000, -31_500));
+                // Six logical pixels over 150 ms was below the old speed gate.
+                for elapsed in (step..=150_000).step_by(step as usize) {
+                    d.motion(Sample {
+                        us: 2_700_000 + elapsed,
+                        x: direction * elapsed as i64 / 20,
+                        y: -31_500,
+                    });
+                }
+                assert_eq!(d.finish_turn(2_850_000), direction);
+                let r = d.release(Sample {
+                    us: 3_000_000,
+                    x: direction * 7500,
+                    y: -31_500,
+                });
+                assert_eq!(r.turn, direction);
+                assert_eq!(r.trim_mm_s, 0);
+                assert_eq!(r.outcome, Outcome::Released);
+            }
+        }
+    }
+    #[test]
+    fn analog_side_motion_is_captured_at_drive_end_before_curl() {
+        for direction in [-1, 1] {
+            let mut d = Delivery::default();
+            d.grip(sample(0, 0), false, 1000);
+            d.motion(Sample {
+                us: 100_000,
+                x: direction * 20_000,
+                y: 30_000,
+            });
+            assert_eq!(
+                d.launch_x_mm(),
+                direction * 96,
+                "pullback moves the stone sideways"
+            );
+            d.motion(Sample {
+                us: 120_000,
+                x: direction * 22_000,
+                y: 24_000,
+            });
+            d.motion(Sample {
+                us: 220_000,
+                x: direction * 32_000,
+                y: -6000,
+            });
+            let line = (d.launch_x_mm(), d.launch_aim_mm());
+            assert_eq!(line, (direction * 153, direction * 1000));
+            assert_eq!(d.finish_turn(220_000), 0, "push motion must not add curl");
+            d.motion(Sample {
+                us: 2_700_000,
+                x: direction * 32_000,
+                y: -6000,
+            });
+            d.motion(Sample {
+                us: 2_850_000,
+                x: direction * 24_500,
+                y: -6000,
+            });
+            assert_eq!(d.finish_turn(3_000_000), -direction);
+            assert_eq!(
+                (d.launch_x_mm(), d.launch_aim_mm()),
+                line,
+                "curl cannot steer the captured delivery line"
+            );
+        }
+    }
+    #[test]
+    fn curl_ignores_jitter_drive_motion_and_old_intent_but_accepts_reversal() {
+        let mut d = draw();
+        d.motion(sample(2_700_000, -31_500));
+        for (us, x) in [(2_750_000, 2000), (2_800_000, -2000), (2_850_000, 0)] {
+            d.motion(Sample { us, x, y: -31_500 });
+        }
+        assert_eq!(d.finish_turn(2_850_000), 0);
+        d.motion(Sample {
+            us: 2_900_000,
+            x: 7500,
+            y: -31_500,
+        });
+        assert_eq!(d.finish_turn(2_900_000), 1);
+        d.motion(Sample {
+            us: 2_950_000,
+            x: 0,
+            y: -31_500,
+        });
+        assert_eq!(d.finish_turn(2_950_000), -1);
+        assert_eq!(d.finish_turn(3_400_000), 0);
+        d.cancel();
+        assert_eq!(d.finish_turn(2_950_000), 0);
+        d.regrip(sample(4_000_000, 0), 2050);
+        assert_eq!(d.finish_turn(4_100_000), 0);
+
+        let mut d = Delivery::default();
+        d.grip(sample(0, 0), true, 1000);
+        d.motion(Sample {
+            us: 120_000,
+            x: 24000,
+            y: -31_500,
+        });
+        assert_eq!(
+            d.release(Sample {
+                us: 250_000,
+                x: 24000,
+                y: -31_500
+            })
+            .turn,
+            0
+        );
     }
     #[test]
     fn drive_target_becomes_position_dependent_release_speed() {

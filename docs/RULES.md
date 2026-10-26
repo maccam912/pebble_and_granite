@@ -1,6 +1,6 @@
 # Rules implementation audit
 
-Source: [World Curling, 1 September 2026](https://worldcurling.org/wp-content/uploads/2026/08/Rules2026.pdf), R17 and placement diagrams pages 29–30. The PDF became accessible on the second retrieval attempt. Rules version 4 is tracked separately from physics model 3 (wire protocol 10).
+Source: [World Curling, 1 September 2026](https://worldcurling.org/wp-content/uploads/2026/08/Rules2026.pdf), R17 and placement diagrams pages 29–30. The PDF became accessible on the second retrieval attempt. Rules version 4 is tracked separately from physics model 3 (wire protocol 11).
 
 Implemented mixed-doubles boundaries: placement choice independent of hammer;
 positioned stones with four selectable guard marks and either side of each mark;

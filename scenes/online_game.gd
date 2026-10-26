@@ -118,11 +118,12 @@ func update_delivery() -> void:
 		report = "Starting delivery…"
 	else:
 		var weight := "Soft" if held.target_mm_s < 1950 else ("Draw" if held.target_mm_s < 2300 else "Firm")
-		report = "Release now — hog line." if held.hog_warning else weight + " weight"
+		report = delivery_feedback(weight, held.hog_warning)
 	update_labels()
 func start_delivery(target: int) -> bool:
 	if begin_sent or not frame.get("in_hand", {}).is_empty(): return true
-	var error := online.send_command({"kind": "BeginDelivery", "target_mm_s": target, "broom_mm": broom_mm})
+	var gesture: Dictionary = session.delivery_pose(input_clock.call())
+	var error := online.send_command({"kind": "BeginAnalogDelivery", "target_mm_s": target, "broom_mm": broom_mm, "line": {"x_mm": int(gesture.x_mm), "aim_mm": int(gesture.aim_mm)}})
 	if not error.is_empty():
 		report = error
 		return false
@@ -193,7 +194,7 @@ func end_pointer(pos: Vector2) -> void:
 	release_report = session.lift(input_clock.call(), q.x, q.y)
 	if spatial_view:
 		turn = int(release_report.get("turn", 0))
-		if turn != 0: release_report.line_mm = 0
+		release_report.line_mm = 0
 	if not release_report.get("finish_valid", false):
 		phase = "Ready"
 		report = "Regrip the stone to finish." if not frame.get("in_hand", {}).is_empty() else "Make one smooth forward stroke, then lift. A click does not throw."
