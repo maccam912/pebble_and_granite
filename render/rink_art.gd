@@ -21,6 +21,32 @@ static func handle_cap() -> ArrayMesh:
 		Vector2(.103, .136), Vector2(.10, .140), Vector2(.086, .145),
 		Vector2(.045, .149), Vector2(0, .15)]))
 
+static func steel_beam(length: float) -> ArrayMesh:
+	# One mesh for the existing roof member, with a visible web and flanges.
+	var profile := PackedVector2Array([
+		Vector2(-.08, -.15), Vector2(.08, -.15), Vector2(.08, -.125),
+		Vector2(.009, -.125), Vector2(.009, .125), Vector2(.08, .125),
+		Vector2(.08, .15), Vector2(-.08, .15), Vector2(-.08, .125),
+		Vector2(-.009, .125), Vector2(-.009, -.125), Vector2(-.08, -.125)])
+	var surface := SurfaceTool.new()
+	surface.begin(Mesh.PRIMITIVE_TRIANGLES)
+	for index in range(profile.size()):
+		var next := (index + 1) % profile.size()
+		var edge := profile[next] - profile[index]
+		var normal := Vector2(edge.y, -edge.x).normalized()
+		for vertex in [[index, -1], [index, 1], [next, -1], [next, -1], [index, 1], [next, 1]]:
+			var point: Vector2 = profile[vertex[0]]
+			plank_vertex(surface, Vector3(point.x, point.y, vertex[1] * length * .5),
+				Vector3(normal.x, normal.y, 0), Vector2(float(vertex[0]) / profile.size(), (vertex[1] + 1) * .5), true)
+	var triangles := Geometry2D.triangulate_polygon(profile)
+	for end in [-1.0, 1.0]:
+		for triangle in range(0, triangles.size(), 3):
+			for corner in [0, 2, 1] if end > 0 else [0, 1, 2]:
+				var point := profile[triangles[triangle + corner]]
+				plank_vertex(surface, Vector3(point.x, point.y, end * length * .5),
+					Vector3(0, 0, end), point / Vector2(.16, .30) + Vector2.ONE * .5, true)
+	return surface.commit()
+
 static func rounded_plank(dimensions: Vector3, radius: float) -> ArrayMesh:
 	# Round the four long edges within the original timber's exact bounds.
 	# Three segments per corner keep the silhouette soft at normal game scale.

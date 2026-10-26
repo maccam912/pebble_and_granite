@@ -793,3 +793,27 @@ The photographic polish objective remains active. The next comparison should
 review the room-wide lighting/material balance against the retained curling
 photos before choosing further changes. The low-angle inspection camera remains
 an ignored review artifact, not a new game feature.
+
+## Structural depth in the existing roof
+
+Compared the room-wide Delivery and Skip views with the retained Banff and
+Carleton Place club photographs. The old roof members read as thin strips.
+Replaced each of the eight existing beam meshes with a 30 cm deep steel I section
+and reshaped the existing forty diagonal details into short web stiffeners.
+The side columns now meet the ceiling. The shared steel finish is slightly darker.
+There are still 251 static meshes, 248 baked receivers and eight runtime lights.
+No camera, input, simulation or runtime renderer setting changed.
+
+Rebaked the final geometry in 7.00 seconds, finalized it for GL Compatibility,
+and reviewed all ten normal captures. The deeper flanges and webs read clearly
+without the old rods intersecting them. Finalization reports 248 receivers;
+`VISUAL_REVIEW_OK` and `RINK_VIEW_OK` pass with clean runtime logs. The offline
+editor emitted its known seven-texture shutdown leak warning. Source backups,
+first trial, final logs and before captures are in `build/roof-profile-review/`.
+Installed Android review will accompany the priority ice pass. Weekly quota
+remaining is 88 percent.
+
+The user specifically found the ice flat and plasticky. The next pass prioritizes
+visible pebble relief and broken sheen at normal game scale, compared directly
+with real curling-ice photography. The previous placement-only change did not
+address that presentation problem.

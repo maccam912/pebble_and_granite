@@ -194,7 +194,7 @@ func build_club() -> void:
 	wood.set_shader_parameter("oak_texture", load("res://assets/textures/curling-oak.png"))
 	var cross_wood := wood.duplicate() as ShaderMaterial
 	cross_wood.set_shader_parameter("grain_along_x", true)
-	var steel := material("66727a", .46)
+	var steel := material("515f66", .46)
 	var plaster := CurlRinkArt.shader_material("res://render/club_finish.gdshader")
 	plaster.set_shader_parameter("paint_color", Color("b5babc"))
 	var glass := CurlRinkArt.shader_material("res://render/club_glass.gdshader")
@@ -221,7 +221,7 @@ func build_club() -> void:
 		box(world, Vector3(.07, .9, 47), Vector3(side - signf(side) * .15, .45, 17.2), material("344f58"))
 		plank(world, Vector3(.09, .06, 47), Vector3(side - signf(side) * .16, .92, 17.2), wood)
 		for z in range(0, 40, 6):
-			box(world, Vector3(.18, 3.8, .13), Vector3(side - signf(side) * .19, 1.9, z), steel)
+			box(world, Vector3(.18, 3.9, .13), Vector3(side - signf(side) * .19, 1.95, z), steel)
 			box(world, Vector3(.015, 1.0, 3.6), Vector3(side - signf(side) * .142, 2.45, z + 2.5), glass)
 			for division in [-1.8, 0.0, 1.8]:
 				box(world, Vector3(.07, 1.08, .045), Vector3(side - signf(side) * .17, 2.45, z + 2.5 + division), steel)
@@ -245,13 +245,14 @@ func build_club() -> void:
 	lamp.emission_enabled = true
 	lamp.emission = Color("fff8e8")
 	lamp.emission_energy_multiplier = 1.25
+	var roof_beam := CurlRinkArt.steel_beam(18.0)
 	for z in range(-2, 42, 6):
-		box(ceiling, Vector3(18, .12, .10), Vector3(0, 3.66, z), steel)
+		mesh(ceiling, roof_beam, Vector3(0, 3.75, z), steel)
 		for x in [-6.0, 0.0, 6.0]:
 			box(ceiling, Vector3(2.6, .08, .27), Vector3(x, 3.49, z), material("3b454d", .5))
 			box(ceiling, Vector3(2.45, .018, .18), Vector3(x, 3.44, z), lamp)
 		for x in [-7.0, -3.5, 0.0, 3.5, 7.0]:
-			CurlRinkArt.capsule_between(ceiling, Vector3(x, 3.7, z), Vector3(x + 1.75, 3.92, z), .023, steel)
+			box(ceiling, Vector3(.016, .25, .14), Vector3(x, 3.75, z), steel)
 		# Keep eight overlapping fixtures and soft indoor shadows on Compatibility.
 		var light := SpotLight3D.new()
 		light.position = Vector3(0, 3.40, z)
