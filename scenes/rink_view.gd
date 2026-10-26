@@ -106,10 +106,10 @@ func _ready() -> void:
 	selection.visible = false
 	hand = Node3D.new()
 	world.add_child(hand)
-	var glove_material := CurlRinkArt.shader_material("res://render/fabric.gdshader")
-	glove_material.set_shader_parameter("fabric_color", Color("283239"))
-	var jacket_material := CurlRinkArt.shader_material("res://render/fabric.gdshader")
-	jacket_material.set_shader_parameter("fabric_color", Color("203c4a"))
+	var glove_material := material("283239", .91)
+	var jacket_material := material("203c4a", .91)
+	glove_material.metallic_specular = .18
+	jacket_material.metallic_specular = .18
 	var glove := SphereMesh.new()
 	glove.radius = .044
 	glove.height = .039

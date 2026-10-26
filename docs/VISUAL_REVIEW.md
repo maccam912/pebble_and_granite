@@ -264,3 +264,14 @@ The native review now includes `02b-held-delivery.png` (nine captures total), so
 this existing pose cannot be missed in later art passes. Reviewed the held view;
 rink, held-resume and delivery-slide checks pass. Android review of this newest
 prop is pending at this checkpoint.
+
+Build 52 is a clean export of `2594b0f` (SHA-256
+`b9a48fc7980254d89db12f4433866e5762f70e87c6d4a25c50c6e746b490c01e`).
+The first installed probe did not record its first drag; a warm rerun passed the
+complete probe, including both curl directions and pause/regrip. Failure evidence
+is in `build/probes/touch-4751958468d24a5d97b4461e0738fdd0/`, and the passing
+rerun in `build/probes/touch-d97c5c70ae3d4f24b9db63b5240cd497/`.
+This does not prove the cause of the first failure. To avoid adding another
+first-use shader variant for negligible visible detail, retain the new geometry
+with the existing matte StandardMaterial3D instead of the cloth shader. Native
+review remains visually consistent and passes. Original practice files restored.
