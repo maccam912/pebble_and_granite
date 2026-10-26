@@ -85,7 +85,7 @@ try:
     report['host'] = authoritative
     if not a.desktop: report['apk_sha256'] = hashlib.sha256(a.apk.read_bytes()).hexdigest()
     (directory / 'result.json').write_text(json.dumps(report, indent=2) + '\n')
-    if not report.get('ok') or not authoritative or not authoritative.get('ok') or report['hash'] != authoritative['hash']:
+    if not report.get('ok') or not authoritative or not authoritative.get('ok') or not authoritative.get('released_from_held') or report['hash'] != authoritative['hash']:
         raise RuntimeError('Cross-device verification failed: ' + str(report))
     print('NETWORK_PROBE_OK', 'desktop' if a.desktop else a.serial, directory / 'result.json')
 finally:

@@ -73,3 +73,20 @@ Evidence: `build/probes/touch-2d6a3f3403244848948ef4f26ef90c4f/`.
 A subsequent explicit Godot cancelled-touch test found an input path that could
 release before a focus notification. Commit `e5b1e33` fixes that path and passes
 local/online regression tests. Its final installed package validation follows.
+
+## Corrected contact-cancellation package
+
+Clean commit `5cd1808`, build 3, includes the cancelled-touch fix and passed the
+expanded installed touch probe and all six native golden/JNI checks. SHA-256:
+`5179039571c17f9ec5afaf2747f13867b9266f11a07d18ef262e423959d4086a`.
+Touch evidence: `build/probes/touch-dedff4262b724bf6bfa8ceb0e91b5a3e/`.
+The recorded interrupted plan retained 1732 mm/s target, -900 mm aim and 1951 ms
+elapsed across background/resume, then accepted one left-curl finishing release.
+
+The forced-relay Android↔macOS probe now begins a held plan, advances it for two
+seconds and releases through ReleaseDelivery before the in-flight disconnect.
+Both peers finished at `af5dbdcd7faad18c`; evidence is under
+`build/probes/af29d0ef331b4ce5b399d75544c88524/`. The host verifies that the shot
+used the held lifecycle. This covers Android replication of held commands and
+in-flight restoration; in-hand reconnect remains validated on four desktop
+endpoints, not yet on the installed Android client.

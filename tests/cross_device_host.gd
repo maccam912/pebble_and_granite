@@ -5,6 +5,7 @@ var deadline := 0
 var stage := "lobby"
 var paused_for_reconnect := false
 var resumed := false
+var released_from_held := false
 var next_advance := 0
 var finished := false
 var ready_sent: Dictionary = {}
@@ -56,9 +57,20 @@ func run() -> void:
 					if not error.is_empty(): finish(false, error)
 			stage = "release"
 		if stage == "release" and state.get("phase") == "Calling":
-			error = host.release_stone(2050, -900, 1)
+			error = host.send_command({"kind": "BeginDelivery", "target_mm_s": 2050, "broom_mm": -900})
 			if not error.is_empty(): finish(false, error); break
-			stage = "flight"
+			stage = "held"
+		if stage == "held" and not state.paused and Time.get_ticks_msec() >= next_advance:
+			next_advance = Time.get_ticks_msec() + 50
+			error = host.advance(0, 50)
+			if not error.is_empty(): finish(false, error); break
+			var held: Dictionary = host.frame().get("in_hand", {})
+			if held.is_empty(): finish(false, "Held delivery disappeared before release"); break
+			if held.elapsed_ms >= 2000:
+				error = host.send_command({"kind": "ReleaseDelivery", "trim_mm_s": 20, "line_mm": 0, "turn": 1})
+				if not error.is_empty(): finish(false, error); break
+				released_from_held = true
+				stage = "flight"
 		if stage == "flight":
 			if state.paused: paused_for_reconnect = true
 			elif paused_for_reconnect: resumed = true
@@ -73,7 +85,7 @@ func run() -> void:
 func finish(ok: bool, error: String) -> void:
 	if finished: return
 	finished = true
-	write_result("host.json", {"ok": ok, "error": error, "hash": rooms[0].state.get("hash", ""), "reconnected": resumed})
+	write_result("host.json", {"ok": ok, "error": error, "hash": rooms[0].state.get("hash", ""), "reconnected": resumed, "released_from_held": released_from_held})
 	# Allow the final accepted command/state to reach the Android replica.
 	for i in range(100):
 		for room in rooms: room.poll()

@@ -681,3 +681,19 @@ frozen held-journal resume, regrip/flick and exact-once hog checks. Evidence is 
 build/probes/touch-2d6a3f3403244848948ef4f26ef90c4f/. The e5b1e33 cancellation fix
 needs the subsequent installed rerun. Added the editor-generated held_resume UID
 so future clean local packages do not report that test resource as untracked.
+
+## Installed cancellation fix and held-command relay regression
+
+Clean 5cd1808 Android build 3 passed direct touch, both curl signs, held
+background/resume/regrip, exact-once hog removal and all six native golden/JNI
+checks. APK and evidence provenance are in docs/ANDROID_INPUT.md. The updated
+cross-device host probe now uses BeginDelivery, two seconds of accepted held time
+and ReleaseDelivery; the installed Android replica passed that flow and an
+in-flight forced-relay reconnect, matching desktop hash af5dbdcd7faad18c.
+
+Next useful work: installed Android *in-hand* reconnect (current installed probe
+reconnects during flight), compact weight feedback, spatial sweeping, and measured
+input/performance tuning. Keep the authority/presentation boundary and compatibility
+contracts intact. Physical-device feel, real-ice coefficients, publisher signing,
+career/AI/content and polished art/audio remain explicitly deferred. Weekly usage
+last checked at 57% remaining; continue the authorized goal until below 50%.
