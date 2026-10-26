@@ -30,6 +30,8 @@ var last_end := -1
 var was_running := false
 var brush_time := 0.0
 var stone_shape: ArrayMesh
+var handle_cap_shape: ArrayMesh
+var handle_grip_shape: ArrayMesh
 var granite_material: ShaderMaterial
 var shadow_material: ShaderMaterial
 var handle_materials: Array[StandardMaterial3D] = []
@@ -41,7 +43,7 @@ func _ready() -> void:
 	view.size = Vector2i(size)
 	view.own_world_3d = true
 	view.render_target_update_mode = SubViewport.UPDATE_WHEN_VISIBLE
-	view.msaa_3d = Viewport.MSAA_4X
+	view.msaa_3d = Viewport.MSAA_2X if OS.get_name() == "Android" else Viewport.MSAA_4X
 	add_child(view)
 	world = Node3D.new()
 	view.add_child(world)
@@ -53,9 +55,16 @@ func _ready() -> void:
 	settings.ambient_light_color = Color("e0e8eb")
 	settings.ambient_light_energy = .58
 	settings.tonemap_mode = Environment.TONE_MAPPER_LINEAR
+	if OS.get_name() != "Android":
+		settings.ssao_enabled = true
+		settings.ssao_radius = .5
+		settings.ssao_intensity = 1.1
+		settings.ssao_light_affect = .35
 	environment.environment = settings
 	world.add_child(environment)
 	stone_shape = CurlRinkArt.stone_body()
+	handle_cap_shape = CurlRinkArt.handle_cap()
+	handle_grip_shape = CurlRinkArt.handle_grip()
 	granite_material = CurlRinkArt.shader_material("res://render/granite.gdshader")
 	granite_material.set_shader_parameter("granite_texture", load("res://assets/textures/curling-granite.png"))
 	shadow_material = CurlRinkArt.shader_material("res://render/contact_shadow.gdshader")
@@ -142,13 +151,14 @@ func brush_head(parent: Node3D) -> void:
 func build_club() -> void:
 	var wood := CurlRinkArt.shader_material("res://render/oak.gdshader")
 	var steel := material("66727a", .46)
-	var plaster := material("aeb5b5", .87)
-	var boards := material("d2d6d4", .7)
+	var plaster := CurlRinkArt.shader_material("res://render/club_finish.gdshader")
+	plaster.set_shader_parameter("paint_color", Color("b5babc"))
 	var rubber := material("273238", .94)
 	box(world, Vector3(18, .2, 47), Vector3(0, -.16, 17.2), rubber)
 	for lane in [-6.0, 0.0, 6.0]:
 		var ice := CurlRinkArt.shader_material("res://render/ice.gdshader")
 		ice.set_shader_parameter("lane_center", lane)
+		ice.set_shader_parameter("ice_texture", load("res://assets/textures/curling-ice.png"))
 		box(world, Vector3(4.75, .06, 43), Vector3(lane, -.03, 17.3), ice)
 		for end in [-3.658, 38.408]:
 			for x in [-.17, .17]:
@@ -182,7 +192,10 @@ func build_club() -> void:
 	club_sign("C U R L I N G   C L U B", Vector3(0, 2.13, -4.26), 35, .004, "bfad84")
 	ceiling = Node3D.new()
 	world.add_child(ceiling)
-	box(ceiling, Vector3(18, .10, 47), Vector3(0, 3.95, 17.2), material("8f999e", .9))
+	var ceiling_finish := CurlRinkArt.shader_material("res://render/club_finish.gdshader")
+	ceiling_finish.set_shader_parameter("paint_color", Color("9ba6ac"))
+	ceiling_finish.set_shader_parameter("ceiling", true)
+	box(ceiling, Vector3(18, .10, 47), Vector3(0, 3.95, 17.2), ceiling_finish)
 	var lamp := material("f8f4e7")
 	lamp.emission_enabled = true
 	lamp.emission = Color("fff8e8")
@@ -240,19 +253,14 @@ func stone_mesh(team: int) -> Node3D:
 	contact.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	contact.layers = 2
 	var color: StandardMaterial3D = handle_materials[team]
-	var cap := cylinder(stone, .082, .014, Vector3(0, .132, 0), color)
-	cap.layers = 2
-	var collar := TorusMesh.new()
-	collar.inner_radius = .078
-	collar.outer_radius = .085
-	collar.rings = 48
-	collar.ring_segments = 8
-	mesh(stone, collar, Vector3(0, .136, 0), color).layers = 2
-	for x in [-.057, .057]:
-		CurlRinkArt.capsule_between(stone, Vector3(x, .14, 0), Vector3(x * .85, .181, 0), .015, color).layers = 2
-	CurlRinkArt.capsule_between(stone, Vector3(-.052, .184, 0), Vector3(.052, .184, 0), .0175, color).layers = 2
+	mesh(stone, handle_cap_shape, Vector3.ZERO, color).layers = 2
+	mesh(stone, handle_grip_shape, Vector3.ZERO, color).layers = 2
+	var tip := SphereMesh.new()
+	tip.radius = .015
+	tip.height = .03
+	mesh(stone, tip, Vector3(-.069, .201, 0), color).layers = 2
 	if team == 1:
-		var stripe := box(stone, Vector3(.014, .002, .027), Vector3(0, .202, 0), material("143943", .5))
+		var stripe := box(stone, Vector3(.012, .002, .022), Vector3(-.02, .217, 0), material("143943", .5))
 		stripe.layers = 2
 	return stone
 func cycle_camera() -> String:

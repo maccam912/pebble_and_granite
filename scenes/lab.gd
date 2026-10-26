@@ -119,6 +119,7 @@ func _ready() -> void:
 	report_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	report_label.add_theme_font_size_override("font_size", 18)
 	add_child(report_label)
+	report_label.minimum_size_changed.connect(func(): layout_feedback.call_deferred())
 	new_button = button("Next stone", Vector2(40, 726), func(): next_throw())
 	new_button.theme_type_variation = "PrimaryButton"
 	turn_button = button("Turn: clockwise ↻", Vector2(225, 726), func(): turn *= -1; update_labels())
@@ -300,7 +301,8 @@ func update_labels() -> void:
 func layout_feedback() -> void:
 	if feedback_bg == null: return
 	var width := 365.0 if phase == "Slide" else 490.0
-	report_label.size = Vector2(width - 24, 0)
+	report_label.size.x = width - 24
+	report_label.size.y = report_label.get_minimum_size().y
 	var height := maxf(report_label.get_minimum_size().y + 24, 72)
 	feedback_bg.size = Vector2(width, height)
 	feedback_bg.position = Vector2(56, 684 - height)

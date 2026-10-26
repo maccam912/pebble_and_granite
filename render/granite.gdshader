@@ -24,7 +24,7 @@ void fragment() {
 		+ texture(granite_texture, uvw.xy).rgb * weights.z;
 	// The broad equatorial striking band is rougher than the polished crown.
 	float band = smoothstep(0.039, 0.044, stone_position.y) * (1.0 - smoothstep(0.074, 0.079, stone_position.y));
-	ALBEDO = mix(salt, salt * 0.67, band * 0.55);
+	ALBEDO = mix(salt * 0.83, mix(salt, vec3(0.53, 0.55, 0.53), 0.35), band);
 	ROUGHNESS = mix(0.23 + crystals * 0.10 + fine * 0.03, 0.61, band);
 	SPECULAR = 0.58;
 	AO = mix(0.75, 1.0, smoothstep(0.005, 0.045, stone_position.y));

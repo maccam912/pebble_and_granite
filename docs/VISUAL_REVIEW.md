@@ -62,3 +62,20 @@ checks report containment and compiles the shaders on native OpenGL Compatibilit
 A native rink test lost brush input during one focus interruption; the subsequent
 native run and headless input gates passed. No physical Android or other GPU
 performance claim follows from the Mac captures. Cross-platform CI is separate.
+
+## Second iteration
+
+Comparison with [Kays' own stone photography](https://kaysscotland.com/) exposed
+the remaining bracket-shaped handle and dark striking band. Replaced them with
+an original swept cantilever grip, a wider molded cap and a lighter rough band.
+Shared cap/grip meshes also reduce per-stone draw calls. Generated a second
+original texture for the ice; its subtle irregular detail replaces repetitive
+procedural scratch lines. Added restrained cladding seams/occlusion and desktop
+ambient occlusion, keeping Android's two-sample antialiasing and avoiding the
+desktop post-process there.
+
+The review fixture caught a first-frame report sizing race after fonts/layout
+settled. The panel now relayouts on minimum-size changes; all seven native
+captures pass containment. Rink, online UI and input routing gates pass again.
+Checkpoint `12f133a` was also installed and visually inspected on the Android
+emulator; the full updated material pass still needs a fresh export/install.
