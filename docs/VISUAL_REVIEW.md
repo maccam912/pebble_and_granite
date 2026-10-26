@@ -79,3 +79,29 @@ settled. The panel now relayouts on minimum-size changes; all seven native
 captures pass containment. Rink, online UI and input routing gates pass again.
 Checkpoint `12f133a` was also installed and visually inspected on the Android
 emulator; the full updated material pass still needs a fresh export/install.
+
+## Third iteration
+
+The Android launch capture exposed the default engine logo. Added an original
+editable SVG mark and reproducible PNG boot splash, plus adaptive Android icons
+with a dark background matching the game. No new splash scene or timed delay.
+The online roster now has aligned team/player/status columns and team colors.
+The existing end/score values have a dedicated compact display in the header,
+leaving the status, seat identity and clocks readable below it.
+
+Updated the existing Android touch probe's observed coordinates for the polished
+layout. A cold first launch compiled shaders after the original five-second test
+delay, so the probe now accepts an explicit warm-up duration. A subsequent run
+recorded real right-curl delivery, spatial scrub and accessible hold sweeps; its
+left-shot read collided with an autosave write. The probe now retries only
+incomplete JSON reads. These are harness fixes, not changes to input or saves.
+The complete rerun passed: `ANDROID_DIRECT_TOUCH_OK`, evidence and accepted
+input journals in `build/probes/touch-03773ecf5c504d72b4a65412898c63be/`.
+Both curl directions, spatial scrubbing, lift-to-stop, accessible hold sweeping,
+pause/regrip and exactly one hog violation passed on the installed local APK.
+Native review now includes an eighth capture for two-digit score spacing.
+
+The final phone readability pass raises action height to 64 logical pixels and
+button/report text to 22/20, with tighter 52-pixel setup rows to retain spacing.
+It does not change the ice viewport, camera projection, coordinate conversion,
+gesture gains or simulation. A fresh export/install is the remaining check.

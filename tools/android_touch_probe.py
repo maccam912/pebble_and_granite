@@ -20,6 +20,8 @@ p = argparse.ArgumentParser(description=__doc__)
 p.add_argument('apk', type=pathlib.Path)
 p.add_argument('--serial', required=True)
 p.add_argument('--adb', default=str(pathlib.Path.home() / 'Library/Android/sdk/platform-tools/adb'))
+p.add_argument('--startup-wait', type=float, default=5,
+               help='Seconds for first-install shader compilation before sending gestures')
 a = p.parse_args()
 out = ROOT / 'build/probes' / ('touch-' + uuid.uuid4().hex)
 out.mkdir(parents=True)
@@ -63,24 +65,36 @@ atexit.register(release_contact)
 
 def fresh():
     # 1280x800 game fitted to 2400x1080: x offset 336, scale 1.35.
-    adb('shell', 'input', 'tap', '1688', '1012')
+    adb('shell', 'input', 'tap', '1880', '1012')
     time.sleep(.4)
 
 
+# Reviewed at 1280x800: handle (640, 557.012), fitted at x+336 / 1.35x.
 def drive():
-    event('DOWN', 1200, 715)
+    event('DOWN', 1200, 752)
     time.sleep(.08)
-    event('MOVE', 1200, 751)
+    event('MOVE', 1200, 788)
     time.sleep(.06)
-    event('MOVE', 1200, 741)
+    event('MOVE', 1200, 778)
     time.sleep(.14)
-    event('MOVE', 1200, 697)
+    event('MOVE', 1200, 734)
 
 
 def journal(name):
-    raw = adb('exec-out', 'run-as', PACKAGE, 'cat', 'files/practice-session.json')
-    (out / (name + '-session.json')).write_bytes(raw)
-    return json.loads(raw)
+    # Autosave may be replacing the file while adb reads it. Retry only an
+    # incomplete JSON read, retaining all gameplay assertions below.
+    for attempt in range(10):
+        raw = adb('exec-out', 'run-as', PACKAGE, 'cat', 'files/practice-session.json')
+        try:
+            result = json.loads(raw)
+        except json.JSONDecodeError:
+            if attempt == 9:
+                (out / (name + '-session.json')).write_bytes(raw)
+                raise
+            time.sleep(.1)
+            continue
+        (out / (name + '-session.json')).write_bytes(raw)
+        return result
 
 
 adb('install', '-r', '-t', str(a.apk.resolve()))
@@ -93,7 +107,7 @@ activity = adb('shell', 'cmd', 'package', 'resolve-activity', '--brief', PACKAGE
 if not activity.startswith(PACKAGE + '/'):
     raise RuntimeError('Unexpected launcher')
 adb('shell', 'am', 'start', '-W', '-n', activity)
-time.sleep(5)
+time.sleep(a.startup_wait)
 capture('ready')
 results = {}
 for direction, label in [(1, 'right'), (-1, 'left')]:
@@ -103,11 +117,11 @@ for direction, label in [(1, 'right'), (-1, 'left')]:
     capture(label + '-held')
     # Actual moving contacts precede UP. Merely changing UP coordinates does not
     # exercise Android's moving-touch path consistently across input providers.
-    event('MOVE', 1200, 697)
-    event('MOVE', 1200 + direction * 48, 688)
+    event('MOVE', 1200, 734)
+    event('MOVE', 1200 + direction * 48, 725)
     time.sleep(.04)
-    event('MOVE', 1200 + direction * 96, 679)
-    event('UP', 1200 + direction * 96, 679)
+    event('MOVE', 1200 + direction * 96, 716)
+    event('UP', 1200 + direction * 96, 716)
     time.sleep(1.2)
     capture(label + '-released')
     shots = [r for r in journal(label)['records'] if r['kind'] == 'Shot']
@@ -119,12 +133,12 @@ for direction, label in [(1, 'right'), (-1, 'left')]:
     results[label] = release
     if label == 'right':
         # Auto Sweeper view tracks the selected stone. Its .35 m-ahead point is
-        # (629.6, 441.6) on the logical canvas, observed in tests/sweeping.gd.
-        event('DOWN', 1186, 596)
+        # (629.7, 445.1) on the logical canvas, observed in tests/sweeping.gd.
+        event('DOWN', 1186, 601)
         for i in range(10):
             time.sleep(.04)
-            event('MOVE', 1160 if i % 2 == 0 else 1212, 596)
-        event('UP', 1212, 596)
+            event('MOVE', 1160 if i % 2 == 0 else 1212, 601)
+        event('UP', 1212, 601)
         time.sleep(1.2)
         capture('scrub-released')
         scrubbed = [r for r in journal('scrubbed')['records'] if r['kind'] == 'Shot'][0]['data']
@@ -140,9 +154,9 @@ for direction, label in [(1, 'right'), (-1, 'left')]:
             raise RuntimeError('Android scrub kept heating after lift')
         # The GUI's independent accessible route must still generate steady,
         # centered effort through real touchscreen down/up events.
-        event('DOWN', 1122, 1012)
+        event('DOWN', 907, 1012)
         time.sleep(1.2)
-        event('UP', 1122, 1012)
+        event('UP', 907, 1012)
         time.sleep(1.2)
         held = [r for r in journal('hold-swept')['records'] if r['kind'] == 'Shot'][0]['data']
         steady = [s for s in held['sweeps'] if s['input']['effort'] == 255 and
@@ -169,13 +183,13 @@ time.sleep(3)
 capture('resumed-held')
 if journal('resumed-before-regrip') != frozen:
     raise RuntimeError('Resuming advanced the slide before regrip')
-event('DOWN', 1200, 715)
+event('DOWN', 1200, 752)
 time.sleep(.12)
-event('MOVE', 1200, 715)
-event('MOVE', 1152, 706)
+event('MOVE', 1200, 752)
+event('MOVE', 1152, 743)
 time.sleep(.04)
-event('MOVE', 1104, 697)
-event('UP', 1104, 697)
+event('MOVE', 1104, 734)
+event('UP', 1104, 734)
 time.sleep(1.2)
 capture('resumed-released')
 resumed = journal('resumed-finish')
@@ -191,7 +205,7 @@ log = journal('hog')
 faults = [r for r in log['records'] if r['kind'] == 'HogViolation']
 if len(faults) != 1 or any(r['kind'] == 'Shot' for r in log['records']):
     raise RuntimeError('Held stone did not become exactly one hog fault')
-event('UP', 1200, 697)
+event('UP', 1200, 734)
 time.sleep(.3)
 if journal('hog-after-up') != log:
     raise RuntimeError('Lift after the fault changed the journal')

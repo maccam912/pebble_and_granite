@@ -29,6 +29,7 @@ func run() -> void:
 	game.set_process_input(false)
 	game.reset(false)
 	game.update_spatial(0)
+	print("DELIVERY_HANDLE ", game.handle_point())
 	await capture("01-delivery")
 	game.phase = "Slide"
 	game.report = "Draw weight\nNo curl · nudge left/right to turn"
@@ -61,6 +62,16 @@ func run() -> void:
 	game.room_panel.code_input.text = "BAD"
 	game.room_panel.join_room()
 	await capture("07-room-validation")
+	game.room_panel.leave()
+	game.frame.score_gold = 12
+	game.frame.score_cyan = 9
+	game.frame.end = 8
+	game.update_labels()
+	await capture("08-score-spacing")
+	for label in [game.gold_score, game.end_score, game.cyan_score]:
+		if not game.scoreboard.get_global_rect().encloses(label.get_global_rect()):
+			push_error("Score text exceeds the score panel")
+			failed = true
 	game.queue_free()
 	await process_frame
 	print("VISUAL_REVIEW_FAILED" if failed else "VISUAL_REVIEW_OK")

@@ -63,6 +63,11 @@ var fresh_button: Button
 var save_path := "user://practice-session.json"
 var match_save_path := "user://match-session.json"
 var brand: Label
+var scoreboard: Panel
+var gold_score: Label
+var cyan_score: Label
+var end_score: Label
+var mobile_ui := OS.get_name() == "Android"
 
 func _ready() -> void:
 	Input.use_accumulated_input = false
@@ -106,18 +111,18 @@ func _ready() -> void:
 	brand = Label.new()
 	brand.text = "PEBBLE & GRANITE"
 	brand.position = Vector2(40, 20)
-	brand.add_theme_font_size_override("font_size", 29)
+	brand.add_theme_font_size_override("font_size", 31 if mobile_ui else 29)
 	add_child(brand)
 	hint = Label.new()
 	hint.position = Vector2(40, 87)
-	hint.add_theme_font_size_override("font_size", 13)
+	hint.add_theme_font_size_override("font_size", 15 if mobile_ui else 13)
 	hint.add_theme_color_override("font_color", CurlPresentation.MUTED)
 	add_child(hint)
 	report_label = Label.new()
 	report_label.position = Vector2(800, 510)
 	report_label.size = Vector2(430, 180)
 	report_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	report_label.add_theme_font_size_override("font_size", 18)
+	report_label.add_theme_font_size_override("font_size", 20 if mobile_ui else 18)
 	add_child(report_label)
 	report_label.minimum_size_changed.connect(func(): layout_feedback.call_deferred())
 	new_button = button("Next stone", Vector2(40, 726), func(): next_throw())
@@ -132,8 +137,9 @@ func _ready() -> void:
 	mode_button = button("Mixed doubles", Vector2(1040, 30), func(): switch_mode())
 	clock_label = Label.new()
 	clock_label.position = Vector2(500, 87)
-	clock_label.add_theme_font_size_override("font_size", 14)
+	clock_label.add_theme_font_size_override("font_size", 16 if mobile_ui else 14)
 	add_child(clock_label)
+	create_scoreboard()
 	create_match_controls()
 	reset(false)
 	restore_practice()
@@ -152,7 +158,7 @@ func create_spatial_view() -> void:
 	move_child(rink, 0)
 	camera_button = button("Camera: Auto", Vector2(56, 134), func():
 		if pointer == -99: camera_button.text = "Camera: " + rink.cycle_camera())
-	camera_button.custom_minimum_size = Vector2(190, 40)
+	camera_button.custom_minimum_size = Vector2(208, 52) if mobile_ui else Vector2(190, 40)
 	var toggle := button("2D lab", Vector2(600, 122), func(): pass)
 	view_button = toggle
 	toggle.custom_minimum_size = Vector2(165, 40)
@@ -212,8 +218,8 @@ func button(text: String, pos: Vector2, action: Callable) -> Button:
 	var b := Button.new()
 	b.text = text
 	b.position = pos
-	b.custom_minimum_size = Vector2(165, 48)
-	b.add_theme_font_size_override("font_size", 19)
+	b.custom_minimum_size = Vector2(165, 64 if mobile_ui else 48)
+	b.add_theme_font_size_override("font_size", 22 if mobile_ui and spatial_view else 19)
 	b.pressed.connect(action)
 	add_child(b)
 	return b
@@ -251,7 +257,7 @@ func reset(persist := true) -> void:
 
 func update_labels() -> void:
 	status.text = "Practice  /  " + phase
-	hint.text = "CLUB ICE     •     Mouse / trackpad / touch" if spatial_view else "FEEL LAB     •     Seed 42     •     Mouse / trackpad / touch"
+	hint.text = "CLUB ICE  •  Aim · deliver · sweep" if spatial_view else "FEEL LAB     •     Seed 42     •     Mouse / trackpad / touch"
 	turn_button.text = "Turn: clockwise ↻" if turn == 1 else "Turn: counterclockwise ↺"
 	one_button.text = "One-push: on" if one_push else "One-push: off"
 	one_button.theme_type_variation = "SweepButton" if one_push else "Button"
@@ -262,14 +268,18 @@ func update_labels() -> void:
 	one_button.disabled = run_active
 	report_label.text = report
 	clock_label.visible = match_mode
+	scoreboard.visible = match_mode
 	sweep_button.disabled = not can_sweep()
 	mode_button.text = "Practice" if match_mode else "Mixed doubles"
 	mode_button.disabled = run_active
 	fresh_button.text = "New match" if match_mode else "Fresh ice"
 	setup_panel.visible = match_mode and frame.get("match_phase", "") == "Placement"
 	if match_mode:
+		gold_score.text = "GOLD  %d" % frame.score_gold
+		cyan_score.text = "%d  CYAN" % frame.score_cyan
+		end_score.text = "END %d / %d" % [frame.end, frame.scheduled_ends]
 		clock_label.text = "Thinking time   Gold %s   •   Cyan %s" % [clock_text(frame.clock_gold), clock_text(frame.clock_cyan)]
-		hint.text = "LOCAL DOUBLES  •  End %d/%d  •  Gold %d : %d Cyan  •  Autosaved" % [frame.end, frame.scheduled_ends, frame.score_gold, frame.score_cyan]
+		hint.text = "LOCAL MIXED DOUBLES  •  Autosaved"
 		if frame.match_phase == "Placement":
 			status.text = "Mixed doubles  /  Choose placement"
 			new_button.text = "Next stone"
@@ -315,6 +325,28 @@ func clock_text(ms: int) -> String:
 func team_name(team: int) -> String:
 	return "Gold" if team == 0 else "Cyan"
 
+func create_scoreboard() -> void:
+	scoreboard = Panel.new()
+	scoreboard.position = Vector2(444, 20 if mobile_ui else 22)
+	scoreboard.size = Vector2(350, 40 if mobile_ui else 38)
+	scoreboard.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	scoreboard.add_theme_stylebox_override("panel", CurlPresentation.surface(Color("11262f"), Color("29424b"), 8))
+	add_child(scoreboard)
+	gold_score = score_label(Vector2(14, 3), Vector2(112, 32), GOLD, 23)
+	end_score = score_label(Vector2(124, 9), Vector2(104, 24), CurlPresentation.MUTED, 13)
+	cyan_score = score_label(Vector2(226, 3), Vector2(112, 32), CYAN, 23)
+
+func score_label(pos: Vector2, dimensions: Vector2, color: Color, font_size: int) -> Label:
+	var label := Label.new()
+	label.position = pos
+	label.size = dimensions
+	label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	label.add_theme_font_size_override("font_size", font_size)
+	if mobile_ui: label.add_theme_font_size_override("font_size", font_size + 2)
+	label.add_theme_color_override("font_color", color)
+	scoreboard.add_child(label)
+	return label
+
 func create_match_controls() -> void:
 	setup_panel = Panel.new()
 	setup_panel.position = Vector2(800, 110)
@@ -339,7 +371,7 @@ func setup_button(pos: Vector2, action: Callable) -> Button:
 	var b := button("", Vector2.ZERO, action)
 	b.reparent(setup_panel)
 	b.position = pos
-	b.custom_minimum_size = Vector2(400, 48)
+	b.custom_minimum_size = Vector2(400, 52 if mobile_ui else 48)
 	return b
 
 func switch_mode() -> void:

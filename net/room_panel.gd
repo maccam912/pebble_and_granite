@@ -8,7 +8,7 @@ var game: Control
 var code_input: LineEdit
 var heading: Label
 var message: Label
-var roster: Label
+var roster: RichTextLabel
 var host_button: Button
 var join_button: Button
 var ready_button: Button
@@ -51,15 +51,24 @@ func _ready() -> void:
 	code_input = LineEdit.new()
 	code_input.position = Vector2(275, 116)
 	code_input.size = Vector2(180, 48)
+	if OS.get_name() == "Android": code_input.size.y = 64
 	code_input.placeholder_text = "CODE"
 	code_input.max_length = 4
 	code_input.alignment = HORIZONTAL_ALIGNMENT_CENTER
 	code_input.add_theme_font_size_override("font_size", 24)
 	body.add_child(code_input)
 	join_button = action("Join by code", Vector2(480, 116), join_room)
-	roster = label_at("", Vector2(30, 195), 22)
+	roster = RichTextLabel.new()
+	roster.position = Vector2(30, 195)
 	roster.size = Vector2(690, 180)
-	roster.add_theme_constant_override("line_spacing", 10)
+	roster.bbcode_enabled = true
+	roster.scroll_active = false
+	roster.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	roster.add_theme_font_size_override("normal_font_size", 21)
+	roster.add_theme_color_override("default_color", CurlPresentation.PAPER)
+	roster.add_theme_constant_override("table_h_separation", 28)
+	roster.add_theme_constant_override("table_v_separation", 15)
+	body.add_child(roster)
 	message = label_at("Create a room or enter a four-character code.", Vector2(30, 385), 18)
 	message.size = Vector2(690, 70)
 	message.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
@@ -83,8 +92,8 @@ func action(text: String, pos: Vector2, callback: Callable) -> Button:
 	var button := Button.new()
 	button.text = text
 	button.position = pos
-	button.custom_minimum_size = Vector2(200, 48)
-	button.add_theme_font_size_override("font_size", 19)
+	button.custom_minimum_size = Vector2(200, 64 if OS.get_name() == "Android" else 48)
+	button.add_theme_font_size_override("font_size", 20 if OS.get_name() == "Android" else 19)
 	button.pressed.connect(callback)
 	body.add_child(button)
 	return button
@@ -174,8 +183,10 @@ func refresh() -> void:
 			if index == room.seat_index():
 				description += " • You"
 				ready_value = player.ready
-		rows.append("%s • Player %d     %s" % ["Gold" if index < 2 else "Cyan", index % 2 + 1, description])
-	roster.text = "\n".join(rows)
+		var team_color := "#dfbd78" if index < 2 else "#65c1c9"
+		var state_color := "#a8babf" if player == null else ("#a8d1b5" if description.begins_with("Ready") or description.begins_with("Synced") else "#ece8dc")
+		rows.append("[cell][color=%s]%s[/color][/cell][cell]Player %d[/cell][cell][color=%s]%s[/color][/cell]" % [team_color, "GOLD" if index < 2 else "CYAN", index % 2 + 1, state_color, description])
+	roster.text = "[table=3]" + "".join(rows) + "[/table]"
 	ready_button.text = "Not ready" if ready_value else "Ready"
 func _process(_delta: float) -> void:
 	room.poll()

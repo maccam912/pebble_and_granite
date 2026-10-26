@@ -81,7 +81,7 @@ func update_labels() -> void:
 	var team := int(index / 2)
 	var player := index % 2
 	var paused: bool = online.state.get("paused", true)
-	hint.text = "ONLINE DOUBLES • End %d/%d • Gold %d : %d Cyan • You: %s player %d" % [frame.end, frame.scheduled_ends, frame.score_gold, frame.score_cyan, team_name(team), player + 1]
+	hint.text = "ONLINE DOUBLES • You: %s player %d" % [team_name(team), player + 1]
 	if paused: status.text = "Online doubles  /  Waiting for players to synchronize"
 	gold_order.disabled = paused or team != 0
 	cyan_order.disabled = paused or team != 1
