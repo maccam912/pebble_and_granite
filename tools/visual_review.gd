@@ -39,6 +39,10 @@ func run() -> void:
 	game.update_labels()
 	game.update_spatial(0)
 	await capture("02-slide-feedback")
+	game.rink.hand_held = true
+	game.rink.render_frame(game.frame, false, false, game.broom_mm, game.turn, true, 0)
+	await capture("02b-held-delivery")
+	game.rink.hand_held = false
 	game.phase = "Stone at rest"
 	game.report = "Release 2.055 m/s\nHog-to-hog 12.43 s\n2.87 rotations • 24.60 s travel\nRest: 0.12 m across, 0.36 m from tee\nIn play"
 	game.update_labels()

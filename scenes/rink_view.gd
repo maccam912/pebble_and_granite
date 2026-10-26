@@ -106,13 +106,42 @@ func _ready() -> void:
 	selection.visible = false
 	hand = Node3D.new()
 	world.add_child(hand)
+	var glove_material := CurlRinkArt.shader_material("res://render/fabric.gdshader")
+	glove_material.set_shader_parameter("fabric_color", Color("283239"))
+	var jacket_material := CurlRinkArt.shader_material("res://render/fabric.gdshader")
+	jacket_material.set_shader_parameter("fabric_color", Color("203c4a"))
 	var glove := SphereMesh.new()
-	glove.radius = .05
-	glove.height = .08
-	var palm := mesh(hand, glove, Vector3(0, .218, .015), material("303a40", .9))
-	palm.scale.z = 1.25
-	var sleeve := cylinder(hand, .048, .48, Vector3(.10, .27, .26), material("203c4a", .9))
-	sleeve.rotation_degrees = Vector3(90, 16, 0)
+	glove.radius = .044
+	glove.height = .039
+	var palm := mesh(hand, glove, Vector3(-.026, .246, .049), glove_material)
+	palm.scale.z = 1.15
+	# Four curled fingers and the opposing thumb read as a relaxed gloved grip.
+	for x in [-.060, -.042, -.024, -.006]:
+		var a := Vector3(x, .245, .035)
+		var b := Vector3(x, .244, .004)
+		var c := Vector3(x, .221, -.022)
+		var d := Vector3(x, .194, -.013)
+		for pair in [[a, b], [b, c], [c, d]]:
+			CurlRinkArt.capsule_between(hand, pair[0], pair[1], .0085, glove_material)
+	CurlRinkArt.capsule_between(hand, Vector3(.011, .237, .058), Vector3(.029, .218, .013), .012, glove_material)
+	CurlRinkArt.capsule_between(hand, Vector3(.029, .218, .013), Vector3(.010, .210, -.010), .011, glove_material)
+	var wrist := Vector3(.018, .248, .105)
+	CurlRinkArt.capsule_between(hand, Vector3(-.013, .244, .068), wrist, .029, glove_material)
+	var forearm := Vector3(.25, .39, 1.05)
+	var length := wrist.distance_to(forearm)
+	var sleeve_shape := CurlRinkArt.lathe(PackedVector2Array([
+		Vector2(0, -length * .5), Vector2(.074, -length * .5),
+		Vector2(.066, -length * .3), Vector2(.059, 0),
+		Vector2(.048, length * .32), Vector2(.041, length * .40),
+		Vector2(.044, length * .43), Vector2(.038, length * .47),
+		Vector2(.038, length * .5), Vector2(0, length * .5)]))
+	var sleeve := mesh(hand, sleeve_shape, (wrist + forearm) * .5, jacket_material)
+	sleeve.quaternion = Quaternion(Vector3.UP, (wrist - forearm).normalized())
+	var cuff := cylinder(hand, .040, .026, wrist, glove_material)
+	cuff.quaternion = sleeve.quaternion
+	for geometry in hand.find_children("*", "MeshInstance3D", true, false):
+		geometry.layers = 2
+		geometry.gi_mode = GeometryInstance3D.GI_MODE_DYNAMIC
 	hand.visible = false
 	preview = stone_mesh(0)
 	world.add_child(preview)

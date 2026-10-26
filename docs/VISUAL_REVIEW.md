@@ -241,3 +241,26 @@ and fixtures. Give roof geometry layer 3 and hide that layer only from the House
 camera; the probe retains room/roof layers 1 and 3 while excluding moving props
 on layer 2. The camera projection and input geometry stay unchanged. The rink
 test checks roof/probe masks and all eight native review captures pass.
+
+Clean Android build 51 (`63815c7`, SHA-256
+`591a2453f982f257d6deb5ba60a88fc99d8edb7ddd0f76a12dd27c66e7c9a1a1`)
+was installed on the test emulator. Reviewed delivery, all camera buttons, the
+new oak material, and the unobstructed House view. Captures and the app log are
+in `build/evidence/polish/android-51/`; the captured app log contains no Godot
+warning/error. All four original practice/match files and backups were restored
+byte for byte, with the app stopped. This validates the installed renderer,
+separate from the complete gesture probe that passed on build 49.
+
+## Held delivery presentation
+
+The real build-49 held-delivery capture exposed a prominent flat end on the
+cylindrical sleeve, with the hand reading as a ball. Refine the existing prop
+into a tapered sleeve extending out of frame, a cuff, and a gloved palm with
+curled fingers/thumb. Original procedural fabric shading supplies restrained
+weave and high roughness. No arm animation, input mapping, hit target or delivery
+state changed. All new meshes stay on the dynamic prop layer.
+
+The native review now includes `02b-held-delivery.png` (nine captures total), so
+this existing pose cannot be missed in later art passes. Reviewed the held view;
+rink, held-resume and delivery-slide checks pass. Android review of this newest
+prop is pending at this checkpoint.
