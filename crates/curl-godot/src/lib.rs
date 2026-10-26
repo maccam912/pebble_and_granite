@@ -206,6 +206,21 @@ impl CurlSession {
         GString::new()
     }
     #[func]
+    fn regrip_target(&mut self, us: i64, x: i64, y: i64, target_mm_s: i64) -> GString {
+        if us < 0 || !(1500..=5000).contains(&target_mm_s) {
+            return "Invalid held target".into();
+        }
+        self.stroke.regrip(
+            curl_input::Sample {
+                us: us as u64,
+                x,
+                y,
+            },
+            target_mm_s,
+        );
+        GString::new()
+    }
+    #[func]
     fn step_ticks(&mut self, count: i64, effort: i64, lateral_mm: i64, ahead_mm: i64) {
         if !(0..=64).contains(&count)
             || !(0..=255).contains(&effort)
@@ -562,6 +577,18 @@ pub(crate) fn presentation_frame(
     );
     frame.set("timed_out", sim.timed_out);
     frame.set("mode", if game.is_some() { "match" } else { "practice" });
+    let pending =
+        game.and_then(|a| a.in_hand.as_ref())
+            .map(|held| curl_proto::session::PendingDelivery {
+                target_mm_s: held.target_mm_s,
+                broom_mm: held.broom_mm,
+                elapsed_ms: held.elapsed_ms,
+            });
+    let mut held_frame = pending_frame(pending.as_ref());
+    if let Some(held) = game.and_then(|a| a.in_hand.as_ref()) {
+        held_frame.set("suspended", held.suspended);
+    }
+    frame.set("in_hand", &held_frame);
     if let Some(a) = game {
         frame.set("release_speed", render(release_speed));
         frame.set("match_phase", format!("{:?}", a.game.phase));

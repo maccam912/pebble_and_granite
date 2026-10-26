@@ -17,9 +17,10 @@ bible only. Remote: `maccam912/pebble_and_granite`, main branch.
 - [x] Installed Android ↔ macOS short-shot/reconnect probes, default and forced relay.
 - [ ] Physical-device tests, Android full-match latency profiling and input refinement.
 - [x] Installed Android golden/JNI probe using the one-use debug request route.
-- [ ] 3D delivery/cameras, spatial scrubbing, measured calibration/performance and AI.
+- [x] Direct-on-ice 3D delivery/cameras, finishing flick, and local held saves.
+- [ ] Spatial scrubbing, measured calibration/performance and AI.
 
-Latest local gates: 92 core Rust tests (plus native transport identity test), shared golden traces, Godot input/practice/match
+Latest local gates: 94 core Rust tests (plus native transport identity test), shared golden traces, Godot input/practice/match
 save/full-game fixtures. Live network probes are separate from offline CI because
 relay and code-directory availability are external dependencies. Four peers have
 passed a full shot and in-flight reconnect with default and forced-relay transport, but the
@@ -638,3 +639,29 @@ the successful run explicitly used GODOT_BIN for the installed editor.
 Validation: 92 core tests, six unchanged model-3 every-tick traces, workspace
 clippy and all eleven Godot gates passed against the rebuilt native library.
 Weekly usage remaining: 59%.
+
+## Online held delivery and interruption recovery
+
+- Online gesture now sends BeginDelivery at accepted push weight and ReleaseDelivery
+  at the finishing flick. Consecutive reliable requests support lifting before the
+  begin acknowledgement; clients never choose authoritative release position.
+- Host/replicas expose held pose, tee state and hog warning. The host handles the
+  thinking-clock cutoff and automatic hog fault; return to hack is pre-tee only.
+- Protocol 9 adds seat-owned SuspendDelivery. Background/focus loss and opening the
+  room panel freeze a held online delivery. Any room disconnect journals suspension;
+  restored peers must synchronize, then the thrower explicitly regrips to resume.
+  Frozen state includes ice and thinking clocks; a paused release is rejected.
+- Added core interruption/journal/seat tests and expanded the online UI fixture to
+  cover pause, long frozen time, regrip and a finishing flick after tee crossing.
+- Existing Android APK evidence predates this integration. Repeat installed touch,
+  pause/resume and forced-relay probes with a clean new build before claiming those.
+- Host receipt time currently determines release position, with 20 Hz held pose
+  updates and no prediction. Device/latency feel tuning remains open.
+
+Validation for this checkpoint: 94 core tests and six unchanged model-3 traces,
+workspace/all-target clippy, and eleven Godot gates passed. Four real local Iroh
+peers passed held disconnect/sync/regrip, nine ends (5:4) and rematch. A second live
+run verified remote lift before begin acknowledgement, then an automatic held hog
+fault. First-shot wall/simulation were 27.128/27.138 s in that run, max headless
+frame gap 10.176 ms; not a physical-device performance claim. Added the Android
+pause/regrip probe case, pending a clean APK run. Weekly remaining usage: 58%.

@@ -33,6 +33,10 @@ pub enum Record {
         line_mm: i64,
         turn: i64,
     },
+    SuspendDelivery {
+        seat: Seat,
+        suspended: bool,
+    },
     CancelDelivery {
         seat: Seat,
     },
@@ -284,6 +288,7 @@ impl RecordedMatch {
                 line_mm,
                 turn,
             } => a.release_delivery(*seat, *trim_mm_s, *line_mm, *turn),
+            Record::SuspendDelivery { seat, suspended } => a.suspend_delivery(*seat, *suspended),
             Record::CancelDelivery { seat } => a.cancel_delivery(*seat),
             Record::Release { seat, release } => a.release(*seat, release.clone()),
             Record::Sweep { seat, tick, input } => a.sweep(*seat, *tick, *input).map(|_| ()),

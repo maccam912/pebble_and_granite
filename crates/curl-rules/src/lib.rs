@@ -467,7 +467,7 @@ mod tests {
     fn fgz_removal_restores_opponent() {
         let mut m = Match::new(Rules::club(), 1).unwrap();
         let guard = stone(8, 1, 0, -3000);
-        m.begin(0, 0, &[guard.clone()]).unwrap();
+        m.begin(0, 0, std::slice::from_ref(&guard)).unwrap();
         let r = m.settle(&[]).unwrap();
         assert_eq!(r.violation, Some(Violation::ProtectedRemoval));
         assert_eq!(r.replace_stones, Some(vec![guard]));

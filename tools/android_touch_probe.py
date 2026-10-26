@@ -119,6 +119,38 @@ for direction, label in [(1, 'right'), (-1, 'left')]:
     results[label] = release
 fresh()
 drive()
+time.sleep(1.6)
+capture('before-pause')
+# Background with the contact still held. Android cancels the contact as focus
+# leaves; the game must save the held plan instead of submitting a release.
+adb('shell', 'input', 'keyevent', 'KEYCODE_HOME')
+contact = None
+time.sleep(.5)
+frozen = journal('paused')
+if not frozen.get('pending_delivery') or any(r['kind'] in ['Shot', 'HogViolation'] for r in frozen['records']):
+    raise RuntimeError('Background did not preserve the held delivery')
+time.sleep(1)
+adb('shell', 'am', 'start', '-W', '-n', activity)
+time.sleep(3)
+capture('resumed-held')
+if journal('resumed-before-regrip') != frozen:
+    raise RuntimeError('Resuming advanced the slide before regrip')
+event('DOWN', 1200, 715)
+time.sleep(.12)
+event('MOVE', 1200, 715)
+event('MOVE', 1152, 706)
+time.sleep(.04)
+event('MOVE', 1104, 697)
+event('UP', 1104, 697)
+time.sleep(1.2)
+capture('resumed-released')
+resumed = journal('resumed-finish')
+shots = [r for r in resumed['records'] if r['kind'] == 'Shot']
+if resumed.get('pending_delivery') or len(shots) != 1 or shots[0]['data']['release']['spin'] >= 0:
+    raise RuntimeError('Regrip did not produce one left-curl delivery')
+results['pause_resume'] = {'frozen': frozen['pending_delivery'], 'release': shots[0]['data']['release']}
+fresh()
+drive()
 time.sleep(6)
 capture('hog-held')
 log = journal('hog')

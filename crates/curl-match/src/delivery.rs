@@ -20,6 +20,11 @@ pub struct InHand {
     pub target_mm_s: i64,
     pub broom_mm: i64,
     pub elapsed_ms: u32,
+    #[serde(default, skip_serializing_if = "is_false")]
+    pub suspended: bool,
+}
+fn is_false(value: &bool) -> bool {
+    !*value
 }
 impl InHand {
     pub fn pose(&self) -> Pose {
@@ -66,8 +71,17 @@ impl Authority {
             target_mm_s,
             broom_mm,
             elapsed_ms: 0,
+            suspended: false,
         });
         self.last_resolution = None;
+        Ok(())
+    }
+    pub fn suspend_delivery(&mut self, seat: Seat, suspended: bool) -> Result<(), &'static str> {
+        let delivery = self.in_hand.as_mut().ok_or("no active delivery")?;
+        if delivery.seat != seat {
+            return Err("delivery belongs to another player");
+        }
+        delivery.suspended = suspended;
         Ok(())
     }
     pub fn cancel_delivery(&mut self, seat: Seat) -> Result<(), &'static str> {
@@ -87,6 +101,7 @@ impl Authority {
     ) -> Result<(), &'static str> {
         let delivery = self.in_hand.as_ref().ok_or("no active delivery")?;
         if delivery.seat != seat
+            || delivery.suspended
             || !(-70..=70).contains(&trim_mm_s)
             || !(-120..=120).contains(&line_mm)
             || !(-1..=1).contains(&turn)
@@ -111,6 +126,9 @@ impl Authority {
     }
     pub(crate) fn advance_delivery(&mut self, ms: u32) -> Result<(), &'static str> {
         let mut delivery = self.in_hand.clone().ok_or("no active delivery")?;
+        if delivery.suspended {
+            return Ok(());
+        }
         let tee = crossing_ms(delivery.target_mm_s, false);
         let hog = crossing_ms(delivery.target_mm_s, true);
         let mut part = ms.min(hog.saturating_sub(delivery.elapsed_ms));
@@ -191,6 +209,65 @@ mod tests {
         let restored = RecordedMatch::parse(m.json().unwrap().as_bytes()).unwrap();
         assert_eq!(restored.hash(), m.hash());
         assert_eq!(restored.in_hand, m.in_hand);
+    }
+    #[test]
+    fn suspended_delivery_freezes_and_resumes_from_recorded_pose() {
+        let mut m = game();
+        start(&mut m);
+        m.think(2000).unwrap();
+        let wrong = Seat {
+            team: 0,
+            position: 1,
+        };
+        let before = m.hash();
+        assert!(
+            m.apply(Record::SuspendDelivery {
+                seat: wrong,
+                suspended: true
+            })
+            .is_err()
+        );
+        assert_eq!(before, m.hash());
+        m.apply(Record::SuspendDelivery {
+            seat: SEAT,
+            suspended: true,
+        })
+        .unwrap();
+        let frozen = m.hash();
+        m.think(60000).unwrap();
+        assert_eq!(frozen, m.hash());
+        assert!(
+            m.apply(Record::ReleaseDelivery {
+                seat: SEAT,
+                trim_mm_s: 0,
+                line_mm: 0,
+                turn: 1
+            })
+            .is_err()
+        );
+        let mut restored = RecordedMatch::parse(m.json().unwrap().as_bytes()).unwrap();
+        assert_eq!(restored.hash(), frozen);
+        for game in [&mut m, &mut restored] {
+            game.apply(Record::SuspendDelivery {
+                seat: SEAT,
+                suspended: false,
+            })
+            .unwrap();
+            game.think(137).unwrap();
+            game.apply(Record::ReleaseDelivery {
+                seat: SEAT,
+                trim_mm_s: -30,
+                line_mm: 0,
+                turn: -1,
+            })
+            .unwrap();
+        }
+        assert_eq!(m.hash(), restored.hash());
+        // Old held-state JSON remains readable and produces the same hash bytes.
+        let old = r#"{"seat":{"team":0,"position":0},"target_mm_s":2050,"broom_mm":-900,"elapsed_ms":123}"#;
+        let held: InHand = serde_json::from_str(old).unwrap();
+        assert!(!held.suspended);
+        assert_eq!(serde_json::to_string(&held).unwrap(), old);
     }
     #[test]
     fn deadline_and_partitioning_are_exact() {

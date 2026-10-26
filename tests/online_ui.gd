@@ -46,7 +46,27 @@ func run() -> void:
 		clock[0] = sample[0]
 		game.move_pointer(start + Vector2(0, sample[1]))
 	clock[0] = 500000
-	game.end_pointer(start + Vector2(0, -9.6))
+	game.update_delivery()
+	check(not game.frame.in_hand.is_empty(), "Online push did not begin host-held delivery")
+	for i in range(40): game._process(.05)
+	check(game.frame.in_hand.in_play, "Held authority did not cross delivery tee")
+	var thinking: int = game.frame.clock_gold
+	game._notification(NOTIFICATION_APPLICATION_PAUSED)
+	game.refresh_online()
+	check(game.frame.in_hand.suspended, "Focus loss did not suspend authority delivery")
+	var frozen: String = online.state.hash
+	for i in range(200): game._process(.05)
+	check(online.state.hash == frozen, "Paused online slide advanced")
+	game._notification(NOTIFICATION_APPLICATION_RESUMED)
+	game.update_spatial(0)
+	var point: Vector2 = game.handle_point()
+	game.begin_pointer(0, point)
+	clock[0] = 600000
+	game.move_pointer(point)
+	clock[0] = 700000
+	game.end_pointer(point + Vector2(-30, -8))
+	check(game.release_report.turn == -1, "Online regrip lost finishing curl")
+	check(game.frame.clock_gold == thinking, "Online clock ran after delivery tee")
 	check(game.run_active and game.frame.match_phase == "InFlight", "Online stroke did not release through authority")
 	check(not game.can_sweep(), "Deliverer stole teammate brush role")
 	for i in range(1300):

@@ -5,8 +5,11 @@ var network_time := 0.0
 var last_brush_tick := -12
 var waiting_release := false
 var waiting_count := -1
+var begin_sent := false
+var delivery_count := -1
+var was_paused := false
 func _ready() -> void:
-	authoritative_delivery = false
+	authoritative_delivery = true
 	persistence_enabled = false
 	allow_online = false
 	spatial_view = true
@@ -19,15 +22,41 @@ func _ready() -> void:
 	refresh_online()
 func on_network_error(error: String) -> void:
 	waiting_release = false
+	begin_sent = false
+	pointer = -99
+	if session != null: session.cancel_stroke()
 	report = error
 	if not run_active: phase = "Ready"
 	update_labels()
 func save_practice() -> void: pass
 func refresh_online() -> void:
+	var paused: bool = online.state.get("paused", true)
+	if paused and not was_paused:
+		pointer = -99
+		begin_sent = false
+		waiting_release = false
+		session.cancel_stroke()
+		phase = "Ready"
+	was_paused = paused
 	var next := online.frame()
 	if next.is_empty(): return
 	var old_phase: String = frame.get("match_phase", "")
+	var old_held: Dictionary = frame.get("in_hand", {})
 	frame = next
+	if delivery_count != int(frame.get("delivered_count", -1)) or old_phase != frame.match_phase:
+		begin_sent = false
+		delivery_count = int(frame.get("delivered_count", -1))
+		if not old_held.is_empty():
+			pointer = -99
+			session.cancel_stroke()
+			phase = "Ready"
+	if not frame.get("in_hand", {}).is_empty():
+		broom_mm = int(frame.in_hand.broom_mm)
+		if frame.in_hand.get("suspended", false) and not old_held.get("suspended", false):
+			pointer = -99
+			session.cancel_stroke()
+			phase = "Ready"
+			report = "Delivery paused. Regrip the handle when everyone is back."
 	run_active = frame.match_phase == "InFlight"
 	if run_active or int(frame.get("delivered_count", -1)) != waiting_count: waiting_release = false
 	if old_phase != frame.match_phase:
@@ -54,11 +83,51 @@ func update_labels() -> void:
 	power_button.disabled = paused or team != frame.placement_team or not frame.power_available
 	setup_panel.get_child(setup_panel.get_child_count() - 1).disabled = paused or team != frame.placement_team
 	new_button.disabled = paused or run_active or frame.match_phase in ["Placement", "Calling"] or not online.is_host
+	if not frame.get("in_hand", {}).is_empty():
+		new_button.disabled = paused or not owns_delivery() or frame.in_hand.in_play
+		new_button.text = "Stone in play" if frame.in_hand.in_play else "Return to hack"
 	new_button.text = "Host: next end" if not online.is_host and frame.match_phase == "EndComplete" else new_button.text
 	sweep_button.disabled = paused or not can_sweep()
 	if frame.match_phase == "Calling" and (team != frame.team or player != frame.thrower):
 		report_label.text = "%s player %d is delivering. Their teammate can sweep after release." % [team_name(frame.team), frame.thrower + 1]
 	elif frame.match_phase == "Placement": report_label.text = "Each team selects its first/last thrower. The indicated team chooses placement."
+func owns_delivery() -> bool:
+	var index := online.seat_index()
+	return index >= 0 and int(index / 2) == frame.get("team") and index % 2 == frame.get("thrower")
+func advance_local_held() -> void: pass # Only the room authority advances elapsed time.
+func suspend_online_delivery() -> void:
+	if online != null and owns_delivery() and (begin_sent or not frame.get("in_hand", {}).is_empty()):
+		var error := online.send_command({"kind": "SuspendDelivery", "suspended": true})
+		if not error.is_empty(): report = error
+func _notification(what: int) -> void:
+	if what in [NOTIFICATION_APPLICATION_FOCUS_OUT, NOTIFICATION_APPLICATION_PAUSED, NOTIFICATION_WM_CLOSE_REQUEST]:
+		suspend_online_delivery()
+	super._notification(what)
+func update_delivery() -> void:
+	if pointer == -99 or dragging_broom or sweeping or run_active: return
+	if online.state.get("paused", true): return
+	var held: Dictionary = frame.get("in_hand", {})
+	if held.is_empty() and not begin_sent:
+		var target: int = session.delivery_target(input_clock.call())
+		if target == 0: return
+		if not start_delivery(target): return
+		held = frame.get("in_hand", {})
+	phase = "Slide"
+	if held.is_empty():
+		report = "Starting delivery…"
+	else:
+		var weight := "Soft" if held.target_mm_s < 1950 else ("Draw" if held.target_mm_s < 2300 else "Firm")
+		report = "Release now — hog line." if held.hog_warning else weight + " weight. Hold steady; finish left or right for curl."
+	update_labels()
+func start_delivery(target: int) -> bool:
+	if begin_sent or not frame.get("in_hand", {}).is_empty(): return true
+	var error := online.send_command({"kind": "BeginDelivery", "target_mm_s": target, "broom_mm": broom_mm})
+	if not error.is_empty():
+		report = error
+		return false
+	begin_sent = true
+	refresh_online()
+	return true
 func can_sweep() -> bool:
 	var index := online.seat_index()
 	if index < 0 or frame.get("match_phase") != "InFlight": return false
@@ -91,13 +160,25 @@ func _process(delta: float) -> void:
 	update_spatial(delta)
 	queue_redraw()
 func begin_pointer(id: int, pos: Vector2) -> void:
-	if not is_visible_in_tree() or online.state.get("paused", true) or waiting_release: return
+	if suspended or not is_visible_in_tree() or online.state.get("paused", true) or waiting_release: return
 	var index := online.seat_index()
 	if run_active:
 		if can_sweep(): super.begin_pointer(id, pos)
 		return
 	if index < 0 or int(index / 2) != frame.get("team") or index % 2 != frame.get("thrower"): return
-	super.begin_pointer(id, pos)
+	if not frame.get("in_hand", {}).is_empty():
+		if pointer != -99 or pos.distance_to(handle_point()) >= 80: return
+		var q := units(pos)
+		var error: String = session.regrip_target(input_clock.call(), q.x, q.y, int(frame.in_hand.target_mm_s))
+		if not error.is_empty(): report = error; return
+		if frame.in_hand.get("suspended", false):
+			error = online.send_command({"kind": "SuspendDelivery", "suspended": false})
+			if not error.is_empty(): report = error; return
+		pointer = id
+		stroke_trace = PackedVector2Array([pos])
+		phase = "Slide"
+		update_labels()
+	else: super.begin_pointer(id, pos)
 func end_pointer(pos: Vector2) -> void:
 	pointer = -99
 	if dragging_broom:
@@ -111,17 +192,13 @@ func end_pointer(pos: Vector2) -> void:
 	if spatial_view:
 		turn = int(release_report.get("turn", 0))
 		if turn != 0: release_report.line_mm = 0
-	if release_report.get("hog_violation", false):
-		waiting_count = int(frame.get("delivered_count", -1))
-		var error := online.send_command({"kind": "HogViolation"})
-		waiting_release = error.is_empty()
+	if not release_report.get("finish_valid", false):
 		phase = "Ready"
-		report = "Hog-line violation. The delivery counts." if error.is_empty() else error
-	elif not release_report.valid:
-		phase = "Ready"
-		report = "Make one smooth forward stroke, then lift. A click does not throw."
-	else:
-		var error := online.release_slide(int(release_report.speed_um_s), int(release_report.y_um), clampi(broom_mm + int(release_report.line_mm), -2200, 2200), turn)
+		report = "Regrip the stone to finish." if not frame.get("in_hand", {}).is_empty() else "Make one smooth forward stroke, then lift. A click does not throw."
+	elif start_delivery(int(release_report.target_mm_s)):
+		# Begin and finish use consecutive reliable commands. The host derives
+		# position from its accepted held plan, never from client screen coordinates.
+		var error := online.send_command({"kind": "ReleaseDelivery", "trim_mm_s": int(release_report.trim_mm_s), "line_mm": int(release_report.line_mm), "turn": turn})
 		if error.is_empty():
 			waiting_count = int(frame.get("delivered_count", -1))
 			waiting_release = true
@@ -140,6 +217,16 @@ func apply_placement() -> void:
 	if not error.is_empty(): report = error
 	refresh_online()
 func next_throw() -> void:
+	if not frame.get("in_hand", {}).is_empty():
+		var error := online.send_command({"kind": "CancelDelivery"})
+		if error.is_empty():
+			begin_sent = false
+			pointer = -99
+			session.cancel_stroke()
+			phase = "Ready"
+		else: report = error
+		refresh_online()
+		return
 	if frame.get("match_phase") == "GameComplete":
 		var error := online.rematch()
 		if not error.is_empty(): report = error

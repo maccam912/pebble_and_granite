@@ -49,9 +49,10 @@ func run() -> void:
 	at_seat(2).game.apply_placement()
 	if not check(await until(func(): return panels.all(func(p): return p.room.frame().get("match_phase") == "Calling"), 10), "UI placement timed out"):
 		await cleanup(); quit(1); return
-	# Exercise the actual card-to-slide-to-packet path, with reproducible input time.
-	deliver_gesture(host.game, 3000000)
-	check(await until(func(): return panels.all(func(p): return p.game.run_active), 10), "Flight state not delivered")
+	# Exercise direct-on-ice input with authority elapsed time and held reconnect.
+	await deliver_gesture(host.game, 2500000, false, true)
+	if failed: await cleanup(); quit(1); return
+	check(await until(func(): return panels.all(func(p): return p.game != null and p.game.run_active), 10), "Flight state not delivered")
 	var sweeper := at_seat(1)
 	sweeper.game.sweep_button.button_down.emit()
 	timing = [Time.get_ticks_usec(), 0, 0]
@@ -72,16 +73,42 @@ func run() -> void:
 	check(final_frame.get("delivered_count") == 1, "Wrong delivered count")
 	check(rejects.is_empty(), "Gameplay requests rejected: " + str(rejects))
 	print("ONLINE_ROOM_TIMING wall_seconds=", elapsed, " simulation_seconds=", float(final_frame.get("tick", 0)) / 240.0, " max_frame_ms=", float(timing[1]) / 1000.0, " frames=", timing[2])
+	# A remote player lifts in the same callback as the push, before any host ack.
+	var early := at_seat(int(final_frame.team) * 2 + int(final_frame.thrower))
+	check(not early.room.is_host, "Early-lift fixture requires a remote thrower")
+	var early_clock := [0]
+	early.game.input_clock = func(): return early_clock[0]
+	early.game.one_push = true
+	var early_handle: Vector2 = early.game.handle_point()
+	early.game.begin_pointer(-1, early_handle)
+	early_clock[0] = 20000
+	early.game.move_pointer(early_handle + Vector2(0, -4.2))
+	early_clock[0] = 120000
+	early.game.move_pointer(early_handle + Vector2(0, -25.2))
+	early_clock[0] = 140000
+	early.game.end_pointer(early_handle + Vector2(0, -27.0))
+	check(early.game.waiting_release, "Early lift did not queue its finish")
+	check(await until(func(): return host.room.frame().get("match_phase") == "InFlight", 10), "Unacknowledged begin/finish did not release")
+	for step in range(1300):
+		if host.room.frame().get("match_phase") != "InFlight": break
+		host.game._process(.05)
+		await process_frame
+	check(await until(func(): return synchronized(host), 10), "Early release replicas diverged")
+	final_frame = host.room.frame()
+	check(final_frame.delivered_count == 2 and final_frame.match_phase == "Calling", "Early shot did not finish once")
 	var fault_player := at_seat(int(final_frame.team) * 2 + int(final_frame.thrower))
-	deliver_gesture(fault_player.game, 6000000, true)
-	check(await until(func(): return host.room.frame().get("delivered_count") == 2 and synchronized(host), 10), "Held online hog fault did not synchronize")
+	host.game.set_process(true)
+	await deliver_gesture(fault_player.game, 6000000, true)
+	check(await until(func(): return host.room.frame().get("delivered_count") == 3 and synchronized(host), 10), "Held online hog fault did not synchronize")
 	check(host.room.frame().get("violation") == "HogRelease", "Online held fault lost rule resolution")
+	host.game.set_process(false)
+	check(await until(func(): return synchronized(host), 10), "Hog boundary hashes diverged")
 	if "--full-match" in OS.get_cmdline_user_args() and not failed: await finish_match(host)
 	await cleanup()
 	print("ONLINE_ROOM_FLOW_OK" if not failed else "ONLINE_ROOM_FLOW_FAILED")
 	quit(1 if failed else 0)
 
-func deliver_gesture(game: Control, release_us: int, hold := false) -> void:
+func deliver_gesture(game: Control, release_us: int, hold := false, reconnect := false) -> void:
 	var clock := [0]
 	game.input_clock = func(): return clock[0]
 	game.one_push = true
@@ -91,9 +118,33 @@ func deliver_gesture(game: Control, release_us: int, hold := false) -> void:
 	game.move_pointer(handle + Vector2(0, -4.2))
 	clock[0] = 120000
 	game.move_pointer(handle + Vector2(0, -25.2))
+	clock[0] = 220000
+	game.update_delivery()
+	var host := panels[0]
+	check(await until(func(): return not host.room.frame().get("in_hand", {}).is_empty(), 10), "BeginDelivery did not reach host")
+	if reconnect:
+		check(await until(func(): return host.room.frame().in_hand.elapsed_ms >= 2000, 5), "Held slide never advanced")
+		var returning := at_seat(3)
+		await returning.leave()
+		check(await until(func(): return host.room.state.paused, 10), "Held disconnect did not pause room")
+		var frozen: String = host.room.state.hash
+		check(host.room.frame().in_hand.suspended, "Disconnected held plan did not suspend")
+		await create_timer(.2).timeout
+		check(host.room.state.hash == frozen, "Disconnected slide advanced")
+		returning.show()
+		returning.code_input.text = host.code
+		await returning.join_room()
+		check(await until(func(): return panels.all(func(p): return p.game != null and not p.room.state.paused), 20), "Held reconnect did not synchronize")
+		check(host.room.state.hash == frozen, "Sync resumed held slide before regrip")
+		game.update_spatial(0)
+		handle = game.handle_point()
+		game.begin_pointer(-1, handle)
+	check(await until(func(): return host.room.frame().get("in_hand", {}).is_empty() or host.room.frame().in_hand.elapsed_ms >= release_us / 1000, 10), "Held authority deadline did not advance")
 	clock[0] = release_us
-	if hold: game.update_delivery()
-	else: game.end_pointer(handle + Vector2(0, -25.2))
+	if not hold:
+		game.move_pointer(handle)
+		clock[0] += 100000
+		game.end_pointer(handle + Vector2(30, -8))
 
 func synchronized(host: CurlRoomPanel) -> bool:
 	return panels.slice(1).all(func(p): return p.room.replica != null and p.room.replica.state_hash() == host.room.state.hash)

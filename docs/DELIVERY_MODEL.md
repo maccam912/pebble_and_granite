@@ -6,15 +6,15 @@ native simulation and the online packet builder share the same validated factory
 A held pointer crossing the hog line automatically submits a consumed-stone fault.
 The 3D preview and delivery camera follow the read-only pose, without feeding
 rendered coordinates back into simulation. The default view grips the 3D handle directly and renders a simple hand/forearm.
-Local clock/background integration is complete; online adoption remains in progress.
+Local and online play both use a persisted authority-held delivery plan.
 
 The model derives a slide from the measured drive speed. Target speed is at the
 near hog; an integer square root derives an initial speed for a provisional
 0.07 m/s² slide deceleration. Starting stone centre is at -37.8 m, ahead of the
 hack. Position is in micrometres, speed in micrometres/second, and elapsed time is
 quantized to 240 Hz. Read-only pose queries cannot change the release, irrespective
-of render frequency. Quiet-hand queries complete a pending drive window on a copy,
-so animation sampling does not become input or change weight.
+of render frequency. Read-only pose queries leave the gesture unchanged; accepted input/quiet-drive
+closure fixes the weight independently of later finishing motion.
 
 The near hog's inside edge is -28.349 m; its 102 mm painted width extends toward
 the delivery tee. The conservative R5(e) release boundary is when the stone's
@@ -48,21 +48,15 @@ stationary-hand continuation, cancellation, invalid input and repeated release.
 
 Input mapping metadata is version 4; delivery mapping is version 3. The old fixed-origin `deliver` and
 `delivery_packet` entry points remain diagnostic fixture APIs; playable local
-scenes use held lifecycle commands; online still uses `slide_packet` pending integration. No power meter was added.
+and online scenes use held lifecycle commands. `slide_packet` remains diagnostic. No power meter was added.
 The main interaction surface is the projected 3D handle. The final 120 ms
 of motion selects left/right rotation above a dead zone, with forward/back speed
 trim bounded to ±70 mm/s. A quiet hand releases without rotation. Curl flicks
 do not also change the broom aim. Spatial sweeping remains unimplemented.
 
-Known online rule gap: the held-gesture thinking clock still runs past the delivery tee until
-release, and online focus loss currently cancels the held gesture. Early free-release
-clocks are now corrected, but the held gesture must adopt the authority plan. A network-aware
-in-hand lifecycle is needed before claiming faithful delivery clocks or fault
-handling across suspend/disconnect. This is an explicit next foundation task.
-
 ## Authority lifecycle integration
 
-Protocol 8 / rules 3 add BeginDelivery, ReleaseDelivery and CancelDelivery records.
+Protocol 8 / rules 3 introduced BeginDelivery, ReleaseDelivery and CancelDelivery records.
 The host advances an InHand plan, charges thinking time only until the delivery
 tee, automatically consumes a held stone at the hog deadline, and rejects returns
 to the hack after tee crossing. Journals preserve the exact elapsed state. Tests
@@ -72,9 +66,10 @@ the requested finishing flick instead of locking rotation at the hack.
 
 Early free releases now keep their thinking clock running through flight until
 tee crossing. Past sweep samples that could move that clock boundary are retimed
-to authority arrival; normal downstream rewind remains available. Local practice and local matches now route through held state; online play still
-uses the previous release route pending the multiplayer integration. Do not claim
-held-stone reconnect support online yet.
+to authority arrival; normal downstream rewind remains available. Local practice, local matches and online scenes now route through held state.
+Online BeginDelivery and ReleaseDelivery use consecutive reliable commands; the
+host derives position from accepted elapsed time instead of trusting client release
+coordinates. Replicas display the same held pose.
 
 Practice schema 3 stores a bounded pending delivery alongside the shot journal.
 Only idle ice time is appended during a held slide; adjacent idle records coalesce.
@@ -91,3 +86,15 @@ A quiet drive closes after its fixed 120 ms measurement window plus a 50 ms inpu
 event grace period. The same closure runs before late motion/release events,
 preventing render polling or a much later finishing flick from redefining the
 initial drive. The legacy diagnostic Stroke mapper remains independently tested.
+
+Protocol 9 adds the seat-owned SuspendDelivery command. Focus loss or opening the
+room panel suspends a held online slide; a disconnected room member causes the
+host to journal suspension before broadcasting the paused room. Reconnection must
+complete hash-checked synchronization, then the thrower must regrip to resume.
+Suspended authority time cannot advance ice, clocks, or the hog deadline. Only the
+thrower can resume or finish, and finishing while suspended is rejected. Historical
+non-suspended held records retain their serialized bytes and hashes.
+
+Online pose updates currently arrive at 20 Hz. There is no latency prediction or
+rewind of the held slide; release uses host receipt time. Physical-device latency
+and feel tuning remain an explicit follow-up, alongside spatial sweeping.

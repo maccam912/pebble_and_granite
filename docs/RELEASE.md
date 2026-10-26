@@ -1,5 +1,6 @@
-Early Pebble & Granite feel lab. Aim the broom, grip/pull/push/settle/lift the
-stone, then hold to sweep. Mouse, held-click trackpad and Android touch share the
+Early Pebble & Granite 3D feel slice. Aim the broom, grip the handle directly on
+the ice, pull back, push, hold the slide, then flick left/right to release with curl.
+A small forward/back finish trims weight. Hold to sweep after release. Mouse, held-click trackpad and Android touch share the
 same stroke mapper. One-push delivery is available. Next stone keeps the stones and evolving ice;
 Fresh ice starts a new session. Practice auto-saves and can restore interrupted shots.
 

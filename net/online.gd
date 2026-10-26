@@ -70,8 +70,9 @@ func handle_disconnected(id: int) -> void:
 		sync_deadlines.erase(id)
 		outbox = outbox.filter(func(item: Dictionary) -> bool: return item.target != id)
 		if admitted.erase(id):
-			authority.forget_peer(id)
-			broadcast_state()
+			var result: String = authority.forget_peer(id)
+			if not result.is_empty(): fail(result); return
+			flush_commits()
 	else:
 		fail("Host disconnected")
 
@@ -301,8 +302,9 @@ func drop_peer(id: int) -> void:
 	sync_deadlines.erase(id)
 	outbox = outbox.filter(func(item: Dictionary) -> bool: return item.target != id)
 	if admitted.erase(id):
-		authority.forget_peer(id)
-		broadcast_state()
+		var result: String = authority.forget_peer(id)
+		if not result.is_empty(): fail(result); return
+		flush_commits()
 	if peer != null: peer.disconnect_peer(id, true)
 
 func fail(message: String) -> void:

@@ -44,6 +44,9 @@ pub enum Command {
         line_mm: i64,
         turn: i64,
     },
+    SuspendDelivery {
+        suspended: bool,
+    },
     CancelDelivery {},
     HogViolation {},
     Place {
@@ -187,6 +190,14 @@ impl Room {
     }
     pub fn leave(&mut self, peer: i32) -> Result<(), &'static str> {
         let index = self.index(peer)?;
+        if let Some(held) = self.authority.as_ref().and_then(|a| a.in_hand.as_ref())
+            && !held.suspended
+        {
+            self.commit(vec![Record::SuspendDelivery {
+                seat: held.seat,
+                suspended: true,
+            }])?;
+        }
         if self.authority.is_some() {
             let player = self.players[index].as_mut().unwrap();
             player.peer = None;
@@ -307,6 +318,7 @@ impl Room {
                 line_mm,
                 turn,
             },
+            Command::SuspendDelivery { suspended } => Record::SuspendDelivery { seat, suspended },
             Command::CancelDelivery {} => Record::CancelDelivery { seat },
             Command::HogViolation {} => Record::HogViolation { seat },
             Command::Place { own_house, side } => Record::Place {
@@ -388,6 +400,9 @@ impl Room {
             return Err("invalid authority interval");
         }
         let game = self.authority.as_ref().ok_or("no game")?;
+        if game.in_hand.as_ref().is_some_and(|held| held.suspended) {
+            return Ok(());
+        }
         match game.game.phase {
             Phase::Calling if thinking_ms > 0 => {
                 self.commit(vec![Record::Think { ms: thinking_ms }])
@@ -522,6 +537,66 @@ mod tests {
         let a = r.authority().unwrap();
         assert_eq!(a.sim.delivered, Some(2));
         assert_eq!(a.sim.stones.iter().find(|s| s.id == 2).unwrap().team, 0);
+    }
+    #[test]
+    fn held_disconnect_requires_owner_regrip_after_full_sync() {
+        let mut r = lobby();
+        r.start(1, 42).unwrap();
+        send(
+            &mut r,
+            3,
+            1,
+            Command::Place {
+                own_house: true,
+                side: PowerPlay::None,
+            },
+        )
+        .unwrap();
+        send(
+            &mut r,
+            1,
+            1,
+            Command::BeginDelivery {
+                target_mm_s: 2050,
+                broom_mm: -900,
+            },
+        )
+        .unwrap();
+        r.advance(0, 1000).unwrap();
+        r.advance(0, 1000).unwrap();
+        r.leave(2).unwrap();
+        let frozen = r.state_hash().unwrap();
+        let elapsed = r.authority().unwrap().in_hand.as_ref().unwrap().elapsed_ms;
+        assert!(r.authority().unwrap().in_hand.as_ref().unwrap().suspended);
+        assert!(r.advance(0, 1000).is_err());
+        r.join(20, &identity(1), Compatibility::CURRENT).unwrap();
+        r.confirm_sync(20, r.epoch(), r.revision(), frozen).unwrap();
+        assert!(!r.paused());
+        for _ in 0..100 {
+            r.advance(0, 1000).unwrap();
+        }
+        assert_eq!(r.state_hash().unwrap(), frozen);
+        assert!(send(&mut r, 20, 1, Command::SuspendDelivery { suspended: false }).is_err());
+        assert_eq!(r.state_hash().unwrap(), frozen);
+        send(&mut r, 1, 2, Command::SuspendDelivery { suspended: false }).unwrap();
+        r.advance(0, 100).unwrap();
+        assert_eq!(
+            r.authority().unwrap().in_hand.as_ref().unwrap().elapsed_ms,
+            elapsed + 100
+        );
+        send(
+            &mut r,
+            1,
+            3,
+            Command::ReleaseDelivery {
+                trim_mm_s: 20,
+                line_mm: 0,
+                turn: -1,
+            },
+        )
+        .unwrap();
+        let restored = RecordedMatch::parse(r.journal().unwrap().as_bytes()).unwrap();
+        assert_eq!(restored.hash(), r.authority().unwrap().hash());
     }
     #[test]
     fn reconnect_reserves_seat_pauses_clock_and_checks_full_state() {

@@ -2,7 +2,7 @@
 use curl_fx::Hash64;
 use curl_sim::{MAX_TICKS, MODEL_VERSION, Release, Sim, Stone, Sweep};
 use serde::{Deserialize, Serialize};
-pub const PROTOCOL_VERSION: u32 = 8;
+pub const PROTOCOL_VERSION: u32 = 9;
 pub const REPLAY_VERSION: u32 = 1;
 pub const MAX_REPLAY_BYTES: usize = 4 * 1024 * 1024;
 
