@@ -6,6 +6,7 @@ var last_brush_tick := -12
 var waiting_release := false
 var waiting_count := -1
 func _ready() -> void:
+	authoritative_delivery = false
 	persistence_enabled = false
 	allow_online = false
 	spatial_view = true

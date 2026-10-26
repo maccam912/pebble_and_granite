@@ -19,7 +19,7 @@ bible only. Remote: `maccam912/pebble_and_granite`, main branch.
 - [x] Installed Android golden/JNI probe using the one-use debug request route.
 - [ ] 3D delivery/cameras, spatial scrubbing, measured calibration/performance and AI.
 
-Latest local gates: 89 core Rust tests (plus native transport identity test), shared golden traces, Godot input/practice/match
+Latest local gates: 92 core Rust tests (plus native transport identity test), shared golden traces, Godot input/practice/match
 save/full-game fixtures. Live network probes are separate from offline CI because
 relay and code-directory availability are external dependencies. Four peers have
 passed a full shot and in-flight reconnect with default and forced-relay transport, but the
@@ -612,3 +612,29 @@ final hashes matched at 1f145c13ee8ae46b. Result is under
 build/probes/9f0c034758d3408e8a520e876afb5b3a/. The first runner invocation was
 stopped before host launch because it attempted an unnecessary editor download;
 the successful run explicitly used GODOT_BIN for the installed editor.
+
+## Local held-delivery persistence
+
+- Practice and local matches now begin an explicit held delivery, advance it with
+  accepted elapsed time, and release from its actual position. Local-match
+  thinking time stops at the delivery tee; practice journals coalesce idle time.
+- Pause/focus loss/orderly close preserve the held state. Restore waits for a
+  regrip at the same 3D handle position; no second push or free return to the hack
+  is allowed after tee crossing. Regrip preserves weight/aim and accepts a fresh
+  curl/weight finishing gesture. The Return to hack button is available pre-tee.
+- Practice schema 3 stores pending state and upgrades model-3 schema-2 saves in
+  memory. Malformed pending states and conflicts with in-flight stones fail
+  atomically. Added quiet-drive closure so late finishing motion cannot alter the
+  initial measured weight. Input mapping is 4, Delivery mapping is 3.
+- Added held_resume Godot CI gate for practice/local-match pause, save, restore,
+  in-play cancellation rejection, regrip, final flick and stopped thinking clock.
+- NEXT: online_game explicitly keeps authoritative_delivery=false until its host
+  accepted BeginDelivery/ReleaseDelivery commands, replicated held pose, pending
+  release acknowledgement and reconnect/regrip behavior are connected. The local
+  native API and existing authority records are ready for that integration.
+- Installed Android evidence above is for eecf858, before these lifecycle changes;
+  repeat installed pause/resume and cross-device probes after integration.
+
+Validation: 92 core tests, six unchanged model-3 every-tick traces, workspace
+clippy and all eleven Godot gates passed against the rebuilt native library.
+Weekly usage remaining: 59%.

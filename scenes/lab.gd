@@ -6,6 +6,9 @@ const GOLD := Color("eabf69")
 const CYAN := Color("64cdd1")
 var allow_online := true
 var spatial_view := false
+var authoritative_delivery := true
+var held_last_us := -1
+var held_remainder_us := 0
 var rink: CurlRinkView
 var camera_button: Button
 var view_button: Button
@@ -165,7 +168,8 @@ func update_spatial(delta: float) -> void:
 	var aiming: bool = not run_active and phase != "Stone at rest" and frame.get("match_phase", "Calling") == "Calling"
 	rink.hand_held = pointer != -99 and not dragging_broom and not sweeping and not run_active
 	rink.pull_offset = clampf((stroke_trace[-1].y - stroke_trace[0].y) * .004, -.08, .18) if rink.hand_held and stroke_trace.size() > 1 and phase in ["Grip", "Pull", "Drive"] else 0.0
-	rink.delivery_y = float(session.delivery_pose(input_clock.call()).y_um) / 1000000.0 if aiming else -37.8
+	var held: Dictionary = frame.get("in_hand", {}) if authoritative_delivery else {}
+	rink.delivery_y = float(held.y_um) / 1000000.0 if not held.is_empty() else (float(session.delivery_pose(input_clock.call()).y_um) / 1000000.0 if aiming else -37.8)
 	rink.render_frame(frame, run_active, hold_sweep or sweeping, broom_mm, turn, aiming, delta)
 func broom_screen_point() -> Vector2:
 	return rink.broom_point() if spatial_view and rink != null else house_point(Vector2(float(broom_mm) / 1000.0, 0))
@@ -195,6 +199,8 @@ func reset(persist := true) -> void:
 	phase = "Ready"
 	if spatial_view: turn = 0
 	clock_remainder = 0.0
+	held_last_us = -1
+	held_remainder_us = 0
 	last_save_tick = 0
 	save_allowed = true
 	pointer = -99
@@ -252,8 +258,13 @@ func update_labels() -> void:
 		elif frame.match_phase == "GameComplete":
 			new_button.text = "Rematch"
 			status.text = "PEBBLE & GRANITE  /  %s wins" % team_name(frame.winner)
-		if not frame.get("violation", "").is_empty():
+		if frame.get("violation", "") == "HogRelease":
+			report_label.text += "\nHog-line violation: stone removed; delivery counts."
+		elif not frame.get("violation", "").is_empty():
 			report_label.text += "\nProtected stone removed: positions restored; delivery forfeited."
+	if authoritative_delivery and not frame.get("in_hand", {}).is_empty():
+		new_button.text = "Stone in play" if frame.in_hand.in_play else "Return to hack"
+		new_button.disabled = frame.in_hand.in_play
 
 func clock_text(ms: int) -> String:
 	var seconds := int(ceil(float(ms) / 1000.0))
@@ -328,7 +339,7 @@ func handle_point() -> Vector2:
 
 func _process(delta: float) -> void:
 	if session == null or suspended or (room_panel != null and room_panel.visible): return
-	if match_mode and not run_active and frame.get("match_phase", "") == "Calling":
+	if match_mode and not run_active and frame.get("match_phase", "") == "Calling" and frame.get("in_hand", {}).is_empty():
 		clock_remainder += delta * 1000.0
 		var elapsed := mini(int(clock_remainder), 60000)
 		clock_remainder -= elapsed
@@ -361,7 +372,48 @@ func _process(delta: float) -> void:
 	update_spatial(delta)
 	queue_redraw()
 
+func advance_local_held() -> void:
+	if frame.get("in_hand", {}).is_empty() or held_last_us < 0: return
+	var now: int = input_clock.call()
+	var elapsed: int = maxi(0, now - held_last_us) + held_remainder_us
+	held_last_us = now
+	held_remainder_us = elapsed % 1000
+	var error: String = session.advance_held(mini(elapsed / 1000, 60000))
+	if not error.is_empty(): report = error; return
+	frame = session.frame()
+	if frame.get("in_hand", {}).is_empty():
+		pointer = -99
+		held_last_us = -1
+		session.cancel_stroke()
+		phase = "Stone at rest"
+		report = "The thinking clock expired." if frame.get("match_phase") == "GameComplete" else "Hog-line violation. The stone is removed; the delivery counts."
+		save_practice()
+		update_labels()
+
 func update_delivery() -> void:
+	if not authoritative_delivery:
+		update_legacy_delivery()
+		return
+	if pointer == -99 or dragging_broom or sweeping or run_active: return
+	if frame.get("in_hand", {}).is_empty():
+		var target: int = session.delivery_target(input_clock.call())
+		if target == 0: return
+		var error: String = session.begin_held(target, broom_mm)
+		if not error.is_empty(): report = error; return
+		frame = session.frame()
+		held_last_us = input_clock.call()
+		held_remainder_us = 0
+		save_practice()
+	advance_local_held()
+	var held: Dictionary = frame.get("in_hand", {})
+	if held.is_empty(): return
+	phase = "Slide"
+	var weight := "Soft" if held.target_mm_s < 1950 else ("Draw" if held.target_mm_s < 2300 else "Firm")
+	report = "Release now — hog line." if held.hog_warning else weight + " weight. Hold steady; finish left or right for curl. A small forward/back finish trims weight."
+	if frame.global_tick - last_save_tick >= 240: save_practice()
+	update_labels()
+
+func update_legacy_delivery() -> void:
 	if pointer == -99 or dragging_broom or sweeping or run_active: return
 	var pose: Dictionary = session.delivery_pose(input_clock.call())
 	if pose.hog_violation and not stroke_trace.is_empty():
@@ -375,10 +427,12 @@ func update_delivery() -> void:
 func _notification(what: int) -> void:
 	if what == NOTIFICATION_APPLICATION_FOCUS_IN or what == NOTIFICATION_APPLICATION_RESUMED:
 		suspended = false
-	if what == NOTIFICATION_APPLICATION_FOCUS_OUT or what == NOTIFICATION_APPLICATION_PAUSED:
+	if what == NOTIFICATION_APPLICATION_FOCUS_OUT or what == NOTIFICATION_APPLICATION_PAUSED or what == NOTIFICATION_WM_CLOSE_REQUEST:
+		if authoritative_delivery and session != null and pointer != -99: advance_local_held()
 		suspended = true
 		save_practice()
 		pointer = -99
+		held_last_us = -1
 		hold_sweep = false
 		sweeping = false
 		dragging_broom = false
@@ -416,13 +470,17 @@ func begin_pointer(id: int, p: Vector2) -> void:
 			pointer = id
 			sweeping = true
 		return
-	if p.distance_to(broom_screen_point()) < 55:
+	if (not authoritative_delivery or frame.get("in_hand", {}).is_empty()) and p.distance_to(broom_screen_point()) < 55:
 		pointer = id
 		dragging_broom = true
 	elif phase == "Ready" and p.distance_to(handle_point()) < 80:
 		pointer = id
 		var q := units(p)
-		session.grip(input_clock.call(), q.x, q.y, one_push)
+		if authoritative_delivery and not frame.get("in_hand", {}).is_empty():
+			session.regrip(input_clock.call(), q.x, q.y)
+			held_last_us = input_clock.call()
+			held_remainder_us = 0
+		else: session.grip(input_clock.call(), q.x, q.y, one_push)
 		stroke_trace = PackedVector2Array([p])
 		if spatial_view and rink != null: rink.mode = 0
 		phase = "Grip"
@@ -437,9 +495,13 @@ func move_pointer(p: Vector2) -> void:
 		session.motion(input_clock.call(), q.x, q.y)
 		stroke_trace.append(p)
 		phase = session.stroke_phase()
+		if authoritative_delivery: update_delivery()
 		update_labels()
 
 func end_pointer(p: Vector2) -> void:
+	if authoritative_delivery and not dragging_broom and not sweeping and not run_active:
+		update_delivery()
+		if pointer == -99: return
 	pointer = -99
 	if dragging_broom:
 		dragging_broom = false
@@ -455,22 +517,28 @@ func end_pointer(p: Vector2) -> void:
 	if spatial_view:
 		turn = int(release_report.get("turn", 0))
 		if turn != 0: release_report.line_mm = 0
-	if release_report.get("hog_violation", false):
+	if not authoritative_delivery and release_report.get("hog_violation", false):
 		var error: String = session.hog_violation()
 		frame = session.frame()
 		phase = "Stone at rest" if error.is_empty() else "Ready"
 		report = "Hog-line violation. The stone is removed; the delivery counts." if error.is_empty() else error
 		save_practice()
-	elif not release_report.valid:
+	elif not (release_report.get("finish_valid", false) if authoritative_delivery else release_report.valid):
 		phase = "Ready"
 		report = "Try a smooth pull-back, then forward stroke. Lift after the push. A simple click does not throw."
 	else:
-		var error: String = session.deliver_slide(release_report.speed_um_s, release_report.y_um, clampi(broom_mm + release_report.line_mm, -2200, 2200), turn)
+		var error := ""
+		if authoritative_delivery:
+			if frame.get("in_hand", {}).is_empty(): error = session.begin_held(release_report.target_mm_s, broom_mm)
+			if error.is_empty(): error = session.release_held(release_report.trim_mm_s, release_report.line_mm, turn)
+		else: error = session.deliver_slide(release_report.speed_um_s, release_report.y_um, clampi(broom_mm + release_report.line_mm, -2200, 2200), turn)
 		if error.is_empty():
 			run_active = true
 			phase = "Travel"
 			report = "Hold the ice or the sweep button to carry the stone. Let go to stop sweeping."
 			frame = session.frame()
+			release_report.speed_mm_s = int(frame.release_speed * 1000.0)
+			held_last_us = -1
 			save_practice()
 			if OS.get_name() == "Android": Input.vibrate_handheld(18)
 		else: report = error
@@ -540,6 +608,19 @@ func delivered_stone() -> Dictionary:
 	return {}
 
 func next_throw() -> void:
+	if authoritative_delivery and not frame.get("in_hand", {}).is_empty():
+		var error: String = session.cancel_held()
+		if error.is_empty():
+			session.cancel_stroke()
+			frame = session.frame()
+			phase = "Ready"
+			pointer = -99
+			held_last_us = -1
+			report = "Returned to the hack before the tee line."
+			save_practice()
+		else: report = "This stone is already in play. Regrip the handle to continue."
+		update_labels()
+		return
 	if session == null or run_active: return
 	if match_mode and frame.match_phase == "GameComplete":
 		reset()
@@ -634,7 +715,8 @@ func restore_current(is_match: bool) -> void:
 		phase = "Travel" if run_active else "Ready"
 		last_save_tick = frame.global_tick
 		release_report = {"speed_mm_s": int(frame.get("release_speed", 0.0) * 1000.0)}
-		report = ("Match" if is_match else "Practice") + " restored. The ice and your stones are just as you left them."
+		report = "Delivery restored. Regrip the handle to continue from this point." if not frame.get("in_hand", {}).is_empty() else ("Match" if is_match else "Practice") + " restored. The ice and your stones are just as you left them."
+		held_last_us = -1
 		update_labels()
 		return
 	if found:

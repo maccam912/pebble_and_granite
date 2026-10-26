@@ -6,7 +6,7 @@
 use crate::{Phase, Report, Sample, Stroke, valid_sample};
 use std::collections::VecDeque;
 
-pub const DELIVERY_VERSION: u32 = 2;
+pub const DELIVERY_VERSION: u32 = 3;
 pub const HZ: u64 = 240;
 pub const START_Y_UM: i64 = -37_800_000;
 pub const RADIUS_UM: i64 = 142_000;
@@ -61,8 +61,39 @@ impl Delivery {
         self.stroke.gain = gain.clamp(250, 4000);
         self.stroke.grip(sample);
     }
+    /// Close a quiet drive after a bounded event grace period. The same cutoff
+    /// runs before later motion/release events, so render polling cannot change
+    /// which samples enter the drive window.
+    pub fn settle_target(&mut self, us: u64) -> i64 {
+        if self.stroke.phase == Phase::Drive && us >= self.stroke.drive.us.saturating_add(170_000) {
+            self.stroke.finish_drive(Sample {
+                us: self.stroke.drive.us + 120_000,
+                ..self.stroke.last
+            });
+            self.stroke.phase = Phase::Slide;
+        }
+        if self.stroke.phase == Phase::Slide {
+            self.stroke.speed
+        } else {
+            0
+        }
+    }
+    pub fn regrip(&mut self, sample: Sample, target_mm_s: i64) {
+        self.grip(sample, true, 1000);
+        if !valid_sample(sample) || !(1500..=5000).contains(&target_mm_s) {
+            self.cancel();
+            return;
+        }
+        self.stroke.phase = Phase::Slide;
+        self.stroke.speed = target_mm_s;
+        self.stroke.drive = sample;
+        self.stroke.drive_end = Some(sample);
+    }
     pub fn motion(&mut self, sample: Sample) {
         if self.final_report.is_none() {
+            if valid_sample(sample) {
+                self.settle_target(sample.us);
+            }
             self.remember(sample);
             self.stroke.sample(sample);
         }
@@ -155,6 +186,9 @@ impl Delivery {
     pub fn release(&mut self, sample: Sample) -> DeliveryReport {
         if let Some(report) = self.final_report {
             return report;
+        }
+        if valid_sample(sample) {
+            self.settle_target(sample.us);
         }
         self.remember(sample);
         let (side_velocity, forward_velocity) = if valid_sample(sample) {
@@ -260,6 +294,29 @@ mod tests {
         delivery.motion(sample(120_000, -31_500));
         assert_eq!(delivery.stroke.speed, 2050);
         delivery
+    }
+    #[test]
+    fn quiet_drive_closes_identically_before_or_during_late_input() {
+        fn partial() -> Delivery {
+            let mut d = Delivery::default();
+            d.grip(sample(0, 0), true, 1000);
+            d.motion(sample(40_000, -12_000));
+            d
+        }
+        let mut polled = partial();
+        assert_eq!(polled.settle_target(169_999), 0);
+        assert!(polled.settle_target(170_000) >= 1500);
+        let mut event_only = partial();
+        for d in [&mut polled, &mut event_only] {
+            d.motion(sample(3_000_000, -50_000));
+        }
+        assert_eq!(
+            polled.release(sample(3_100_000, -50_000)),
+            event_only.release(sample(3_100_000, -50_000))
+        );
+        let mut resumed = Delivery::default();
+        resumed.regrip(sample(9_000_000, 0), 2050);
+        assert!(resumed.release(sample(9_100_000, 0)).stroke.valid);
     }
     #[test]
     fn release_flick_sets_rotation_and_bounded_weight_trim() {

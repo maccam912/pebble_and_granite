@@ -33,6 +33,9 @@ impl Practice {
         }
     }
     pub fn release(&mut self, release: Release) -> Result<(), &'static str> {
+        if self.log.pending_delivery.is_some() {
+            return Err("release the held delivery instead");
+        }
         if self.log.records.len() >= MAX_RECORDS
             || self
                 .log
@@ -74,7 +77,109 @@ impl Practice {
         let team = stone % 2;
         self.sim.hog_violation(stone, team)?;
         self.log.records.push(Record::HogViolation { stone, team });
+        self.log.pending_delivery = None;
         Ok(())
+    }
+    pub fn begin_delivery(&mut self, target_mm_s: i64, broom_mm: i64) -> Result<(), &'static str> {
+        let pending = curl_proto::session::PendingDelivery {
+            target_mm_s,
+            broom_mm,
+            elapsed_ms: 0,
+        };
+        pending.validate()?;
+        if self.active.is_some()
+            || self.log.pending_delivery.is_some()
+            || self.next_id().is_none()
+            || self.log.records.len() >= MAX_RECORDS - 2
+            || self
+                .log
+                .records
+                .iter()
+                .filter(|r| matches!(r, Record::Shot(_) | Record::HogViolation { .. }))
+                .count()
+                >= 256
+        {
+            return Err("cannot begin held practice delivery");
+        }
+        self.log.pending_delivery = Some(pending);
+        Ok(())
+    }
+    pub fn advance_delivery(&mut self, ms: u32) -> Result<(), &'static str> {
+        if ms > 60000 {
+            return Err("delivery interval too large");
+        }
+        let Some(mut pending) = self.log.pending_delivery.clone() else {
+            return Ok(());
+        };
+        let hog = curl_input::delivery::crossing_ms(pending.target_mm_s, true);
+        let next_ms = pending.elapsed_ms.saturating_add(ms).min(hog);
+        let ticks = next_ms * 240 / 1000 - pending.elapsed_ms * 240 / 1000;
+        if ticks > 0 {
+            self.idle(ticks)?;
+        }
+        pending.elapsed_ms = next_ms;
+        self.log.pending_delivery = Some(pending);
+        if next_ms == hog {
+            self.hog_violation()?;
+        }
+        Ok(())
+    }
+    pub fn cancel_delivery(&mut self) -> Result<(), &'static str> {
+        let pending = self
+            .log
+            .pending_delivery
+            .as_ref()
+            .ok_or("no held delivery")?;
+        if pending.pose().in_play {
+            return Err("in-play delivery cannot return to the hack");
+        }
+        self.log.pending_delivery = None;
+        Ok(())
+    }
+    pub fn release_delivery(
+        &mut self,
+        trim_mm_s: i64,
+        line_mm: i64,
+        turn: i64,
+    ) -> Result<(), &'static str> {
+        let pending = self
+            .log
+            .pending_delivery
+            .as_ref()
+            .ok_or("no held delivery")?;
+        if !(-70..=70).contains(&trim_mm_s)
+            || !(-120..=120).contains(&line_mm)
+            || !(-1..=1).contains(&turn)
+        {
+            return Err("invalid finishing gesture");
+        }
+        let pose = pending.pose();
+        let id = self.next_id().ok_or("practice stones exhausted")?;
+        let mut release = Release::draw();
+        release.stone = id;
+        release.team = id % 2;
+        release.pos.y = curl_fx::Fx::ratio(pose.y_um, 1_000_000);
+        release.vel = curl_fx::V2::new(
+            curl_fx::Fx::ratio((pending.broom_mm + line_mm).clamp(-2200, 2200), 1000),
+            -release.pos.y,
+        )
+        .unit()
+            * curl_fx::Fx::ratio(pose.speed_um_s + trim_mm_s * 1000, 1_000_000);
+        release.spin = curl_fx::Fx::ratio(12 * turn, 100);
+        let mut next = self.clone();
+        next.log.pending_delivery = None;
+        next.release(release)?;
+        *self = next;
+        Ok(())
+    }
+    pub fn hash(&self) -> u64 {
+        let Some(pending) = &self.log.pending_delivery else {
+            return self.sim.hash();
+        };
+        let mut hash = curl_fx::Hash64::default();
+        hash.u64(self.sim.hash());
+        hash.bytes(&serde_json::to_vec(pending).expect("delivery serialize"));
+        hash.finish()
     }
     pub fn step(&mut self, inputs: &[Sweep]) -> Result<(), &'static str> {
         let Some(index) = self.active else {
@@ -135,10 +240,19 @@ impl Practice {
             return Err("practice log is full");
         }
         self.sim.advance_idle(ticks)?;
-        self.log.records.push(Record::Idle(ticks));
+        if let Some(Record::Idle(previous)) = self.log.records.last_mut()
+            && *previous + ticks <= curl_sim::HZ * 3600
+        {
+            *previous += ticks;
+        } else {
+            self.log.records.push(Record::Idle(ticks));
+        }
         Ok(())
     }
     pub fn clear_stones(&mut self) -> Result<(), &'static str> {
+        if self.log.pending_delivery.is_some() {
+            return Err("delivery is still held");
+        }
         if self.log.records.len() >= MAX_RECORDS {
             return Err("practice log is full");
         }
@@ -200,6 +314,20 @@ impl Practice {
                 }
             }
         }
+        if log.pending_delivery.is_some()
+            && (active.is_some()
+                || !sim.is_resting()
+                || sim.stones.len() >= MAX_STONES
+                || sim.stones.iter().any(|s| s.id as usize + 1 >= MAX_STONES)
+                || log
+                    .records
+                    .iter()
+                    .filter(|r| matches!(r, Record::Shot(_) | Record::HogViolation { .. }))
+                    .count()
+                    >= 256)
+        {
+            return Err("pending delivery conflicts with recorded field".into());
+        }
         Ok(Self {
             sim,
             log,
@@ -216,6 +344,54 @@ mod tests {
             let id = p.sim.delivered.unwrap();
             p.step(&[Sweep::centered(id, 0)]).unwrap();
         }
+    }
+    #[test]
+    fn held_delivery_restores_and_cannot_rewind_after_tee() {
+        let mut p = Practice::new(42);
+        p.begin_delivery(2050, -900).unwrap();
+        p.advance_delivery(2000).unwrap();
+        let hash = p.hash();
+        assert!(p.log.pending_delivery.as_ref().unwrap().pose().in_play);
+        assert!(p.cancel_delivery().is_err());
+        assert!(p.clear_stones().is_err());
+        assert!(p.release(Release::draw()).is_err());
+        assert_eq!(p.hash(), hash);
+        let json = serde_json::to_vec(&p.log).unwrap();
+        let mut restored = Practice::from_log(SessionLog::parse(&json).unwrap()).unwrap();
+        assert_eq!(p.hash(), restored.hash());
+        for item in [&mut p, &mut restored] {
+            item.advance_delivery(200).unwrap();
+            item.release_delivery(30, 0, -1).unwrap();
+            for _ in 0..240 {
+                item.step(&[]).unwrap();
+            }
+        }
+        assert_eq!(p.hash(), restored.hash());
+    }
+    #[test]
+    fn held_deadline_and_legacy_session_upgrade_are_bounded() {
+        let mut a = Practice::new(42);
+        let mut b = Practice::new(42);
+        a.begin_delivery(2050, 0).unwrap();
+        b.begin_delivery(2050, 0).unwrap();
+        a.advance_delivery(6000).unwrap();
+        for _ in 0..6000 {
+            b.advance_delivery(1).unwrap();
+        }
+        assert_eq!(a.hash(), b.hash());
+        assert_eq!(a.log, b.log);
+        assert_eq!(a.next_id(), Some(1));
+        assert!(a.log.pending_delivery.is_none());
+        let mut old = serde_json::to_value(&a.log).unwrap();
+        old["schema"] = 2.into();
+        old.as_object_mut().unwrap().remove("pending_delivery");
+        let upgraded = SessionLog::parse(&serde_json::to_vec(&old).unwrap()).unwrap();
+        assert_eq!(upgraded.schema, curl_proto::session::SESSION_SCHEMA);
+        assert_eq!(Practice::from_log(upgraded).unwrap().hash(), a.hash());
+        let mut invalid = Practice::new(42);
+        invalid.begin_delivery(2050, 0).unwrap();
+        invalid.log.pending_delivery.as_mut().unwrap().elapsed_ms = u32::MAX;
+        assert!(Practice::from_log(invalid.log).is_err());
     }
     #[test]
     fn practice_hog_faults_preserve_field_and_restore_consumed_ids() {

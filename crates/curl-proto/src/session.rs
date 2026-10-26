@@ -2,7 +2,7 @@
 //! spans compress held inputs without losing tick precision or cooling history.
 use curl_sim::{MAX_TICKS, MODEL_VERSION, Release, Sweep};
 use serde::{Deserialize, Serialize};
-pub const SESSION_SCHEMA: u32 = 2;
+pub const SESSION_SCHEMA: u32 = 3;
 pub const MAX_SESSION_BYTES: usize = 16 * 1024 * 1024;
 pub const MAX_RECORDS: usize = 1024;
 pub const MAX_SPANS: usize = 100_000;
@@ -61,12 +61,35 @@ pub enum Record {
 }
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
+pub struct PendingDelivery {
+    pub target_mm_s: i64,
+    pub broom_mm: i64,
+    pub elapsed_ms: u32,
+}
+impl PendingDelivery {
+    pub fn validate(&self) -> Result<(), &'static str> {
+        if !(1500..=5000).contains(&self.target_mm_s)
+            || !(-2200..=2200).contains(&self.broom_mm)
+            || self.elapsed_ms >= curl_input::delivery::crossing_ms(self.target_mm_s, true)
+        {
+            return Err("invalid pending delivery");
+        }
+        Ok(())
+    }
+    pub fn pose(&self) -> curl_input::delivery::Pose {
+        curl_input::delivery::slide_pose(self.target_mm_s, self.elapsed_ms as u64 * 240 / 1000)
+    }
+}
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
 pub struct SessionLog {
     pub schema: u32,
     pub model: u32,
     pub seed: u64,
     pub varied_ice: bool,
     pub records: Vec<Record>,
+    #[serde(default)]
+    pub pending_delivery: Option<PendingDelivery>,
 }
 impl SessionLog {
     pub fn new(seed: u64) -> Self {
@@ -76,13 +99,18 @@ impl SessionLog {
             seed,
             varied_ice: false,
             records: vec![],
+            pending_delivery: None,
         }
     }
     pub fn parse(bytes: &[u8]) -> Result<Self, String> {
         if bytes.len() > MAX_SESSION_BYTES {
             return Err("session byte limit exceeded".into());
         }
-        let log: Self = serde_json::from_slice(bytes).map_err(|e| e.to_string())?;
+        let mut log: Self = serde_json::from_slice(bytes).map_err(|e| e.to_string())?;
+        // Schema 2 used the same model-3 shot records and had no held delivery.
+        if log.schema == 2 && log.pending_delivery.is_none() {
+            log.schema = SESSION_SCHEMA;
+        }
         log.validate()?;
         Ok(log)
     }
@@ -92,6 +120,12 @@ impl SessionLog {
         }
         if self.records.len() > MAX_RECORDS {
             return Err("session record limit exceeded");
+        }
+        if let Some(pending) = &self.pending_delivery {
+            pending.validate()?;
+            if self.records.len() >= MAX_RECORDS - 1 {
+                return Err("no room to finish pending delivery");
+            }
         }
         let mut count = 0;
         let mut spans = 0;

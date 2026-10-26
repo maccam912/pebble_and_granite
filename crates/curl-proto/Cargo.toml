@@ -9,3 +9,5 @@ serde.workspace = true
 serde_json.workspace = true
 curl-fx.workspace = true
 curl-sim.workspace = true
+
+curl-input = { path = "../curl-input" }

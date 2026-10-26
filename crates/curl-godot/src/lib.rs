@@ -110,6 +110,101 @@ impl CurlSession {
         }
         result.map_or_else(|error| error.into(), |_| GString::new())
     }
+    fn pending(&self) -> Option<curl_proto::session::PendingDelivery> {
+        if let Some(game) = &self.game {
+            game.in_hand
+                .as_ref()
+                .map(|d| curl_proto::session::PendingDelivery {
+                    target_mm_s: d.target_mm_s,
+                    broom_mm: d.broom_mm,
+                    elapsed_ms: d.elapsed_ms,
+                })
+        } else {
+            self.practice.log.pending_delivery.clone()
+        }
+    }
+    #[func]
+    fn delivery_target(&mut self, us: i64) -> i64 {
+        self.stroke.settle_target(us.max(0) as u64)
+    }
+    #[func]
+    fn begin_held(&mut self, target_mm_s: i64, broom_mm: i64) -> GString {
+        let result = if let Some(game) = &mut self.game {
+            game.apply(curl_match::recorded::Record::BeginDelivery {
+                seat: Seat {
+                    team: game.game.delivering_team(),
+                    position: game.game.throwing_seat(),
+                },
+                target_mm_s,
+                broom_mm,
+            })
+        } else {
+            self.practice.begin_delivery(target_mm_s, broom_mm)
+        };
+        result.map_or_else(|e| e.into(), |_| GString::new())
+    }
+    #[func]
+    fn advance_held(&mut self, ms: i64) -> GString {
+        if !(0..=60000).contains(&ms) {
+            return "Invalid interval".into();
+        }
+        let result = if let Some(game) = &mut self.game {
+            game.think(ms as u32)
+        } else {
+            self.practice.advance_delivery(ms as u32)
+        };
+        result.map_or_else(|e| e.into(), |_| GString::new())
+    }
+    #[func]
+    fn release_held(&mut self, trim_mm_s: i64, line_mm: i64, turn: i64) -> GString {
+        let result = if let Some(game) = &mut self.game {
+            let result = game.apply(curl_match::recorded::Record::ReleaseDelivery {
+                seat: Seat {
+                    team: game.game.delivering_team(),
+                    position: game.game.throwing_seat(),
+                },
+                trim_mm_s,
+                line_mm,
+                turn,
+            });
+            if result.is_ok() {
+                self.match_release_speed = game.last_release_speed();
+            }
+            result
+        } else {
+            self.practice.release_delivery(trim_mm_s, line_mm, turn)
+        };
+        result.map_or_else(|e| e.into(), |_| GString::new())
+    }
+    #[func]
+    fn cancel_held(&mut self) -> GString {
+        let result = if let Some(game) = &mut self.game {
+            game.apply(curl_match::recorded::Record::CancelDelivery {
+                seat: Seat {
+                    team: game.game.delivering_team(),
+                    position: game.game.throwing_seat(),
+                },
+            })
+        } else {
+            self.practice.cancel_delivery()
+        };
+        result.map_or_else(|e| e.into(), |_| GString::new())
+    }
+    #[func]
+    fn regrip(&mut self, us: i64, x: i64, y: i64) -> GString {
+        let Some(pending) = self.pending() else {
+            return "No held delivery".into();
+        };
+        self.stroke.regrip(
+            curl_input::Sample {
+                us: us.max(0) as u64,
+                x,
+                y,
+            },
+            pending.target_mm_s,
+        );
+        GString::new()
+    }
     #[func]
     fn step_ticks(&mut self, count: i64, effort: i64, lateral_mm: i64, ahead_mm: i64) {
         if !(0..=64).contains(&count)
@@ -164,7 +259,7 @@ impl CurlSession {
                 }
             })
             .unwrap_or(Fx::ZERO);
-        presentation_frame(
+        let mut frame = presentation_frame(
             self.game.as_ref().map_or(&self.practice.sim, |a| &a.sim),
             self.game.as_deref(),
             if self.game.is_some() {
@@ -173,7 +268,15 @@ impl CurlSession {
                 last_release
             },
             self.practice.next_id().is_some(),
-        )
+        );
+        frame.set("in_hand", &pending_frame(self.pending().as_ref()));
+        if self.game.is_none() {
+            frame.set(
+                "team",
+                self.practice.next_id().map_or(0, |id| id % 2) as i64,
+            );
+        }
+        frame
     }
     #[func]
     fn golden_trace(&self) -> GString {
@@ -188,13 +291,15 @@ impl CurlSession {
             "{:016x}",
             self.game
                 .as_ref()
-                .map_or(&self.practice.sim, |a| &a.sim)
-                .hash()
+                .map_or_else(|| self.practice.hash(), |a| a.sim.hash())
         ))
     }
 
     #[func]
     fn prepare_next(&mut self, clear: bool) -> GString {
+        if self.pending().is_some() {
+            return "Finish the held delivery first".into();
+        }
         if let Some(a) = &self.game {
             if a.game.phase != Phase::Calling {
                 return "Finish end setup before throwing".into();
@@ -383,6 +488,8 @@ impl CurlSession {
         });
         let mut d = VarDictionary::new();
         let r = delivery.stroke;
+        d.set("target_mm_s", self.stroke.target_mm_s());
+        d.set("finish_valid", r.valid);
         d.set("turn", delivery.turn);
         d.set("trim_mm_s", delivery.trim_mm_s);
         d.set(
@@ -404,6 +511,20 @@ impl CurlSession {
 }
 
 mod room;
+
+fn pending_frame(pending: Option<&curl_proto::session::PendingDelivery>) -> VarDictionary {
+    let mut data = VarDictionary::new();
+    if let Some(pending) = pending {
+        let pose = pending.pose();
+        data.set("target_mm_s", pending.target_mm_s);
+        data.set("elapsed_ms", pending.elapsed_ms as i64);
+        data.set("broom_mm", pending.broom_mm);
+        data.set("y_um", pose.y_um);
+        data.set("in_play", pose.in_play);
+        data.set("hog_warning", pose.hog_warning);
+    }
+    data
+}
 
 pub(crate) fn presentation_frame(
     sim: &curl_sim::Sim,

@@ -6,7 +6,7 @@ native simulation and the online packet builder share the same validated factory
 A held pointer crossing the hog line automatically submits a consumed-stone fault.
 The 3D preview and delivery camera follow the read-only pose, without feeding
 rendered coordinates back into simulation. The default view grips the 3D handle directly and renders a simple hand/forearm.
-The clock/background integration described below is still in progress.
+Local clock/background integration is complete; online adoption remains in progress.
 
 The model derives a slide from the measured drive speed. Target speed is at the
 near hog; an integer square root derives an initial speed for a provisional
@@ -39,28 +39,28 @@ stationary-hand continuation, cancellation, invalid input and repeated release.
   Model 3 / rules 2 / protocol 7 / practice schema 2 explicitly reject old
   development records; existing restore guards preserve those files. No model-2
   migration is implemented. Every-tick goldens were regenerated intentionally.
-- Connect the 3D hand/body pose and warning to this model, with direct pointer
+- [x] Connect the 3D hand/body pose and warning to this model, with direct pointer
   interaction and no power meter. Never derive authoritative position from meshes.
-- Handle thinking-clock cutoff at the delivery tee and background/cancel semantics
+- [x] Local: handle thinking-clock cutoff at the delivery tee and background/cancel semantics
   coherently; a visual slide alone does not establish those rules.
-- Add installed Android touch and full-match/network regression coverage before
-  calling the new delivery path playable.
+- [x] Installed Android touch and full-match/network regression coverage for the
+  direct gesture; repeat lifecycle-specific Android and network checks after integration.
 
-Input mapping metadata is version 3; delivery mapping is version 2. The old fixed-origin `deliver` and
+Input mapping metadata is version 4; delivery mapping is version 3. The old fixed-origin `deliver` and
 `delivery_packet` entry points remain diagnostic fixture APIs; playable local
-and online scenes use `deliver_slide` and `slide_packet`. No power meter was added.
+scenes use held lifecycle commands; online still uses `slide_packet` pending integration. No power meter was added.
 The main interaction surface is the projected 3D handle. The final 120 ms
 of motion selects left/right rotation above a dead zone, with forward/back speed
 trim bounded to ±70 mm/s. A quiet hand releases without rotation. Curl flicks
 do not also change the broom aim. Spatial sweeping remains unimplemented.
 
-Known rule gap: the held-gesture thinking clock still runs past the delivery tee until
-release, and focus loss currently cancels the held gesture. Early free-release
+Known online rule gap: the held-gesture thinking clock still runs past the delivery tee until
+release, and online focus loss currently cancels the held gesture. Early free-release
 clocks are now corrected, but the held gesture must adopt the authority plan. A network-aware
 in-hand lifecycle is needed before claiming faithful delivery clocks or fault
 handling across suspend/disconnect. This is an explicit next foundation task.
 
-## Authority lifecycle foundation (not yet routed by the main UI)
+## Authority lifecycle integration
 
 Protocol 8 / rules 3 add BeginDelivery, ReleaseDelivery and CancelDelivery records.
 The host advances an InHand plan, charges thinking time only until the delivery
@@ -72,7 +72,22 @@ the requested finishing flick instead of locking rotation at the hack.
 
 Early free releases now keep their thinking clock running through flight until
 tee crossing. Past sweep samples that could move that clock boundary are retimed
-to authority arrival; normal downstream rewind remains available. The main UI
-still cancels held gestures on focus loss, so complete authority lifecycle routing,
-practice persistence and reconnect/resume controls before claiming interruption
-correctness for a held stone.
+to authority arrival; normal downstream rewind remains available. Local practice and local matches now route through held state; online play still
+uses the previous release route pending the multiplayer integration. Do not claim
+held-stone reconnect support online yet.
+
+Practice schema 3 stores a bounded pending delivery alongside the shot journal.
+Only idle ice time is appended during a held slide; adjacent idle records coalesce.
+Model-3 schema-2 practice saves without pending state upgrade in memory. Invalid
+or incompatible files remain preserved by the existing save guards.
+
+Local focus loss, application pause and orderly window close save the pending
+state. The slide does not advance until the player regrips the handle. Returning
+to the hack is available before tee crossing and rejected afterward. Regrip keeps
+the original weight, aim and position while starting a fresh finishing-motion
+window, so the player can still choose curl and a bounded weight trim.
+
+A quiet drive closes after its fixed 120 ms measurement window plus a 50 ms input
+event grace period. The same closure runs before late motion/release events,
+preventing render polling or a much later finishing flick from redefining the
+initial drive. The legacy diagnostic Stroke mapper remains independently tested.

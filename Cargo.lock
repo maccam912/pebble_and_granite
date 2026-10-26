@@ -426,6 +426,7 @@ name = "curl-proto"
 version = "0.1.0"
 dependencies = [
  "curl-fx",
+ "curl-input",
  "curl-sim",
  "serde",
  "serde_json",
