@@ -462,3 +462,24 @@ pass. The hand remains on the dynamic prop layer and does not alter the handle
 hit target, camera, input mapping, animation state or simulation. Original trial
 source/images are retained in ignored `build/sleeve-sculpt-review/`. Installed
 Android held-delivery validation follows the source commit.
+
+
+## Installed checkpoint: build 60
+
+Clean Android build 60 (`a554915`, `source_dirty: false`, SHA-256
+`32cbdc83617aeeb0b7fe8adc400581e35c8fedeb3f11c7d069365d07525713dd`)
+passed the complete installed direct-touch probe: both curl directions, spatial
+scrubbing and lift-to-stop, accessible hold sweeping, held pause/resume and
+regrip, and exactly one held hog fault. Reviewed the real held-delivery capture.
+Fresh-ice acknowledgements took 0.44-0.46 seconds on this already-used emulator.
+This is not a fresh-cache or physical-device performance benchmark.
+
+Probe evidence is in `build/probes/touch-f53a7b00b707400b914d7ba2d5fae861/`
+and `build/android-60-full-probe.log`; the result records the APK hash above.
+The wrapper verified restoration of all four original practice/match files and
+backups byte for byte and stopped the app. Captured runtime log is clean, under
+`build/evidence/polish/android-60/`. The local tree matched the pushed source;
+LFS integrity passed. `c744a20` completed all remote core/package/publish jobs
+successfully; newer frame/sleeve CI remains in progress or queued at this checkpoint.
+Weekly quota remaining is 91 percent. The broader photographic polish goal stays
+active; this checkpoint does not claim physical-device feel or full photorealism.
