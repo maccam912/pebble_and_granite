@@ -575,3 +575,37 @@ stability benchmark. All runtime logs are clean. Before/trial shaders, crops,
 review logs and captures remain in ignored `build/ice-pebble-review/`.
 Installed Android validation follows this source commit. Weekly quota remaining
 is 90 percent; the broader photographic polish objective remains active.
+
+
+## Installed ice checkpoint: build 63
+
+Clean Android build 63 (`e3bcb5c`, `source_dirty: false`, SHA-256
+`8885faacadebe56a20576074c97a1f3128d82aa094cb0457d50e719b7f50cbbd`)
+passed the installed Delivery/four-camera review. The fine surface detail renders
+correctly without overpowering the painted houses. The captured Godot runtime
+log has no warning/error. The wrapper restored all four original saves/backups
+byte for byte and stopped the app. Evidence is in
+`build/evidence/polish/android-63/` and `build/android-63-review.log`.
+
+## Finer baked contact shading
+
+Critique: the 25 cm UV2 spacing flattened the rounded timber and blurred the
+frames' contact shading. Re-unwrapped the same original meshes at 12.5 cm spacing
+and rebaked the same lighting setup. The pinned editor confirmed completion in
+7.25 seconds. Retained after comparing the Delivery rail, Skip glazing and close
+bench: the timber's rounded long edges now carry a clear lighting gradient,
+and frame/bench contact shading is better defined. No geometry, material,
+lighting energy, camera, UI or simulation setting changed.
+
+The RGBH atlas is now five 512 x 512 layers, 7.5 MiB uncompressed, compared with
+seven 256 x 256 layers at 2.625 MiB. This costs 4.875 MiB additional atlas memory
+without adding runtime lights or draw calls. The original generated atlas/data
+remain in LFS, and scene/UV mappings are reviewed with the new atlas. All ten
+normal captures and the rink gate pass, including 248 valid baked mesh paths,
+eight runtime lights, reflective ice exclusion and authority-state invariance.
+Before geometry/bake, fixed crops and logs are in ignored
+`build/lightmap-density-review/`. The finalized Compatibility runtime log is clean.
+The offline editor retains its known seven-texture-RID shutdown warning; the
+ignored preparation scene can also report an old lightmap UID with text-path
+fallback after finalization. Neither occurs in the finalized runtime review.
+Installed Android validation follows the source commit.

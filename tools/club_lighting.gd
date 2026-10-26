@@ -26,7 +26,7 @@ func unwrap(node: Node3D) -> bool:
 		for index in range(source.get_surface_count()):
 			result.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, source.surface_get_arrays(index))
 			result.surface_set_material(index, source.surface_get_material(index))
-		var error := result.lightmap_unwrap(node.global_transform, .25)
+		var error := result.lightmap_unwrap(node.global_transform, .125)
 		if error != OK:
 			push_error("Club UV2 unwrap failed: " + str(node.name) + " " + str(error))
 			return false

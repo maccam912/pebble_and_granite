@@ -1,7 +1,7 @@
 # Original club lighting
 
 `club.tscn` contains the original geometry from `CurlRinkView.build_club()`,
-converted to ArrayMesh with UV2 at 0.25 metre texel spacing. `club.exr` and
+converted to ArrayMesh with UV2 at 0.125 metre texel spacing. `club.exr` and
 `club.lmbake` were generated locally by the pinned Godot 4.7 editor. They contain
 no third-party artwork and are stored in Git LFS.
 
@@ -41,7 +41,7 @@ python3 tools/godot.py --headless --path . --script tests/rink_view.gd
 Finalization removes the extra bake lights and any preview camera/environment,
 restores eight runtime fixtures, preserves the baked UV mappings, excludes ice
 from those mappings, and writes `render/club/club.tscn`. Keep the atlas import
-uncompressed (`compress/mode=0`): seven 256 by 256 HDR layers use about 2.6 MiB
+uncompressed (`compress/mode=0`): five 512 by 512 HDR layers use 7.5 MiB
 without requiring unsupported compressed-HDR fallbacks on Compatibility.
 Commit the scene, data, atlas, and import settings together after reviewing the
 desktop and installed Android result. Recheck `project.godot` for incidental
