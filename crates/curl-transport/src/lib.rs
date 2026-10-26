@@ -11,6 +11,7 @@ const ALPN: &[u8] = b"pebble-granite/iroh/1";
 mod client;
 mod connection;
 mod identity;
+mod retry;
 mod server;
 
 // Android's DNS resolver needs an application context. Keep a global JNI ref

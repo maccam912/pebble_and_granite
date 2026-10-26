@@ -217,7 +217,19 @@ impl IrohConnection {
         };
         let node_id =
             EndpointId::from_bytes(&node_id_bytes).context("invalid connection string")?;
-        let connection = endpoint.connect(node_id, ALPN).await?;
+        let connection = crate::retry::discover(
+            || endpoint.connect(node_id, ALPN),
+            |error| {
+                matches!(
+                    error,
+                    iroh::endpoint::ConnectError::Connect {
+                        source: iroh::endpoint::ConnectWithOptsError::NoAddress { .. },
+                        ..
+                    }
+                )
+            },
+        )
+        .await?;
         let peer_id = connection.accept_uni().await?.read_i32().await?;
         Ok((peer_id, Self::new(connection).await))
     }

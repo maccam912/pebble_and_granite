@@ -1,6 +1,7 @@
 use std::collections::VecDeque;
 use std::mem::replace;
 
+use anyhow::Context;
 use bytes::Bytes;
 use godot::classes::multiplayer_peer::{ConnectionStatus, TransferMode};
 use godot::classes::{IMultiplayerPeerExtension, MultiplayerPeerExtension};
@@ -71,7 +72,12 @@ impl IrohClient {
                 builder
             };
             let endpoint = builder.alpns(vec![ALPN.to_vec()]).bind().await?;
-            let (peer_id, connection) = IrohConnection::connect(endpoint.clone(), node_id).await?;
+            let (peer_id, connection) = tokio::time::timeout(
+                std::time::Duration::from_secs(25),
+                IrohConnection::connect(endpoint.clone(), node_id),
+            )
+            .await
+            .context("Host connection timed out")??;
             Ok((endpoint, peer_id, connection))
         });
         Gd::from_init_fn(|base| Self {

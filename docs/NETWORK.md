@@ -188,3 +188,15 @@ It does not add a second brush contribution or rewrite past duplicate samples;
 consumed overlap is retained unchanged rather than rejected.
 The record sequence preserves those replacements for replay/synchronization.
 Compatibility rejects prior rules rather than silently changing their journals.
+
+## Initial address discovery
+
+A newly hosted endpoint can be shared before discovery publishes its address.
+Clients retry only Iroh's typed `NoAddress` error, at 250 ms, 500 ms, 1 s,
+2 s, 4 s and 4 s intervals. The connection and peer-ID handshake share a
+25-second deadline; cancellation drops the task, including a pending retry.
+Malformed identities and other connection errors still fail immediately. This
+is a bounded startup recovery, not automatic reconnect or a guarantee that
+external discovery/relay services are available. Offline native tests cover
+recovery, fatal errors, exhaustion and dropping a pending attempt; desktop
+package jobs run those tests before publication. Gameplay versions are unchanged.

@@ -7,7 +7,9 @@ bible only. Remote: `maccam912/pebble_and_granite`, main branch.
 
 ## Pick up here
 
-Latest gameplay checkpoint: `ea1ee40` (rules 4 / protocol 10, physics model 3).
+Latest gameplay checkpoint: `ea1ee40` (rules 4 / protocol 10, physics model 3),
+published as [Build 38](https://github.com/maccam912/pebble_and_granite/releases/tag/v0.0.38-dev).
+The final transport checkpoint adds bounded initial address-discovery retry; see below.
 The main scene is a 3D curler's view with direct handle grip, pull/push/held slide,
 finishing curl flick and small weight feedback. Practice and local matches save
 held/in-flight state. Online mixed doubles has four seats, per-player sweeping,
@@ -60,7 +62,7 @@ the current listen-server slice; publisher signing/physical devices remain open.
 - [x] Direct-on-ice 3D delivery/cameras, finishing flick, and local held saves.
 - [ ] Spatial scrubbing, measured calibration/performance and AI.
 
-Latest local gates: 100 core Rust tests (plus native transport identity test), shared golden traces, Godot input/practice/match
+Latest local gates: 100 core Rust tests (plus four native transport identity/retry tests), shared golden traces, Godot input/practice/match
 save/full-game fixtures. Live network probes are separate from offline CI because
 relay and code-directory availability are external dependencies. Four peers have
 passed a full shot and in-flight reconnect with default and forced-relay transport, but the
@@ -820,3 +822,37 @@ retry; this appears to be initial discovery publication timing. A narrowly bound
 background retry for that recoverable condition is a useful transport hardening
 task; do not retry malformed identity, incompatible protocol or authentication
 errors, and preserve cancellation/handshake deadlines.
+
+## Final checkpoint — usage stop and discovery recovery
+
+Weekly usage reached 51% used / **49% remaining**, satisfying the requested
+stopping condition. No reset or paid usage was used. Substantive development
+stops here after the final transport check/commit; the priorities at the top
+are the owner's next work.
+
+The initial-address publication failure now receives narrowly typed retries
+(7 total attempts, 11.75 seconds of waits), bounded by a 25-second connection
+and peer-ID-handshake timeout. Cancellation still drops the worker. This changes
+no simulation, input, rules or protocol version. Native transport tests now gate
+desktop CI packages before release publication. Four offline transport tests and
+transport all-target Clippy passed; the rebuilt optimized Godot transport passed
+forced-relay bidirectional channels, cancellation and forced-disconnect checks.
+Logs: `build/discovery-retry-tests.log`, `build/discovery-retry-clippy.log`,
+`build/discovery-retry-native.log`, `build/discovery-retry-transport.log`.
+
+GitHub run 40264853866 completed successfully and published all four platforms
+for gameplay commit ea1ee40 as Build 38. Its tag was checked against that exact
+commit. Installed Android evidence above is for ea1ee40, before the final native
+transport retry. Do not describe it as device validation of that later change.
+
+The final desktop forced-relay probe also passed held-delivery interruption,
+regrip/release, in-flight reconnect and continuous thrower sweeping, with exact
+host/client hash `1a7ee7477b280419`. Evidence:
+`build/probes/ca1ca14659d3410e864190880255496a/result.json` and
+`build/discovery-retry-relay.log`. This demonstrates integration of the retry
+transport; deterministic unit tests cover the discovery-error retry itself.
+
+The same four offline native tests passed in optimized/release mode, matching
+CI's new command (`build/discovery-retry-release-tests.log`). Final transport
+checkpoint CI is triggered by the push and is not claimed complete at handoff;
+Build 38 is the already verified all-platform gameplay release.

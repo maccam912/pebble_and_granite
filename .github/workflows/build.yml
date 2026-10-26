@@ -84,6 +84,9 @@ jobs:
           fi
       - name: Build and export
         run: python tools/package.py ${{ matrix.platform }} --number ${{ github.run_number }}
+      - name: Offline native transport tests
+        if: matrix.platform != 'android'
+        run: cargo test --locked --release -p curl-transport --lib
       - name: Godot native integration
         if: matrix.platform != 'android'
         run: |
