@@ -485,11 +485,15 @@ impl RecordedMatch {
         if count > 64 || input.is_some_and(|s| !s.valid()) {
             return Err("invalid targeted step");
         }
+        let input = input.filter(|s| s.effort > 0);
+        if input.is_none() {
+            return self.advance(count, None);
+        }
         let mut next = self.clone();
         let mut remaining = count;
         while remaining > 0 && next.game.phase == Phase::InFlight {
             let ticks = remaining.min(12);
-            if let Some(input) = input.filter(|s| s.effort > 0)
+            if let Some(input) = input
                 && next
                     .sim
                     .stones

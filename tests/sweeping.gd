@@ -27,6 +27,7 @@ func scrub(scene: Control, touch: bool) -> Dictionary:
 	scene.input_clock = func(): return clock[0]
 	var stone: Dictionary = scene.selected_sweep_stone()
 	var start: Vector2 = scene.rink.ice_screen_point(stone.position + Vector2(0, .35))
+	print("SWEEP_INPUT_POINT ", start)
 	check(scene.rink.get_global_rect().has_point(start), "Brush point left the sweeper view")
 	event(scene, touch, start, "down")
 	check(scene.sweeping and scene.pointer == (0 if touch else -1), "Ice contact did not start scrubbing")

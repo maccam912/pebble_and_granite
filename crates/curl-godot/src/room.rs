@@ -160,12 +160,19 @@ impl CurlRoom {
             curl_match::room::Command::BrushSpan { .. }
         );
         let result = room.command(peer, envelope);
-        // Delayed brush samples at the settled/out-of-play boundary are normal.
+        // A replica may still see motion or a pre-tee permission after the host
+        // has crossed that boundary. The core rejects these inputs atomically;
+        // consume them quietly as with delayed settled/out-of-play brushes.
         // The authority has consumed their sequence but makes no state change.
         if brush
             && matches!(
                 result,
-                Err("sweep unavailable" | "stone out of play" | "sweep predates delivery")
+                Err("sweep unavailable"
+                    | "stone out of play"
+                    | "stone is not moving"
+                    | "sweep predates delivery"
+                    | "opponent cannot sweep here"
+                    | "only defending skip may sweep behind tee")
             )
         {
             return GString::new();

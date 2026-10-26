@@ -117,6 +117,40 @@ for direction, label in [(1, 'right'), (-1, 'left')]:
     if release['spin'] * direction <= 0 or release['pos']['y'] / 4294967296 >= -28.593:
         raise RuntimeError('Incorrect touch release: ' + str(release))
     results[label] = release
+    if label == 'right':
+        # Auto Sweeper view tracks the selected stone. Its .35 m-ahead point is
+        # (629.6, 441.6) on the logical canvas, observed in tests/sweeping.gd.
+        event('DOWN', 1186, 596)
+        for i in range(10):
+            time.sleep(.04)
+            event('MOVE', 1160 if i % 2 == 0 else 1212, 596)
+        event('UP', 1212, 596)
+        time.sleep(1.2)
+        capture('scrub-released')
+        scrubbed = [r for r in journal('scrubbed')['records'] if r['kind'] == 'Shot'][0]['data']
+        spatial = [s for s in scrubbed['sweeps'] if s['input']['effort'] > 0]
+        if not spatial or not any(s['input']['lateral_mm'] != 0 for s in spatial):
+            raise RuntimeError('Android scrub did not record spatial heat input')
+        if not all(-350 <= s['input']['lateral_mm'] <= 350 and
+                   80 <= s['input']['ahead_mm'] <= 700 for s in spatial):
+            raise RuntimeError('Android scrub escaped brush bounds')
+        time.sleep(1.2)
+        quiet = [r for r in journal('scrub-stopped')['records'] if r['kind'] == 'Shot'][0]['data']
+        if quiet['sweeps'] != scrubbed['sweeps']:
+            raise RuntimeError('Android scrub kept heating after lift')
+        # The GUI's independent accessible route must still generate steady,
+        # centered effort through real touchscreen down/up events.
+        event('DOWN', 1122, 1012)
+        time.sleep(1.2)
+        event('UP', 1122, 1012)
+        time.sleep(1.2)
+        held = [r for r in journal('hold-swept')['records'] if r['kind'] == 'Shot'][0]['data']
+        steady = [s for s in held['sweeps'] if s['input']['effort'] == 255 and
+                  s['input']['lateral_mm'] == 0 and s['input']['ahead_mm'] == 180]
+        if not steady:
+            raise RuntimeError('Android accessible hold did not record steady sweeping')
+        results['sweeping'] = {'spatial_spans': spatial, 'hold_spans': steady,
+                               'stopped_after_lift': True}
 fresh()
 drive()
 time.sleep(1.6)

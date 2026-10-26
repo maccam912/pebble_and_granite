@@ -77,6 +77,9 @@ func run() -> void:
 	check(game.frame.clock_gold == thinking, "Online clock ran after delivery tee")
 	check(game.run_active and game.frame.match_phase == "InFlight", "Online stroke did not release through authority")
 	check(game.can_sweep(), "Mixed-doubles thrower could not sweep after release")
+	var before_brush: String = online.state.hash
+	check(online.send_command({"kind": "BrushSpan", "tick": int(game.frame.global_tick), "count": 12, "input": {"stone": 0, "brush": 0, "effort": 255, "lateral_mm": 0, "ahead_mm": 180}}).is_empty(), "Late stationary-target brush produced a visible rejection")
+	check(online.state.hash == before_brush, "Rejected stationary-target brush changed match state")
 	for i in range(1300):
 		if not game.run_active: break
 		game._process(.05)

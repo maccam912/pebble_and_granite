@@ -930,3 +930,24 @@ milestones and no resets or purchases.
 Live-room and installed Android checks for spatial input follow this checkpoint;
 prior emulator results do not validate this new mapper. Human feel/calibration
 and physical-device latency/performance remain open.
+
+### Live-room spatial regression
+
+Four local Iroh peers passed actual remote spatial scrub commands with nonzero
+lateral/ahead offsets, both teammates' continuous hold input, held reconnect,
+early release before begin acknowledgement, exact-once hog fault, eight ends
+(4:5) and four-player rematch readiness. No gameplay rejections or replica hash
+divergence. The first swept shot took 25.173 s wall / 25.625 s simulated, with
+18.704 ms maximum observed headless frame gap while Android cross-compilation
+also ran; this is not a device/GPU performance measurement.
+Log: build/spatial-online-room.log. The Godot wrapper now allows ten minutes for
+explicit --full-match probes; its old two-minute limit cut the first run off at
+seven ends. The second complete run passed.
+
+Late brush samples after a target stops or crosses a tee-permission boundary
+remain rejected by the core without a visible transient error. The offline UI
+fixture verifies a stationary-target rejection leaves match state unchanged.
+Unswept local steps retain the existing single-batch path rather than splitting
+every step into brush spans. The Android touch probe now checks real scrub
+events, no heat after lift and the accessible hold route against saved journals;
+installed evidence follows the clean package build.

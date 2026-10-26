@@ -53,6 +53,6 @@ if __name__=='__main__':
     args=sys.argv[1:]
     if '--install-templates' in args:templates();args.remove('--install-templates')
     if args:
-        limit=120 if "--headless" in args and "--script" in args else None
+        limit=(600 if '--full-match' in args else 120) if "--headless" in args and "--script" in args else None
         sys.exit(subprocess.run([executable(),*args],cwd=ROOT,timeout=limit).returncode)
     print(executable())

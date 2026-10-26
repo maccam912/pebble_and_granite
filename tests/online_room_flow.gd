@@ -54,6 +54,7 @@ func run() -> void:
 	if failed: await cleanup(); quit(1); return
 	check(await until(func(): return panels.all(func(p): return p.game != null and p.game.run_active), 10), "Flight state not delivered")
 	var sweeper := at_seat(1)
+	await exercise_spatial_scrub(sweeper.game)
 	sweeper.game.sweep_button.button_down.emit()
 	host.game.sweep_button.button_down.emit()
 	timing = [Time.get_ticks_usec(), 0, 0]
@@ -109,6 +110,36 @@ func run() -> void:
 	await cleanup()
 	print("ONLINE_ROOM_FLOW_OK" if not failed else "ONLINE_ROOM_FLOW_FAILED")
 	quit(1 if failed else 0)
+
+func exercise_spatial_scrub(game: Control) -> void:
+	game.input_clock = Time.get_ticks_usec
+	game.rink.mode = 2
+	game.update_spatial(0)
+	var samples := 0
+	for i in range(8):
+		game.refresh_online()
+		game.update_spatial(.016)
+		var stone: Dictionary = game.selected_sweep_stone()
+		if not check(not stone.is_empty(), "Remote scrub has no eligible target"): return
+		var node: Node3D = game.rink.stones[stone.id]
+		var shown := Vector2(node.position.x, -node.position.z)
+		var direction: Vector2 = stone.velocity.normalized()
+		var offset := Vector2(direction.y, -direction.x) * (.06 if i % 2 == 0 else -.06)
+		var point: Vector2 = game.rink.ice_screen_point(shown + direction * .35 + offset)
+		if i == 0: game.begin_pointer(-1, point)
+		else: game.move_pointer(point)
+		game._process(0)
+		for item in game.online.outbox:
+			var packet = JSON.parse_string(item.bytes.get_string_from_utf8())
+			if packet is Dictionary and packet.get("command", {}).get("kind") == "BrushSpan":
+				var brush: Dictionary = packet.command.input
+				check(brush.effort > 0 and brush.lateral_mm != 0 and brush.ahead_mm > 180, "Wire brush lost spatial effort/position")
+				samples += 1
+		await create_timer(.055).timeout
+	game.end_pointer(game.sweep_input.point)
+	check(samples > 0, "No spatial scrub reached the online command queue")
+	check(game.current_brush().is_empty(), "Remote scrub lift retained intent")
+	print("ONLINE_SPATIAL_SCRUB samples=", samples)
 
 func deliver_gesture(game: Control, release_us: int, hold := false, reconnect := false) -> void:
 	var clock := [0]
