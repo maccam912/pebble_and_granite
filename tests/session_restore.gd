@@ -69,6 +69,18 @@ func run() -> void:
 	var before: String = a.session.state_hash()
 	check(not a.session.load_session("{}").is_empty(), "Invalid log was accepted")
 	check(before == a.session.state_hash(), "Invalid restore partially changed session")
+	# A hog release consumes a stone without disturbing the existing field/ice.
+	var fault: Object = ClassDB.instantiate("CurlSession")
+	check(fault.hog_violation().is_empty(), "Practice hog fault rejected")
+	var fault_hash: String = fault.state_hash()
+	var restored: Object = ClassDB.instantiate("CurlSession")
+	check(restored.load_session(fault.session_json()).is_empty(), "Hog fault restore failed")
+	check(restored.state_hash() == fault_hash, "Hog fault replay diverged")
+	check(restored.frame().stones.size() == 1 and not restored.frame().stones[0].active, "Faulted stone remained active")
+	check(restored.deliver(2050, -900, 1).is_empty(), "Fault prevented next practice delivery")
+	var in_flight: String = restored.state_hash()
+	check(not restored.hog_violation().is_empty(), "Fault accepted during flight")
+	check(restored.state_hash() == in_flight, "Rejected fault mutated flight")
 	for scene in [a,b,c]:
 		scene.persistence_enabled = false
 		scene.queue_free()

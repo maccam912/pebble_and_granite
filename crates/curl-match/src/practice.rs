@@ -38,7 +38,7 @@ impl Practice {
                 .log
                 .records
                 .iter()
-                .filter(|r| matches!(r, Record::Shot(_)))
+                .filter(|r| matches!(r, Record::Shot(_) | Record::HogViolation { .. }))
                 .count()
                 >= 256
         {
@@ -55,6 +55,25 @@ impl Practice {
             sweeps: vec![],
             final_hash: None,
         }));
+        Ok(())
+    }
+    pub fn hog_violation(&mut self) -> Result<(), &'static str> {
+        if self.active.is_some()
+            || self.log.records.len() >= MAX_RECORDS
+            || self
+                .log
+                .records
+                .iter()
+                .filter(|r| matches!(r, Record::Shot(_) | Record::HogViolation { .. }))
+                .count()
+                >= 256
+        {
+            return Err("practice hog violation unavailable");
+        }
+        let stone = self.next_id().ok_or("practice stones exhausted")?;
+        let team = stone % 2;
+        self.sim.hog_violation(stone, team)?;
+        self.log.records.push(Record::HogViolation { stone, team });
         Ok(())
     }
     pub fn step(&mut self, inputs: &[Sweep]) -> Result<(), &'static str> {
@@ -135,6 +154,10 @@ impl Practice {
         let mut span_count = 0;
         for (index, record) in log.records.iter().enumerate() {
             match record {
+                Record::HogViolation { stone, team } => {
+                    sim.hog_violation(*stone, *team)?;
+                    active = None;
+                }
                 Record::Idle(ticks) => sim.advance_idle(*ticks)?,
                 Record::ClearStones => sim.clear_stones()?,
                 Record::Shot(shot) => {
@@ -193,6 +216,28 @@ mod tests {
             let id = p.sim.delivered.unwrap();
             p.step(&[Sweep::centered(id, 0)]).unwrap();
         }
+    }
+    #[test]
+    fn practice_hog_faults_preserve_field_and_restore_consumed_ids() {
+        let mut p = Practice::new(42);
+        p.release(Release::draw()).unwrap();
+        let hash = p.sim.hash();
+        assert!(p.hog_violation().is_err());
+        assert_eq!(p.sim.hash(), hash);
+        finish(&mut p);
+        let stone = p.sim.stones[0].clone();
+        let ice = p.sim.ice.clone();
+        p.hog_violation().unwrap();
+        assert_eq!(p.next_id(), Some(2));
+        assert_eq!(p.sim.stones[0], stone);
+        assert_eq!(p.sim.ice, ice);
+        let log = SessionLog::parse(&serde_json::to_vec(&p.log).unwrap()).unwrap();
+        let restored = Practice::from_log(log).unwrap();
+        assert_eq!(restored.sim.hash(), p.sim.hash());
+        assert_eq!(restored.next_id(), Some(2));
+        let mut old = serde_json::to_value(&p.log).unwrap();
+        old["model"] = 2.into();
+        assert!(SessionLog::parse(&serde_json::to_vec(&old).unwrap()).is_err());
     }
     #[test]
     fn continuous_ice_and_idle_replay_roundtrip() {

@@ -3,7 +3,7 @@
 use curl_fx::{Fx, V2};
 use curl_sim::{FAR_HOG, HOUSE, RADIUS, Stone};
 use serde::{Deserialize, Serialize};
-pub const RULES_VERSION: u32 = 1;
+pub const RULES_VERSION: u32 = 2;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub enum Format {
@@ -70,6 +70,7 @@ pub enum Phase {
 }
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub enum Violation {
+    HogRelease,
     ProtectedRemoval,
     NoTick,
 }
@@ -205,6 +206,20 @@ impl Match {
         self.delivered_id = Some(stone);
         self.phase = Phase::InFlight;
         Ok(())
+    }
+    pub fn hog_violation(
+        &mut self,
+        team: u8,
+        stone: u8,
+        positions: &[Stone],
+    ) -> Result<Resolution, &'static str> {
+        self.begin(team, stone, positions)?;
+        self.complete_throw(positions);
+        Ok(Resolution {
+            violation: Some(Violation::HogRelease),
+            replace_stones: None,
+            choice_team: None,
+        })
     }
     pub fn settle(&mut self, positions: &[Stone]) -> Result<Resolution, &'static str> {
         if self.phase != Phase::InFlight || positions.iter().any(|s| s.active && s.vel != V2::ZERO)

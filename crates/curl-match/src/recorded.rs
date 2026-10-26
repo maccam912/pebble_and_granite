@@ -22,6 +22,9 @@ pub struct Brush {
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(tag = "kind", deny_unknown_fields)]
 pub enum Record {
+    HogViolation {
+        seat: Seat,
+    },
     Place {
         seat: Seat,
         own_house: bool,
@@ -244,6 +247,7 @@ impl RecordedMatch {
     }
     fn execute(a: &mut Authority, r: &Record) -> Result<(), &'static str> {
         match r {
+            Record::HogViolation { seat } => a.hog_violation(*seat),
             Record::Place {
                 seat,
                 own_house,
@@ -360,6 +364,9 @@ impl RecordedMatch {
         Self::execute(&mut next, &r)?;
         if let Record::Release { release, .. } = &r {
             self.last_speed = release.vel.length();
+        }
+        if matches!(&r, Record::HogViolation { .. }) {
+            self.last_speed = curl_fx::Fx::ZERO;
         }
         self.authority = next;
         self.replay_ticks += ticks;
@@ -792,8 +799,8 @@ mod tests {
         }
         assert_eq!(
             m.hash(),
-            0x0f60680c408b6903,
-            "model-2 profile trajectory changed"
+            0x654eaff0d4d4fb1d,
+            "model-3 profile trajectory changed"
         );
         eprintln!(
             "LATE_SWEEP_PROFILE spans={spans} simulated_seconds={:.3} wall_ms={:.3} worst_span_ms={:.3} hash={:016x}",

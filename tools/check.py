@@ -10,6 +10,8 @@ source=(ROOT/'crates/curl-match/src/recorded.rs').read_text()
 assert int(re.search(r'MATCH_SCHEMA: u32 = (\d+)',source).group(1))==compat['match'], 'Match schema mismatch'
 source=(ROOT/'crates/curl-match/src/sync.rs').read_text()
 assert int(re.search(r'SYNC_SCHEMA: u32 = (\d+)',source).group(1))==compat['sync'], 'Sync schema mismatch'
+source=(ROOT/'crates/curl-proto/src/session.rs').read_text()
+assert int(re.search(r'SESSION_SCHEMA: u32 = (\d+)',source).group(1))==compat['session'], 'Session schema mismatch'
 def run(args):subprocess.run(args,cwd=ROOT,check=True)
 run(['cargo','fmt','--all','--','--check'])
 run(['cargo','test','--locked','--workspace','--exclude','curl-godot','--exclude','curl-transport'])

@@ -19,7 +19,7 @@ bible only. Remote: `maccam912/pebble_and_granite`, main branch.
 - [x] Installed Android golden/JNI probe using the one-use debug request route.
 - [ ] 3D delivery/cameras, spatial scrubbing, measured calibration/performance and AI.
 
-Latest local gates: 75 core Rust tests (plus native transport identity test), shared golden traces, Godot input/practice/match
+Latest local gates: 84 core Rust tests (plus native transport identity test), shared golden traces, Godot input/practice/match
 save/full-game fixtures. Live network probes are separate from offline CI because
 relay and code-directory availability are external dependencies. Four peers have
 passed a full shot and in-flight reconnect with default and forced-relay transport, but the
@@ -507,3 +507,29 @@ playable scene now includes experimental online rooms. The code-directory test r
 - Rechecked the local September 2026 rulebook. Corrected visual hog stripes to
   102 mm with the specified inside edges, and tee/back/centre lines to 13 mm.
 - caa6ae1 and 7bbb9fa pipelines passed all jobs. 945e780 is still running.
+
+## Model 3 delivery authority checkpoint
+
+- Added a seat-owned HogViolation command and replay record. It consumes exactly
+  one delivery, leaves existing stones/ice/fatigue intact, and runs normal turn/end
+  scoring. Inactive consumed IDs prevent reuse in practice.
+- Added atomic wrong-seat/in-flight rejection, ten-fault end scoring, replica
+  commit/reconnect, practice replay and native save-restore coverage.
+- Release centres now accept -37.8 m through strictly before -28.593 m; default
+  diagnostic draw moved 244 mm toward the hack. Model 3, rules 2, protocol 7 and
+  practice schema 2 reject older development logs instead of interpreting them
+  under changed physics. Existing rejected-save preservation remains in place.
+- Golden traces intentionally regenerated for model 3. Previous performance and
+  Android/network evidence above was measured on model 2 and is historical.
+- Still pending: wire Delivery into the gesture, variable-origin native/online
+  release, visible body/hand travel and warning, thinking-clock tee cutoff,
+  background semantics, and updated installed Android validation. The current
+  playable gesture still uses its fixed diagnostic origin; no claim that the
+  body-slide controls are enabled yet.
+
+Validation for this checkpoint: 84 core tests, six every-tick golden traces,
+workspace clippy, and nine Godot gates including complete local match, 3D view,
+async replica restore and practice hog-fault save roundtrip passed. The model-3
+late-brush probe simulated 26.012 seconds in 91.152 ms, worst span 0.323 ms on the
+local macOS machine (headless core workload, not a device/render benchmark).
+Weekly usage at this checkpoint: 68% remaining; continue substantive work.

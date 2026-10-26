@@ -35,6 +35,7 @@ pub struct Player {
 #[derive(Clone, Debug, Serialize, Deserialize)]
 #[serde(tag = "kind", deny_unknown_fields)]
 pub enum Command {
+    HogViolation {},
     Place { own_house: bool, side: PowerPlay },
     Order { first: u8 },
     Release { release: Release },
@@ -262,6 +263,7 @@ impl Room {
         // rejected requests are consumed so retries cannot replay a failed action.
         let seat = Self::seat(index);
         let record = match envelope.command {
+            Command::HogViolation {} => Record::HogViolation { seat },
             Command::Place { own_house, side } => Record::Place {
                 seat,
                 own_house,

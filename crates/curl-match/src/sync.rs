@@ -361,6 +361,82 @@ mod tests {
         }
     }
     #[test]
+    fn hog_faults_consume_owned_turns_score_and_reconnect_exactly() {
+        let mut room = room();
+        send(
+            &mut room,
+            3,
+            1,
+            Command::Place {
+                own_house: true,
+                side: PowerPlay::None,
+            },
+        );
+        while room.take_commit().is_some() {}
+        let mut replica = copy(&room);
+        let layout: Vec<_> = room
+            .authority()
+            .unwrap()
+            .sim
+            .stones
+            .iter()
+            .filter(|s| s.active)
+            .cloned()
+            .collect();
+        let ice = room.authority().unwrap().sim.ice.clone();
+        let before = room.state_hash();
+        assert!(
+            room.command(
+                2,
+                Envelope {
+                    epoch: room.epoch(),
+                    sequence: 1,
+                    command: Command::HogViolation {}
+                }
+            )
+            .is_err()
+        );
+        assert_eq!(room.state_hash(), before);
+        let mut sequences = [0, 1, 1, 0];
+        for delivered in 0..10 {
+            let a = room.authority().unwrap();
+            let index = (a.game.delivering_team() * 2 + a.game.throwing_seat()) as usize;
+            sequences[index] += 1;
+            send(
+                &mut room,
+                index as i32 + 1,
+                sequences[index],
+                Command::HogViolation {},
+            );
+            deliver(&mut room, &mut [&mut replica]);
+            let a = room.authority().unwrap();
+            assert_eq!(a.game.delivered, delivered + 1);
+            assert_eq!(
+                a.sim
+                    .stones
+                    .iter()
+                    .filter(|s| s.active)
+                    .cloned()
+                    .collect::<Vec<_>>(),
+                layout
+            );
+            assert_eq!(a.sim.ice, ice);
+            assert_eq!(
+                a.last_resolution.as_ref().unwrap().violation,
+                Some(curl_rules::Violation::HogRelease)
+            );
+            if delivered == 4 {
+                replica = copy(&room);
+            }
+        }
+        assert_eq!(room.authority().unwrap().game.phase, Phase::EndComplete);
+        assert_eq!(room.authority().unwrap().game.score, [0, 1]);
+        assert_eq!(replica.game.hash(), room.state_hash().unwrap());
+        let mut log: serde_json::Value = serde_json::from_str(&room.journal().unwrap()).unwrap();
+        log["model"] = 2.into();
+        assert!(RecordedMatch::parse(&serde_json::to_vec(&log).unwrap()).is_err());
+    }
+    #[test]
     fn live_inputs_late_sweeps_and_reconnect_reproduce_host() {
         let mut room = room();
         let mut first = copy(&room);

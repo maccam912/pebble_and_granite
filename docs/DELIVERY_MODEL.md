@@ -1,7 +1,7 @@
 # Delivery model work in progress
 
 `curl-input::delivery` is a tested Rust foundation; it is not yet connected to
-Godot or the match authority. The currently playable card still uses the original
+the playable Godot gesture. The authority now supports a journaled hog fault. The currently playable card still uses the original
 stroke-to-fixed-release route. Do not claim hog-release enforcement in the game
 until the integration items below are complete.
 
@@ -28,13 +28,14 @@ stationary-hand continuation, cancellation, invalid input and repeated release.
 
 ## Integration required before enabling
 
-- Add a seat-owned, journaled hog-violation command that consumes the delivery
-  without moving existing stones, including end scoring and replay/replica tests.
+- [x] Seat-owned, journaled hog-violation command consumes the delivery without
+  moving existing stones, including end scoring and replay/replica tests.
 - Pass actual release position and speed through the native and online boundaries.
-  The existing sim accepts no release before -35 m and its old draw fixture uses a
-  centre just behind the hog's inside edge. Correct those physical bounds explicitly,
-  version affected contracts, regenerate intentional goldens, and preserve rejected
-  old saves rather than silently clearing or misinterpreting them.
+  Model 3 now accepts centres from -37.8 m up to (excluding) -28.593 m.
+  The diagnostic fixed release moved 244 mm earlier to obey this bound.
+  Model 3 / rules 2 / protocol 7 / practice schema 2 explicitly reject old
+  development records; existing restore guards preserve those files. No model-2
+  migration is implemented. Every-tick goldens were regenerated intentionally.
 - Connect the 3D hand/body pose and warning to this model, with direct pointer
   interaction and no power meter. Never derive authoritative position from meshes.
 - Handle thinking-clock cutoff at the delivery tee and background/cancel semantics

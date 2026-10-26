@@ -101,6 +101,27 @@ impl Authority {
         self.last_resolution = None;
         Ok(())
     }
+    pub fn hog_violation(&mut self, seat: Seat) -> Result<(), &'static str> {
+        if !self.valid_seat(seat)
+            || seat.team != self.game.delivering_team()
+            || seat.position != self.game.throwing_seat()
+            || self.game.phase != Phase::Calling
+        {
+            return Err("seat does not own this delivery");
+        }
+        let id = self.game.next_stone_id();
+        let mut game = self.game.clone();
+        let resolution = game.hog_violation(seat.team, id, &self.sim.stones)?;
+        let mut sim = self.sim.clone();
+        sim.hog_violation(id, seat.team)?;
+        self.game = game;
+        self.sim = sim;
+        self.release_snapshot = None;
+        self.rewind.clear();
+        self.sweeps.clear();
+        self.last_resolution = Some(resolution);
+        Ok(())
+    }
     fn valid_seat(&self, seat: Seat) -> bool {
         seat.team < 2
             && seat.position

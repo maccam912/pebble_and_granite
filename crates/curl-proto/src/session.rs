@@ -2,7 +2,7 @@
 //! spans compress held inputs without losing tick precision or cooling history.
 use curl_sim::{MAX_TICKS, MODEL_VERSION, Release, Sweep};
 use serde::{Deserialize, Serialize};
-pub const SESSION_SCHEMA: u32 = 1;
+pub const SESSION_SCHEMA: u32 = 2;
 pub const MAX_SESSION_BYTES: usize = 16 * 1024 * 1024;
 pub const MAX_RECORDS: usize = 1024;
 pub const MAX_SPANS: usize = 100_000;
@@ -54,6 +54,7 @@ impl RecordedShot {
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(tag = "kind", content = "data", deny_unknown_fields)]
 pub enum Record {
+    HogViolation { stone: u8, team: u8 },
     Shot(RecordedShot),
     Idle(u32),
     ClearStones,
@@ -96,6 +97,12 @@ impl SessionLog {
         let mut spans = 0;
         for (i, record) in self.records.iter().enumerate() {
             match record {
+                Record::HogViolation { stone, team } => {
+                    if *stone as usize >= curl_sim::MAX_STONES || *team > 1 {
+                        return Err("invalid hog violation identity");
+                    }
+                    count += 1;
+                }
                 Record::Shot(shot) => {
                     shot.validate()?;
                     count += 1;

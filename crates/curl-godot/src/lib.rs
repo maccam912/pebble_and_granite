@@ -84,6 +84,22 @@ impl CurlSession {
         }
     }
     #[func]
+    fn hog_violation(&mut self) -> GString {
+        let result = if let Some(game) = &mut self.game {
+            let seat = Seat {
+                team: game.game.delivering_team(),
+                position: game.game.throwing_seat(),
+            };
+            game.apply(curl_match::recorded::Record::HogViolation { seat })
+        } else {
+            self.practice.hog_violation()
+        };
+        if result.is_ok() {
+            self.match_release_speed = Fx::ZERO;
+        }
+        result.map_or_else(|error| error.into(), |_| GString::new())
+    }
+    #[func]
     fn step_ticks(&mut self, count: i64, effort: i64, lateral_mm: i64, ahead_mm: i64) {
         if !(0..=64).contains(&count)
             || !(0..=255).contains(&effort)
@@ -130,6 +146,8 @@ impl CurlSession {
             .find_map(|r| {
                 if let curl_proto::session::Record::Shot(s) = r {
                     Some(s.release.vel.length())
+                } else if matches!(r, curl_proto::session::Record::HogViolation { .. }) {
+                    Some(Fx::ZERO)
                 } else {
                     None
                 }

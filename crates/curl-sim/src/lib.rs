@@ -3,12 +3,14 @@ use curl_fx::{Fx, Hash64, Rng, V2};
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
 
-pub const MODEL_VERSION: u32 = 2;
+pub const MODEL_VERSION: u32 = 3;
 pub const HZ: u32 = 240;
 pub const DT: Fx = Fx::ratio(1, HZ as i64);
 pub const RADIUS: Fx = Fx::ratio(142, 1000);
 pub const HALF_WIDTH: Fx = Fx::ratio(2375, 1000);
 pub const NEAR_HOG: Fx = Fx::ratio(-28349, 1000);
+pub const HOG_RELEASE_LIMIT: Fx = Fx::ratio(-28593, 1000);
+pub const DELIVERY_START: Fx = Fx::ratio(-37800, 1000);
 pub const FAR_HOG: Fx = Fx::ratio(-6401, 1000);
 pub const BACK: Fx = Fx::ratio(1829, 1000);
 pub const HOUSE: Fx = Fx::ratio(1829, 1000);
@@ -57,7 +59,7 @@ impl Release {
         Self {
             stone: 0,
             team: 0,
-            pos: V2::new(Fx::ZERO, NEAR_HOG - Fx::ratio(1, 100)),
+            pos: V2::new(Fx::ZERO, HOG_RELEASE_LIMIT - Fx::ratio(1, 100)),
             vel: V2::new(Fx::ZERO, Fx::ratio(205, 100)),
             spin: Fx::ratio(12, 100),
         }
@@ -68,8 +70,8 @@ impl Release {
             || self.team > 1
             || self.pos.x < -HALF_WIDTH + RADIUS
             || self.pos.x > HALF_WIDTH - RADIUS
-            || self.pos.y < Fx::int(-35)
-            || self.pos.y >= NEAR_HOG
+            || self.pos.y < DELIVERY_START
+            || self.pos.y >= HOG_RELEASE_LIMIT
             || self.vel.x < Fx::int(-2)
             || self.vel.x > Fx::int(2)
             || self.vel.y < Fx::ratio(1, 10)
@@ -257,6 +259,28 @@ impl Sim {
         self.last_cells = [None; MAX_STONES];
         self.stones.push(s);
         self.stones.sort_by_key(|s| s.id);
+        Ok(())
+    }
+    /// A released-too-late stone is consumed without entering live simulation.
+    /// Existing stones, ice and fatigue are untouched; the inactive ID remains
+    /// in canonical state so practice and match journals cannot reuse it.
+    pub fn hog_violation(&mut self, stone: u8, team: u8) -> Result<(), &'static str> {
+        if stone as usize >= MAX_STONES
+            || team > 1
+            || !self.is_resting()
+            || self.stones.len() >= MAX_STONES
+            || self.stones.iter().any(|s| s.id == stone)
+        {
+            return Err("hog violation unavailable");
+        }
+        let mut removed = Stone::resting(stone, team, V2::new(Fx::ZERO, HOG_RELEASE_LIMIT));
+        removed.active = false;
+        self.stones.push(removed);
+        self.stones.sort_by_key(|s| s.id);
+        self.delivered = Some(stone);
+        self.release_tick = self.tick;
+        self.hog_tick = None;
+        self.timed_out = false;
         Ok(())
     }
     /// Advance deterministic ice time while no stones move. Heat cools lazily.
@@ -547,6 +571,36 @@ mod tests {
         }
         assert!(!s.timed_out);
         s
+    }
+    #[test]
+    fn delivery_bounds_and_hog_disposal_are_atomic() {
+        let mut release = Release::draw();
+        release.pos.y = DELIVERY_START;
+        assert!(release.validate().is_ok());
+        release.pos.y = DELIVERY_START - Fx::EPSILON;
+        assert!(release.validate().is_err());
+        release.pos.y = HOG_RELEASE_LIMIT;
+        assert!(release.validate().is_err());
+        release.pos.y = HOG_RELEASE_LIMIT - Fx::EPSILON;
+        assert!(release.validate().is_ok());
+        let mut sim = Sim::new(42);
+        let hash = sim.hash();
+        assert!(sim.hog_violation(255, 0).is_err());
+        assert!(sim.hog_violation(0, 2).is_err());
+        assert_eq!(sim.hash(), hash);
+        let ice = sim.ice.clone();
+        sim.hog_violation(0, 0).unwrap();
+        assert!(sim.is_resting() && !sim.stones[0].active);
+        assert_eq!(sim.ice, ice);
+        let hash = sim.hash();
+        assert!(sim.hog_violation(0, 0).is_err());
+        assert_eq!(sim.hash(), hash);
+        let mut release = Release::draw();
+        release.stone = 1;
+        sim.release(release).unwrap();
+        let hash = sim.hash();
+        assert!(sim.hog_violation(2, 0).is_err());
+        assert_eq!(sim.hash(), hash);
     }
     #[test]
     fn draw_curls_clockwise_and_stops() {
