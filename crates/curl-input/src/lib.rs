@@ -1,5 +1,7 @@
 //! Device-neutral stroke mapping. Positions are millionths of logical viewport
 //! height, and time is monotonic microseconds. No render-frame delta enters weight.
+pub mod delivery;
+
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Phase {
     Idle,
@@ -24,6 +26,7 @@ pub struct Report {
     pub drive_us: u64,
     pub valid: bool,
 }
+#[derive(Clone, Debug)]
 pub struct Stroke {
     pub phase: Phase,
     pub one_push: bool,
@@ -110,6 +113,9 @@ impl Stroke {
         self.drive_end = Some(end);
     }
     pub fn release(&mut self, s: Sample) -> Report {
+        self.release_with_limit(s, 4_000_000)
+    }
+    fn release_with_limit(&mut self, s: Sample, max_drive_us: u64) -> Report {
         if !valid_sample(s) || s.us < self.last.us {
             self.phase = Phase::Cancelled;
             return Report {
@@ -125,7 +131,7 @@ impl Stroke {
             self.finish_drive(s);
             self.phase = Phase::Slide;
         }
-        let valid = self.phase == Phase::Slide && s.us.saturating_sub(self.drive.us) < 4_000_000;
+        let valid = self.phase == Phase::Slide && s.us.saturating_sub(self.drive.us) < max_drive_us;
         let end = self.drive_end.unwrap_or(s);
         let trim = ((end.y - s.y) * 300 / 100_000).clamp(-70, 70);
         let lateral = s.x - self.start.x;

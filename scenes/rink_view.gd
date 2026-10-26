@@ -98,10 +98,10 @@ func build_club() -> void:
 			for ring in [[1.829, "37768d"], [1.219, "ecf1ec"], [.610, "b86660"], [.152, "ecf1ec"]]:
 				cylinder(world, ring[0], .002, Vector3(lane, layer, tee), material(ring[1], .4))
 				layer += .003
-			box(world, Vector3(4.75, .002, .025), Vector3(lane, .02, tee), material("647d83"))
-		for hog in [6.401, 28.349]: box(world, Vector3(4.75, .005, .10), Vector3(lane, .006, hog), material("aa5252"))
-		for back in [-1.829, 36.579]: box(world, Vector3(4.75, .004, .025), Vector3(lane, .006, back), material("647d83"))
-		box(world, Vector3(.025, .002, 42), Vector3(lane, .021, 17.3), material("82999d"))
+			box(world, Vector3(4.75, .002, .013), Vector3(lane, .02, tee), material("647d83"))
+		for hog in [6.350, 28.400]: box(world, Vector3(4.75, .005, .102), Vector3(lane, .006, hog), material("aa5252"))
+		for back in [-1.8225, 36.5725]: box(world, Vector3(4.75, .004, .013), Vector3(lane, .006, back), material("647d83"))
+		box(world, Vector3(.013, .002, 42), Vector3(lane, .021, 17.3), material("82999d"))
 		for end in [-3.658, 38.408]:
 			for x in [-.17, .17]: box(world, Vector3(.14, .06, .22), Vector3(lane + x, .03, end), material("263437"))
 		for edge in [-2.48, 2.48]: box(world, Vector3(.15, .18, 43.2), Vector3(lane + edge, .07, 17.3), wood)

@@ -489,3 +489,21 @@ playable scene now includes experimental online rooms. The code-directory test r
   package metadata records clean 7bbb9fa sources and installed Android templates.
 - Added `docs/PRESENTATION.md` with the coordinate/render-input boundary and the
   still-missing delivery mechanics. Weekly checkpoint: 30% used / 70% remaining.
+
+## Deterministic slide foundation (integration pending)
+
+- Added `curl-input::delivery`: integer 240 Hz slide poses, position-dependent
+  release speed, tee crossing, near-hog warning, and explicit late-release result.
+  Read-only camera/render queries do not alter the underlying stroke or outcome.
+  A stationary hand continues the provisional slide without injecting render-time
+  samples into weight. Long holds remain hog faults, not cancelled retries.
+- Six new tests cover release timing/position, exact hog boundary, 30/60/144 Hz pose
+  queries, cancellation/invalid input and immutable completion. 81 core tests and
+  all existing model-2 goldens pass; clippy and the 3D regression test pass.
+- This module is intentionally not wired to the playable scene yet. The next
+  implementation must connect a journaled seat-owned fault, expanded release
+  geometry, native/network mapping and 3D hand/body interaction together. See
+  `docs/DELIVERY_MODEL.md` for the exact pending contract and compatibility work.
+- Rechecked the local September 2026 rulebook. Corrected visual hog stripes to
+  102 mm with the specified inside edges, and tee/back/centre lines to 13 mm.
+- caa6ae1 and 7bbb9fa pipelines passed all jobs. 945e780 is still running.
