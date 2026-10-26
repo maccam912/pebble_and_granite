@@ -104,4 +104,23 @@ Native review now includes an eighth capture for two-digit score spacing.
 The final phone readability pass raises action height to 64 logical pixels and
 button/report text to 22/20, with tighter 52-pixel setup rows to retain spacing.
 It does not change the ice viewport, camera projection, coordinate conversion,
-gesture gains or simulation. A fresh export/install is the remaining check.
+gesture gains or simulation. Clean local Android export 46 records source
+`9ae52d1`, `source_dirty: false`, SHA-256
+`6fb33a478f13e4c985f30f5b69c784eeb7ab402ecfef8d034687ef655d0223cb`.
+It was installed and passed the complete touch probe again, with evidence in
+`build/probes/touch-b278e08f2cb54f0e89c21069da59b46b/`.
+
+## Startup review
+
+Timed Android screenshots in `build/evidence/polish/android-final/` verified the
+new mark and larger controls, but exposed a white system splash despite the dark
+adaptive-icon background. Inspection of the pinned Godot 4.7 exporter showed
+that the splash background needs its own explicit color; an image-valued
+fallback did not color the system backdrop. Set both Android window and system
+splash colors to the game background, with an explicit splash mark.
+
+On this emulator the UI appeared by the five-second capture and the 3D image
+between five and ten seconds on a launch after reinstall. This is a shader
+warm-up observation, not a physical-device startup or frame-rate benchmark.
+Compatibility does not support the export shader baker. No arbitrary timed
+delay or new loading/gameplay flow was added.
