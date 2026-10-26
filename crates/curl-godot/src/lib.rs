@@ -20,6 +20,7 @@ pub struct CurlSession {
     game: Option<RecordedMatch>,
     match_release_speed: Fx,
     stroke: curl_input::delivery::Delivery,
+    scrub: curl_input::sweep::Scrub,
     base: Base<RefCounted>,
 }
 #[godot_api]
@@ -30,6 +31,7 @@ impl IRefCounted for CurlSession {
             game: None,
             match_release_speed: Fx::ZERO,
             stroke: curl_input::delivery::Delivery::default(),
+            scrub: curl_input::sweep::Scrub::default(),
             base,
         }
     }
@@ -278,6 +280,69 @@ impl CurlSession {
                 break;
             }
         }
+    }
+    #[func]
+    fn step_brush_ticks(
+        &mut self,
+        count: i64,
+        stone: i64,
+        effort: i64,
+        lateral_mm: i64,
+        ahead_mm: i64,
+    ) -> GString {
+        if !(0..=64).contains(&count)
+            || !(0..16).contains(&stone)
+            || !(0..=255).contains(&effort)
+            || !(-350..=350).contains(&lateral_mm)
+            || !(80..=700).contains(&ahead_mm)
+        {
+            return "Invalid spatial brush input".into();
+        }
+        let input = Sweep {
+            stone: stone as u8,
+            brush: 0,
+            effort: effort as u8,
+            lateral_mm: lateral_mm as i16,
+            ahead_mm: ahead_mm as u16,
+        };
+        let result = if let Some(game) = &mut self.game {
+            game.advance_targeted(
+                count as u32,
+                Seat {
+                    team: game.game.delivering_team(),
+                    position: game.game.throwing_seat(),
+                },
+                Some(input),
+            )
+        } else {
+            let inputs = [input];
+            (0..count).try_for_each(|_| self.practice.step(if effort > 0 { &inputs } else { &[] }))
+        };
+        result.err().unwrap_or("").into()
+    }
+    #[func]
+    fn begin_scrub(&mut self, us: i64, x: i64, y: i64) {
+        self.scrub.begin(curl_input::Sample {
+            us: us.max(0) as u64,
+            x,
+            y,
+        });
+    }
+    #[func]
+    fn scrub_motion(&mut self, us: i64, x: i64, y: i64) {
+        self.scrub.motion(curl_input::Sample {
+            us: us.max(0) as u64,
+            x,
+            y,
+        });
+    }
+    #[func]
+    fn scrub_effort(&self, us: i64) -> i64 {
+        self.scrub.effort(us.max(0) as u64) as i64
+    }
+    #[func]
+    fn cancel_scrub(&mut self) {
+        self.scrub.cancel();
     }
     #[func]
     fn frame(&self) -> VarDictionary {
@@ -589,6 +654,10 @@ pub(crate) fn presentation_frame(
             Vector2::new(render(s.pos.x) as f32, render(s.pos.y) as f32),
         );
         d.set("speed", render(s.vel.length()));
+        d.set(
+            "velocity",
+            Vector2::new(render(s.vel.x) as f32, render(s.vel.y) as f32),
+        );
         d.set("turns", render(s.turns));
         d.set("active", s.active);
         stones.push(&d);

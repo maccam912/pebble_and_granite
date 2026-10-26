@@ -24,6 +24,8 @@ func on_network_error(error: String) -> void:
 	waiting_release = false
 	begin_sent = false
 	pointer = -99
+	stop_scrub()
+	hold_sweep = false
 	if session != null: session.cancel_stroke()
 	report = error
 	if not run_active: phase = "Ready"
@@ -37,6 +39,8 @@ func refresh_online() -> void:
 		waiting_release = false
 		session.cancel_stroke()
 		phase = "Ready"
+		stop_scrub()
+		hold_sweep = false
 	was_paused = paused
 	var next := online.frame()
 	if next.is_empty(): return
@@ -63,6 +67,8 @@ func refresh_online() -> void:
 		pointer = -99
 		session.cancel_stroke()
 		phase = "Travel" if run_active else "Ready"
+		stop_scrub()
+		hold_sweep = false
 		if run_active: last_brush_tick = frame.global_tick - 12
 		if frame.match_phase == "Placement": power_side = 0; own_house = true
 	update_labels()
@@ -130,24 +136,19 @@ func start_delivery(target: int) -> bool:
 	begin_sent = true
 	refresh_online()
 	return true
-func can_sweep() -> bool:
-	var index := online.seat_index()
-	if index < 0 or frame.get("match_phase") != "InFlight": return false
-	var stone := delivered_stone()
-	if stone.is_empty() or not stone.active or stone.speed <= 0: return false
-	# Both teammates may sweep before the tee. Authority chooses one behind it
-	# if both request the same tick; a single active player keeps control.
-	if int(index / 2) == frame.team: return true
-	return index % 2 == 1 and stone.position.y >= 0
+func sweep_seat() -> int:
+	var index := online.seat_index() if online != null else -1
+	return index if index >= 0 else -2
 func _process(delta: float) -> void:
 	if session == null or online == null: return
 	refresh_online()
 	if frame.is_empty() or online.state.get("paused", true) :
 		network_time = 0.0
 		return
-	if can_sweep() and (hold_sweep or sweeping) and frame.global_tick >= last_brush_tick + 12:
+	var brush := current_brush()
+	if not brush.is_empty() and brush.effort > 0 and frame.global_tick >= last_brush_tick + 12:
 		last_brush_tick = frame.global_tick
-		var error := online.send_command({"kind": "BrushSpan", "tick": int(frame.global_tick), "count": 12, "input": {"stone": int(frame.delivered), "brush": 0, "effort": 255, "lateral_mm": 0, "ahead_mm": 180}})
+		var error := online.send_command({"kind": "BrushSpan", "tick": int(frame.global_tick), "count": 12, "input": {"stone": brush.stone, "brush": 0, "effort": brush.effort, "lateral_mm": brush.lateral_mm, "ahead_mm": brush.ahead_mm}})
 		if not error.is_empty(): report = error
 	if online.is_host:
 		network_time += delta
@@ -189,7 +190,7 @@ func end_pointer(pos: Vector2) -> void:
 		rink.mode = 0
 		update_spatial(0)
 		return
-	if sweeping or run_active: sweeping = false; return
+	if sweeping or run_active: stop_scrub(); return
 	var q := units(pos)
 	release_report = session.lift(input_clock.call(), q.x, q.y)
 	if spatial_view:
@@ -207,7 +208,7 @@ func end_pointer(pos: Vector2) -> void:
 			waiting_release = true
 			phase = "Releasing…"
 			path.clear()
-			report = "Either teammate can sweep while the stone travels."
+			report = "Tap a moving stone to select it. Scrub ahead, or hold the sweep button."
 		else: report = error; phase = "Ready"
 	refresh_online()
 func change_order(team: int) -> void:

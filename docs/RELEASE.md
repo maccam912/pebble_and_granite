@@ -5,7 +5,9 @@ aim around the broom. Once sliding, a gentle left/right finish adds curl, with
 live direction feedback and a short grace period before lifting. The hand moves
 smoothly from pullback into the slide. The delivery camera faces the broom.
 Indoor arena fixtures replace the outdoor directional light, with subtler shadows.
-A small forward/back finish trims weight. Hold to sweep after release. Mouse, held-click trackpad and Android touch share the
+A small forward/back finish trims weight. Scrub ahead of a moving stone to sweep,
+or use Hold to sweep for steady effort. Tap another eligible moving stone to select
+it; a gold disc marks it and the Sweeper camera follows it. Mouse, held-click trackpad and Android touch share the
 same stroke mapper. One-push delivery is available. Next stone keeps the stones and evolving ice;
 Fresh ice starts a new session. Practice auto-saves and can restore interrupted shots.
 

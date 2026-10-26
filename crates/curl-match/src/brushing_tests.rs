@@ -274,3 +274,80 @@ fn retimed_spans_replace_only_unconsumed_player_intent() {
         m.hash()
     );
 }
+
+#[test]
+fn targeted_local_steps_replay_a_contact_stone_and_reject_opponent_atomically() {
+    use crate::recorded::RecordedMatch;
+    let mut m = RecordedMatch::new(42, Rules::mixed(), 1).unwrap();
+    m.place_mixed(
+        Seat {
+            team: 1,
+            position: 0,
+        },
+        true,
+        PowerPlay::None,
+    )
+    .unwrap();
+    let mut release = Release::draw();
+    release.vel.y = Fx::int(3);
+    release.spin = Fx::ZERO;
+    m.release(A, release).unwrap();
+    let mut target = None;
+    for _ in 0..10_000 {
+        target = m
+            .sim
+            .stones
+            .iter()
+            .find(|s| s.id != m.sim.delivered.unwrap() && s.active && s.vel != V2::ZERO)
+            .cloned();
+        if target.is_some() || m.game.phase != Phase::InFlight {
+            break;
+        }
+        m.advance(1, None).unwrap();
+    }
+    let target = target.expect("fixture should move a positioned stone");
+    let owner = Seat {
+        team: target.team,
+        position: 1,
+    };
+    let mut input = Sweep::centered(target.id, 220);
+    input.lateral_mm = 75;
+    input.ahead_mm = 240;
+    let before = m.hash();
+    let json = m.json().unwrap();
+    assert!(m.advance_targeted(65, owner, Some(input)).is_err());
+    assert_eq!(m.hash(), before);
+    if target.pos.y < Fx::ZERO {
+        assert!(
+            m.advance_targeted(
+                24,
+                Seat {
+                    team: 1 - target.team,
+                    position: 1
+                },
+                Some(input)
+            )
+            .is_err()
+        );
+        assert_eq!(m.json().unwrap(), json);
+    }
+    m.advance_targeted(64, owner, Some(input)).unwrap();
+    assert!(
+        m.accepted_sweeps()
+            .iter()
+            .any(|(_, s)| { s.stone == target.id && s.lateral_mm == 75 && s.ahead_mm == 240 })
+    );
+    let mut restored = RecordedMatch::parse(m.json().unwrap().as_bytes()).unwrap();
+    assert_eq!(restored.hash(), m.hash());
+    while m.game.phase == Phase::InFlight {
+        m.advance_targeted(64, owner, Some(input)).unwrap();
+        restored.advance_targeted(64, owner, Some(input)).unwrap();
+    }
+    assert_eq!(restored.hash(), m.hash());
+    assert_eq!(
+        RecordedMatch::parse(m.json().unwrap().as_bytes())
+            .unwrap()
+            .hash(),
+        m.hash()
+    );
+}

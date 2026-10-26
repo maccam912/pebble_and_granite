@@ -25,6 +25,7 @@ var pointer := -99
 var dragging_broom := false
 var sweeping := false
 var hold_sweep := false
+var sweep_input := CurlSweeping.new()
 var one_push := false
 var phase := "Ready"
 var report := ""
@@ -175,14 +176,17 @@ func update_spatial(delta: float) -> void:
 	rink.delivery_x = float(held.get("x_um", 0)) / 1000000.0 if not held.is_empty() else (float(gesture.get("x_mm", 0)) / 1000.0 if rink.hand_held else 0.0)
 	rink.delivery_aim_mm = int(held.get("aim_mm", 0)) if not held.is_empty() else int(gesture.get("aim_mm", 0))
 	rink.sliding = not held.is_empty() or phase == "Slide"
-	rink.render_frame(frame, run_active, hold_sweep or sweeping, broom_mm, turn, aiming, delta)
+	var brush := current_brush()
+	var selected := selected_sweep_stone()
+	rink.sweep_target = int(selected.get("id", -1))
+	rink.brush_input = brush
+	rink.render_frame(frame, run_active, not brush.is_empty() and brush.effort > 0, broom_mm, turn, aiming, delta)
 func broom_screen_point() -> Vector2:
 	return rink.broom_point() if spatial_view and rink != null else house_point(Vector2(float(broom_mm) / 1000.0, 0))
 
 func open_online() -> void:
 	save_practice()
-	pointer = -99
-	session.cancel_stroke()
+	cancel_pointer()
 	room_panel.show()
 
 func button(text: String, pos: Vector2, action: Callable) -> Button:
@@ -212,6 +216,8 @@ func reset(persist := true) -> void:
 	dragging_broom = false
 	sweeping = false
 	hold_sweep = false
+	sweep_input.target = -1
+	stop_scrub()
 	run_active = false
 	accumulator = 0.0
 	path.clear()
@@ -242,7 +248,7 @@ func update_labels() -> void:
 		report_label.position = feedback_bg.position + Vector2(12, 11)
 		report_label.size = feedback_bg.size - Vector2(24, 12)
 	clock_label.visible = match_mode
-	sweep_button.disabled = not run_active
+	sweep_button.disabled = not can_sweep()
 	mode_button.text = "Practice" if match_mode else "Mixed doubles"
 	mode_button.disabled = run_active
 	fresh_button.text = "New match" if match_mode else "Fresh ice"
@@ -364,13 +370,18 @@ func _process(delta: float) -> void:
 		var steps := mini(int(accumulator * 240.0), 64)
 		if steps > 0:
 			previous = frame
-			session.step_ticks(steps, 255 if hold_sweep or sweeping else 0, 0, 180)
+			var brush := current_brush()
+			var error: String = session.step_brush_ticks(steps, int(brush.get("stone", 0)), int(brush.get("effort", 0)), int(brush.get("lateral_mm", 0)), int(brush.get("ahead_mm", 180)))
+			if not error.is_empty(): report = error
 			accumulator -= float(steps) / 240.0
 			frame = session.frame()
 			if not frame.stones.is_empty():
 				if not delivered_stone().is_empty(): path.append(delivered_stone().position)
 			if frame.resting:
 				run_active = false
+				stop_scrub()
+				hold_sweep = false
+				pointer = -99
 				phase = "Stone at rest"
 				var s: Dictionary = delivered_stone()
 				if s.is_empty(): s = {"turns": 0.0, "position": Vector2.ZERO, "active": false}
@@ -380,6 +391,7 @@ func _process(delta: float) -> void:
 			if frame.resting or frame.global_tick - last_save_tick >= 240:
 				save_practice()
 	update_delivery()
+	if run_active: update_labels()
 	update_spatial(delta)
 	queue_redraw()
 
@@ -447,7 +459,7 @@ func cancel_pointer() -> void:
 	pointer = -99
 	held_last_us = -1
 	hold_sweep = false
-	sweeping = false
+	stop_scrub()
 	dragging_broom = false
 	if session != null:
 		session.cancel_stroke()
@@ -488,10 +500,15 @@ func begin_pointer(id: int, p: Vector2) -> void:
 	if match_mode and not run_active and frame.get("match_phase", "") != "Calling": return
 	if pointer != -99 or p.y > 710: return
 	if run_active:
-		# The lab's accessible hold gesture follows the stone's brush position.
 		if (spatial_view and rink != null and rink.get_global_rect().has_point(p)) or (not spatial_view and p.x < 780):
+			pick_sweep_target(p)
+			if not can_sweep(): return
 			pointer = id
 			sweeping = true
+			sweep_input.active = true
+			sweep_input.point = p
+			var q := units(p)
+			session.begin_scrub(input_clock.call(), q.x, q.y)
 		return
 	if (not authoritative_delivery or frame.get("in_hand", {}).is_empty()) and p.distance_to(broom_screen_point()) < 55:
 		pointer = id
@@ -510,7 +527,11 @@ func begin_pointer(id: int, p: Vector2) -> void:
 		update_labels()
 
 func move_pointer(p: Vector2) -> void:
-	if sweeping: return
+	if sweeping:
+		sweep_input.point = p
+		var q := units(p)
+		session.scrub_motion(input_clock.call(), q.x, q.y)
+		return
 	if dragging_broom:
 		broom_mm = int(rink.aim_x(p) * 1000.0) if spatial_view and rink != null else clampi(int((p.x - 555) / 94.0 * 1000), -2200, 2200)
 	elif not run_active:
@@ -533,7 +554,7 @@ func end_pointer(p: Vector2) -> void:
 			update_spatial(0)
 		return
 	if sweeping or run_active:
-		sweeping = false
+		stop_scrub()
 		return
 	var q := units(p)
 	release_report = session.lift(input_clock.call(), q.x, q.y)
@@ -559,7 +580,7 @@ func end_pointer(p: Vector2) -> void:
 		if error.is_empty():
 			run_active = true
 			phase = "Travel"
-			report = "Hold the ice or the sweep button to carry the stone. Let go to stop sweeping."
+			report = "Scrub the ice ahead of the stone, or hold the sweep button. Tap a moving stone to select it."
 			frame = session.frame()
 			release_report.speed_mm_s = int(frame.release_speed * 1000.0)
 			held_last_us = -1
@@ -630,6 +651,53 @@ func delivered_stone() -> Dictionary:
 	for s in frame.get("stones", []):
 		if s.id == frame.get("delivered", -1): return s
 	return {}
+
+func sweep_seat() -> int:
+	return int(frame.get("team", 0)) * 2 + int(frame.get("thrower", 0)) if match_mode else -1
+
+func selected_sweep_stone() -> Dictionary:
+	return sweep_input.selected(frame, sweep_seat(), hold_sweep) if run_active else {}
+
+func can_sweep() -> bool:
+	return not selected_sweep_stone().is_empty()
+
+func stop_scrub() -> void:
+	sweeping = false
+	sweep_input.active = false
+	if session != null: session.cancel_scrub()
+
+func pick_sweep_target(p: Vector2) -> void:
+	var distance := 42.0
+	for stone in frame.get("stones", []):
+		if not sweep_input.allowed(stone, frame, sweep_seat()): continue
+		var projected: Vector2 = rink.stone_point(stone.id) if spatial_view and rink != null else (house_point(stone.position) if p.x > 315 else sheet_point(stone.position))
+		var candidate := p.distance_to(projected)
+		if candidate < distance:
+			distance = candidate
+			sweep_input.target = stone.id
+
+func current_brush() -> Dictionary:
+	if suspended or not run_active: return {}
+	var stone := selected_sweep_stone()
+	if stone.is_empty(): return {}
+	if hold_sweep:
+		return {"stone": int(stone.id), "brush": 0, "effort": 255, "lateral_mm": 0, "ahead_mm": 180, "steady": true}
+	if not sweeping: return {}
+	var ice: Variant
+	var displayed := stone.duplicate()
+	if spatial_view and rink != null:
+		ice = rink.ice_point(sweep_input.point)
+		if rink.stones.has(stone.id):
+			var shown: Vector3 = rink.stones[stone.id].position
+			displayed.position = Vector2(shown.x, -shown.z)
+	else:
+		var p := sweep_input.point
+		if Rect2(40, 110, 250, 590).has_point(p): ice = Vector2((p.x - 168) / 30, 2.2 - (p.y - 125) / 17)
+		elif Rect2(315, 110, 465, 590).has_point(p): ice = Vector2((p.x - 555) / 94, (325 - p.y) / 94)
+	if ice == null: return {}
+	var offsets := sweep_input.offsets(displayed, ice)
+	if offsets.is_empty(): return {}
+	return {"stone": int(stone.id), "brush": 0, "effort": int(session.scrub_effort(input_clock.call())), "lateral_mm": offsets.lateral_mm, "ahead_mm": offsets.ahead_mm, "steady": false}
 
 func next_throw() -> void:
 	if authoritative_delivery and not frame.get("in_hand", {}).is_empty():

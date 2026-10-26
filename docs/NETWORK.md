@@ -132,7 +132,7 @@ transactional state copies. The 80-throw/two-brush/60-Hz capacity fixture measur
 Protocol 5 brush spans cover up to twelve simulation ticks per input sample. The
 host retimes an obsolete span's start once and preserves its duration, validates
 all ticks atomically, and resimulates once. Defending spans never predate receipt
-and tee authorization. This is continuous hold sweeping; spatial brush strokes,
+and tee authorization. Accessible hold and spatial scrubs share these spans;
 latency feel and Android performance are not yet approved. Room controls keep the
 host simulation running while its lobby is visible; application stalls/background
 suspension still need explicit user-facing handling and device validation.
@@ -208,3 +208,15 @@ origin and push aim offset. The authenticated seat owns the plan; the host deriv
 its x/y from accepted elapsed time and journals the command for replicas/reconnect.
 Release cannot alter that captured line. Legacy `BeginDelivery` remains available
 for old journals and diagnostics, with its original center-line held origin.
+
+## Spatial brush input (input mapping 5)
+
+Mouse/trackpad/touch scrubs map recent timestamped motion to effort. Local and
+online scenes quantize ice-plane positions into the existing lateral/ahead brush
+offsets and permit selection of eligible moving contact stones. Online uses the
+unchanged protocol-11 `BrushSpan` command; local matches journal the same spans
+and existing Step records. No model, rules or recorded schema changes are needed,
+and existing saves retain their original input records. The host still determines
+brush identity, tee permissions, retiming and the single contributor behind tee.
+Scrub pauses decay to zero within 200 ms; lifting/focus loss clears local intent.
+Already accepted online spans may finish their bounded twelve-tick tail.

@@ -8,6 +8,9 @@ var ceiling: Node3D
 var camera: Camera3D
 var broom: Node3D
 var brush: Node3D
+var selection: Node3D
+var sweep_target := -1
+var brush_input: Dictionary = {}
 var hand: Node3D
 var hand_held := false
 var pull_offset := 0.0
@@ -63,6 +66,10 @@ func _ready() -> void:
 	box(brush, Vector3(.30, .05, .09), Vector3(0, .04, 0), material("e9bb61"))
 	var brush_shaft := cylinder(brush, .013, .8, Vector3(.30, .34, 0), material("d8e5e5"))
 	brush_shaft.rotation.z = -.8
+	selection = Node3D.new()
+	world.add_child(selection)
+	cylinder(selection, .205, .003, Vector3(0, .018, 0), material("f7d989"))
+	selection.visible = false
 	hand = Node3D.new()
 	world.add_child(hand)
 	box(hand, Vector3(.095, .045, .11), Vector3(0, .305, .015), material("384849"))
@@ -176,6 +183,7 @@ func render_frame(frame: Dictionary, running: bool, sweep: bool, broom_mm: int, 
 	var present := {}
 	var followed := Vector3.ZERO
 	var has_followed := false
+	var selected_stone: Dictionary = {}
 	for data in frame.get("stones", []):
 		var id: int = data.id
 		present[id] = true
@@ -192,9 +200,10 @@ func render_frame(frame: Dictionary, running: bool, sweep: bool, broom_mm: int, 
 		var target := Vector3(data.position.x, 0, -data.position.y)
 		node.position = target if snap or node.position.distance_to(target) > 2.0 else node.position.lerp(target, 1.0 - exp(-22.0 * delta))
 		node.rotation.y = -data.turns * TAU
-		if id == frame.get("delivered", -1) and data.active:
+		if id == (sweep_target if sweep_target >= 0 and running else int(frame.get("delivered", -1))) and data.active:
 			followed = node.position
 			has_followed = true
+			selected_stone = data
 	for id in stones.keys():
 		if not present.has(id): stones[id].queue_free(); stones.erase(id)
 	broom.position = Vector3(float(broom_mm) / 1000.0, 0, 0)
@@ -219,7 +228,17 @@ func render_frame(frame: Dictionary, running: bool, sweep: bool, broom_mm: int, 
 	preview.rotation.y = hand.rotation.y - float(turn) * PI / 6.0
 	brush.visible = running and sweep and has_followed
 	brush_time += delta if brush.visible else 0.0
-	brush.position = followed + Vector3(sin(brush_time * 24.0) * .13, 0, -.25)
+	selection.visible = running and has_followed and sweep_target >= 0
+	selection.position = followed
+	var direction: Vector2 = selected_stone.get("velocity", Vector2.UP).normalized()
+	var right := Vector2(direction.y, -direction.x)
+	var lateral := float(brush_input.get("lateral_mm", 0)) / 1000.0
+	var ahead := float(brush_input.get("ahead_mm", 180)) / 1000.0
+	# Accessible hold animates at the centered brush; scrub follows the pointer.
+	if brush_input.get("steady", true): lateral += sin(brush_time * 24.0) * .10
+	var offset := direction * ahead + right * lateral
+	brush.position = followed + Vector3(offset.x, 0, -offset.y)
+	brush.rotation.y = atan2(direction.x, direction.y)
 	var selected: String = MODES[mode]
 	if selected == "Auto": selected = "Sweeper" if running and has_followed else ("Delivery" if aiming else "House")
 	if selected == "Sweeper" and not has_followed: selected = "Delivery"
@@ -251,7 +270,15 @@ func handle_point() -> Vector2:
 func broom_point() -> Vector2:
 	return position + camera.unproject_position(broom.position + Vector3(0, .05, 0)) if camera != null else Vector2.ZERO
 func aim_x(screen: Vector2) -> float:
-	if camera == null: return 0.0
-	var local := screen - position
-	var hit = Plane(Vector3.UP, 0).intersects_ray(camera.project_ray_origin(local), camera.project_ray_normal(local))
+	var hit = ice_point(screen)
 	return clampf(hit.x, -2.2, 2.2) if hit != null else broom.position.x
+func ice_point(screen: Vector2) -> Variant:
+	if camera == null or not get_global_rect().has_point(screen): return null
+	var local := (screen - global_position) * Vector2(view.size) / size
+	var hit = Plane(Vector3.UP, 0).intersects_ray(camera.project_ray_origin(local), camera.project_ray_normal(local))
+	return Vector2(hit.x, -hit.z) if hit != null else null
+func ice_screen_point(ice: Vector2) -> Vector2:
+	return global_position + camera.unproject_position(Vector3(ice.x, 0, -ice.y)) * size / Vector2(view.size)
+func stone_point(id: int) -> Vector2:
+	if not stones.has(id) or camera.is_position_behind(stones[id].position): return Vector2.INF
+	return global_position + camera.unproject_position(stones[id].position + Vector3(0, .15, 0)) * size / Vector2(view.size)

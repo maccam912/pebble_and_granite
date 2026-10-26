@@ -7,10 +7,10 @@ bible only. Remote: `maccam912/pebble_and_granite`, main branch.
 
 ## Pick up here
 
-Latest published checkpoint: `188a650` (rules 4 / protocol 10, physics model 3),
-published as [Build 41](https://github.com/maccam912/pebble_and_granite/releases/tag/v0.0.41-dev).
-Its complete pipeline succeeded (run 40315368595). The current source adds analog
-launch input, gentler curl and indoor lighting on protocol 11; see the final entry.
+Latest published checkpoint: `7551472` (rules 4 / protocol 11, physics model 3),
+published as [Build 42](https://github.com/maccam912/pebble_and_granite/releases/tag/v0.0.42-dev).
+Its complete pipeline succeeded (run 40324153949), verified on 26 October.
+Current source adds spatial scrubbing and moving-stone selection; see the final entry.
 The main scene is a 3D curler's view with direct handle grip, pull/push/held slide,
 finishing curl flick and small weight feedback. Practice and local matches save
 held/in-flight state. Online mixed doubles has four seats, per-player sweeping,
@@ -33,11 +33,10 @@ are in `docs/ANDROID_INPUT.md`; full chronological evidence follows below.
 
 Next priorities, in order:
 
-1. Feel-test the new analog pull/push, gentle curl, broom sightline and smooth
-   transition on trackpad/physical Android. Then spatial scrub input and selecting
-   moving own-stone targets; authority already
-   accepts bounded lateral/ahead offsets and per-player brushes. Keep the hold
-   button as the accessible steady-effort route. Avoid power/fatigue bars.
+1. Validate spatial scrubbing/selection in live rooms and installed Android, then
+   feel-test analog pull/push, gentle curl, broom sightline, transitions and brush
+   gains on trackpad/physical Android. Keep the accessible steady-effort hold
+   button. Fatigue should affect presentation without power/fatigue bars.
 2. Physical Android and trackpad feel/latency tests; tune gains and camera/body
    presentation with curlers. Emulator and synthetic input tests cannot approve feel.
 3. Measured real-ice/contact/curl calibration and a complete rules clause audit.
@@ -63,9 +62,10 @@ the current listen-server slice; publisher signing/physical devices remain open.
 - [ ] Physical-device tests, Android full-match latency profiling and input refinement.
 - [x] Installed Android golden/JNI probe using the one-use debug request route.
 - [x] Direct-on-ice 3D delivery/cameras, finishing flick, and local held saves.
-- [ ] Spatial scrubbing, measured calibration/performance and AI.
+- [x] Initial spatial scrubbing and eligible moving-stone selection.
+- [ ] Measured calibration/performance, human feel approval and AI.
 
-Latest local gates: 100 core Rust tests (plus four native transport identity/retry tests), shared golden traces, Godot input/practice/match
+Latest local gates: 108 core Rust tests (plus four native transport identity/retry tests), shared golden traces, Godot input/practice/match
 save/full-game fixtures. Live network probes are separate from offline CI because
 relay and code-directory availability are external dependencies. Four peers have
 passed a full shot and in-flight reconnect with default and forced-relay transport, but the
@@ -900,3 +900,33 @@ Latest published Build 41 and its full pipeline (40315368595) were verified befo
 this work. The analog/lighting pass awaits its next numbered release; its remote
 CI and publication are not yet verified. Human feel testing and physical-device/GPU
 validation remain open.
+
+## Spatial sweeping checkpoint (26 October 2026)
+
+Resumed from Build 42 with a clean main branch. Weekly usage was 2% used / 98%
+remaining; the requested below-50%-remaining stop still applies, with checks at
+milestones and no resets or purchases.
+
+- Input mapping 5 adds a bounded 200 ms timestamped scrub window shared by
+  mouse/held-click trackpad/touch. Motion determines effort; quiet contacts,
+  small jitter and old/stale samples do not heat ice. The six-pixel extent gate
+  and effort gains are provisional, requiring human feel tests.
+- Ice-plane projection supplies existing bounded lateral/ahead offsets. Off-path
+  pointers do not snap back onto the path. A gold selection disc, target-following
+  Sweeper camera and brush position show local input intent. Accessible hold
+  remains steady and centered on the selected stone. A held gesture never jumps
+  targets when its stone stops or loses tee permission.
+- Selection supports eligible moving collision stones even when the delivered
+  stone has stopped. Local matches use the existing seat-owned BrushSpan/Step
+  journal records; online uses the same protocol-11 BrushSpan. Model 3, rules 4,
+  saved schemas and old recorded-input semantics remain unchanged.
+- 108 core Rust tests passed (one manual profile ignored), unchanged six
+  every-tick golden traces and all-target workspace Clippy. All twelve local
+  Godot integration gates passed, including the new mouse/touch scrub fixture,
+  interrupted/save recovery and full local match. A legal contact fixture sweeps
+  a moving positioned stone, rejects opponent input atomically and restores the
+  exact journal through settlement. Logs: build/spatial-*.log.
+
+Live-room and installed Android checks for spatial input follow this checkpoint;
+prior emulator results do not validate this new mapper. Human feel/calibration
+and physical-device latency/performance remain open.

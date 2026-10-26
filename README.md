@@ -23,7 +23,11 @@ sliding. Before the slide, sideways movement moves the stone and the direction o
 your push adjusts the delivery line around the broom. Once sliding, a small
 left/right finish adds curl; the live label shows the recognized direction. A
 small forward/back finish adjusts weight. A quiet lift gives neutral rotation. One-push skips the initial pullback.
-Cycle Camera for delivery, sweeper, skip or overhead house views; drag the broom in House view to aim. The separate `scenes/lab.tscn` scene retains the diagnostic 2D view. Hold the ice or the sweep button to sweep; release to stop. Next stone retains the field and evolving ice; Fresh ice starts a new session.
+Cycle Camera for delivery, sweeper, skip or overhead house views; drag the broom in House view to aim. The separate `scenes/lab.tscn` scene retains the diagnostic 2D view. Scrub back and forth on the ice just ahead of the moving stone; motion sets effort
+and brush position matters. Tap another eligible moving stone to select it. A gold
+disc marks the selection, and the Sweeper camera follows it. The **Hold to sweep**
+button follows the selected stone at steady effort. Lift to stop.
+Next stone retains the field and evolving ice; Fresh ice starts a new session.
 Practice saves automatically, including held slides and interrupted shots, with a previous-save backup. Choose Mixed doubles for a local pass-and-play game: select positioned stones, power plays and first/last throwers, then play through scoring and extra ends. Local matches autosave separately from practice; choose Mixed doubles again to resume, including interrupted shots. Choose Online rooms to host or join by four-character code. Four players ready up for online mixed doubles; the host stays open. Both teammates
 may sweep before the far tee, with per-player fatigue; only one contributes per
 team behind it. Online play is an early prototype: four local peers pass full-game, rematch and in-flight reconnect tests, while cross-device match and Android latency/feel testing remain open. Reconnect recovery runs in the background with visible progress. Held deliveries

@@ -34,7 +34,8 @@ and a small forward/back finish trims speed. Quiet-hand release is neutral rotat
 feedback and the current Curl left / Curl right / No curl state appear in a
 compact lower-left label during the slide, including the hog warning. Full delivery instructions appear before gripping. Procedural art, gain thresholds,
 rotation magnitude, hand animation and feedback need curler/device iteration.
-Spatial scrubbing, prediction and polished camera transitions remain open.
+Spatial scrubbing uses the shared timestamped effort mapper. Prediction and
+polished camera transitions remain open.
 
 `tests/rink_view.gd` verifies aiming, camera isolation, shared delivery, stone
 identity/reset and end transitions. Running without `--headless` captures the
@@ -56,3 +57,13 @@ outside the ceiling mesh group so the overhead House camera hides the beams
 without extinguishing the indoor lighting. The eight-light limit also fits the
 Compatibility renderer's default per-mesh spotlight budget. Shadow blur uses the
 standard filter; PCSS is not required. See [Godot lighting documentation](https://docs.godotengine.org/en/stable/tutorials/3d/lights_and_shadows.html).
+
+During travel, a gold disc identifies the selected eligible moving stone. Tapping
+another eligible stone selects it; the Sweeper camera follows that selection.
+Scrub input intersects the visible ice plane and computes offsets relative to the
+rendered stone and authoritative velocity direction. Those offsets become integer
+millimetres before entering the existing native brush boundary. Smoothing changes
+neither stones nor the input effort calculation. Off-path input produces no brush;
+it is not clamped back onto the stone's path. The brush displays the submitted
+position; accessible hold animates about the centered position. These are local
+intent cues, not confirmation that the host accepted a contribution.

@@ -1,6 +1,8 @@
 //! Device-neutral stroke mapping. Positions are millionths of logical viewport
 //! height, and time is monotonic microseconds. No render-frame delta enters weight.
 pub mod delivery;
+pub mod sweep;
+pub const INPUT_VERSION: u32 = 5;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Phase {

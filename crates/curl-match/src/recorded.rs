@@ -474,6 +474,41 @@ impl RecordedMatch {
         ) = journal;
         Ok(())
     }
+    /// Local spatial input uses the same bounded, seat-owned spans as online
+    /// play. Existing Step/BrushSpan records retain their original semantics.
+    pub fn advance_targeted(
+        &mut self,
+        count: u32,
+        seat: Seat,
+        input: Option<Sweep>,
+    ) -> Result<(), &'static str> {
+        if count > 64 || input.is_some_and(|s| !s.valid()) {
+            return Err("invalid targeted step");
+        }
+        let mut next = self.clone();
+        let mut remaining = count;
+        while remaining > 0 && next.game.phase == Phase::InFlight {
+            let ticks = remaining.min(12);
+            if let Some(input) = input.filter(|s| s.effort > 0)
+                && next
+                    .sim
+                    .stones
+                    .iter()
+                    .any(|s| s.id == input.stone && s.active && s.vel != curl_fx::V2::ZERO)
+            {
+                next.apply(Record::BrushSpan {
+                    seat,
+                    tick: next.sim.tick,
+                    input,
+                    count: ticks as u8,
+                })?;
+            }
+            next.advance(ticks, None)?;
+            remaining -= ticks;
+        }
+        *self = next;
+        Ok(())
+    }
     pub fn release(&mut self, seat: Seat, release: Release) -> Result<(), &'static str> {
         self.apply(Record::Release { seat, release })
     }
