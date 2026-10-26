@@ -20,10 +20,14 @@ RenderingDevice support. On macOS:
 
 ```sh
 python3 tools/godot.py --headless --path . --script tools/club_lighting.gd
-python3 tools/godot.py --path . --editor --rendering-method forward_plus --rendering-driver metal build/club-lighting/club.tscn
+python3 tools/godot.py --path . --editor --single-window --rendering-method forward_plus --rendering-driver metal build/club-lighting/club.tscn
 ```
 
-Select `LightmapGI` and click **Bake Lightmaps**. Save the bake to
+Select `LightmapGI` and click **Bake Lightmaps**. If the macOS toolbar ignores
+input, enter full-screen mode through the native Window menu, activate the
+scene tree, and reselect the node after the window settles. A completed bake
+prints `Done baking lightmaps` and replaces the atlas; selection or a click
+alone does not confirm it happened. Save the bake to
 `render/club/club.lmbake` if asked, then save the scene and close the editor.
 The preparation step does not replace the reviewed runtime scene or atlas.
 The editor bake replaces the atlas/data, so review and finalize it together.

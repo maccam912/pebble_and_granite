@@ -401,3 +401,40 @@ Reviewed Delivery and the close Sweeper fixture; the band is now visible without
 new mesh edges or texture assets. All ten native captures pass with clean logs.
 Before images/shader remain in ignored `build/granite-band-review/`. Installed
 Android validation follows the source commit.
+
+
+Clean Android build 58 (`4f447b8`, `source_dirty: false`, SHA-256
+`93c5acdaa314a4b64cfcae0a6192f17f330a0d9c3c02dfa9b63bad3dff6c7b55`)
+passed the installed Delivery/four-camera granite review, with no Godot warning/
+error in the captured log. Evidence is in `build/evidence/polish/android-58/`
+and `build/android-58-review.log`; all four original saves/backups were restored
+byte for byte and the app stopped. An earlier build-58 export overlapped an
+uncommitted sleeve experiment and was discarded before installation. Its files
+are quarantined under `build/sleeve-fold-review/discarded-export/`; only the
+clean rebuilt hash above is valid evidence.
+
+## Rejected sleeve trial
+
+A few extra shallow lathed folds made the sleeve look corrugated without adding
+convincing fabric detail at its normal screen size. Reverted the trial completely;
+the committed matte sleeve and gloved-hand geometry remain. Trial screenshot and
+source are retained only in ignored `build/sleeve-fold-review/`.
+
+## Glazing proportions and completed bake
+
+Resolved the editor input obstruction using a single-window, full-screen session
+and a fresh node selection after activation. A baseline material bake completed
+in 4.75 seconds. The completed thinner-frame variant then baked in 3.35 seconds:
+15 mm pane depth and 70 mm frame depth replace the oversized 200/230-240 mm boxes,
+with their faces placed closer to the cladding. Pane width, height, arrangement,
+material, lighting settings and all gameplay geometry are unchanged.
+
+Retained this variant after comparing Delivery and Skip: the upper glazing now
+sits within a plausible shallow surround rather than protruding as deep slabs.
+All ten native captures and the rink gate pass, including 248 valid lightmapped
+meshes and the existing eight runtime lights. Logs are clean in the finalized
+Compatibility runtime; the offline editor still reports its seven texture RIDs
+at shutdown. Atlas and scene are finalized/reviewed together, with uncompressed
+HDR import retained. Before clubs/screens are in ignored `build/glazing-bake-retry/`.
+The regeneration guide includes the observed editor workaround. Installed Android
+review follows the source commit. The photographic polish objective remains active.

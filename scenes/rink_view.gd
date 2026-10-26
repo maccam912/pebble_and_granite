@@ -222,11 +222,11 @@ func build_club() -> void:
 		plank(world, Vector3(.09, .06, 47), Vector3(side - signf(side) * .16, .92, 17.2), wood)
 		for z in range(0, 40, 6):
 			box(world, Vector3(.18, 3.8, .13), Vector3(side - signf(side) * .19, 1.9, z), steel)
-			box(world, Vector3(.20, 1.0, 3.6), Vector3(side - signf(side) * .21, 2.45, z + 2.5), glass)
+			box(world, Vector3(.015, 1.0, 3.6), Vector3(side - signf(side) * .142, 2.45, z + 2.5), glass)
 			for division in [-1.8, 0.0, 1.8]:
-				box(world, Vector3(.23, 1.08, .045), Vector3(side - signf(side) * .23, 2.45, z + 2.5 + division), steel)
-			box(world, Vector3(.24, .045, 3.7), Vector3(side - signf(side) * .22, 1.93, z + 2.5), steel)
-			box(world, Vector3(.24, .045, 3.7), Vector3(side - signf(side) * .22, 2.97, z + 2.5), steel)
+				box(world, Vector3(.07, 1.08, .045), Vector3(side - signf(side) * .17, 2.45, z + 2.5 + division), steel)
+			box(world, Vector3(.07, .045, 3.7), Vector3(side - signf(side) * .17, 1.93, z + 2.5), steel)
+			box(world, Vector3(.07, .045, 3.7), Vector3(side - signf(side) * .17, 2.97, z + 2.5), steel)
 	# Benches, kickboards and sheet signs give familiar scale to the existing club.
 	for lane in [-6.0, 0.0, 6.0]:
 		plank(world, Vector3(2.7, .075, .35), Vector3(lane, .45, -4.05), cross_wood, .009)
