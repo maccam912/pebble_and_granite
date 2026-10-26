@@ -2,7 +2,8 @@
 use curl_rules::{Format, Match, Phase, PowerPlay, Remedy, Resolution, Rules};
 use curl_sim::{Release, Sim, Sweep};
 use serde::{Deserialize, Serialize};
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, VecDeque};
+use std::sync::Arc;
 
 pub const LATE_WINDOW: u32 = 24; // 100 ms; older samples apply at authority arrival.
 pub const FUTURE_WINDOW: u32 = 12;
@@ -21,7 +22,9 @@ pub struct AcceptedSweep {
 pub struct Authority {
     pub sim: Sim,
     pub game: Match,
-    release_snapshot: Option<Sim>,
+    release_snapshot: Option<Arc<Sim>>,
+    // Derived acceleration cache: never part of save data or canonical hashes.
+    rewind: VecDeque<Arc<Sim>>,
     idle_remainder: u32,
     sweeps: BTreeMap<(u32, u8), Sweep>,
     pub last_resolution: Option<Resolution>,
@@ -32,6 +35,7 @@ impl Authority {
             sim: Sim::new(seed),
             game: Match::new(rules, hammer)?,
             release_snapshot: None,
+            rewind: VecDeque::new(),
             idle_remainder: 0,
             sweeps: BTreeMap::new(),
             last_resolution: None,
@@ -66,6 +70,7 @@ impl Authority {
         self.game = game;
         self.sim = sim;
         self.release_snapshot = None;
+        self.rewind.clear();
         self.sweeps.clear();
         self.last_resolution = None;
         Ok(())
@@ -89,7 +94,9 @@ impl Authority {
         game.begin(seat.team, release.stone, &self.sim.stones)?;
         self.game = game;
         self.sim = sim;
-        self.release_snapshot = Some(self.sim.clone());
+        let snapshot = Arc::new(self.sim.clone());
+        self.release_snapshot = Some(snapshot.clone());
+        self.rewind = VecDeque::from([snapshot]);
         self.sweeps.clear();
         self.last_resolution = None;
         Ok(())
@@ -121,6 +128,9 @@ impl Authority {
         if count == 0 || count > 12 {
             return Err("invalid brush span");
         }
+        if tick < self.sim.release_tick {
+            return Err("sweep predates delivery");
+        }
         let mut next = self.clone();
         // Defending sweep authorization begins at receipt after the tee, never
         // retroactively at the client's older rendered tick.
@@ -142,7 +152,7 @@ impl Authority {
             )?;
         }
         if first.tick < next.sim.tick {
-            next.resimulate()?;
+            next.resimulate(first.tick)?;
         }
         *self = next;
         Ok(())
@@ -159,6 +169,9 @@ impl Authority {
         }
         if self.game.rules.format == Format::Wheelchair {
             return Err("wheelchair curling has no sweeping");
+        }
+        if requested_tick < self.sim.release_tick {
+            return Err("sweep predates delivery");
         }
         if requested_tick > self.sim.tick.saturating_add(FUTURE_WINDOW) {
             return Err("sweep too far in future");
@@ -201,7 +214,7 @@ impl Authority {
         }
         self.sweeps.insert((tick, input.brush), input);
         if resimulate && tick < self.sim.tick {
-            self.resimulate()?;
+            self.resimulate(tick)?;
         }
         Ok(AcceptedSweep {
             tick,
@@ -215,13 +228,33 @@ impl Authority {
             .map(|(_, s)| *s)
             .collect()
     }
-    fn resimulate(&mut self) -> Result<(), &'static str> {
+    fn checkpoint_needed(&self, tick: u32, release_tick: u32) -> bool {
+        (tick - release_tick).is_multiple_of(12)
+            && self.rewind.back().is_none_or(|s| s.tick != tick)
+    }
+    fn remember(&mut self, snapshot: Arc<Sim>) {
+        let oldest = snapshot.tick.saturating_sub(LATE_WINDOW);
+        self.rewind.push_back(snapshot);
+        // Keep one checkpoint at or before the oldest acceptable late tick.
+        while self.rewind.len() > 1 && self.rewind[1].tick <= oldest {
+            self.rewind.pop_front();
+        }
+    }
+    fn resimulate(&mut self, changed_tick: u32) -> Result<(), &'static str> {
         let target = self.sim.tick;
-        let mut restored = self
-            .release_snapshot
-            .clone()
+        let base = self
+            .rewind
+            .iter()
+            .rev()
+            .find(|s| s.tick <= changed_tick)
+            .or(self.release_snapshot.as_ref())
             .ok_or("missing release snapshot")?;
+        let mut restored = base.as_ref().clone();
+        self.rewind.retain(|s| s.tick <= restored.tick);
         while restored.tick < target && !restored.is_resting() {
+            if self.checkpoint_needed(restored.tick, restored.release_tick) {
+                self.remember(Arc::new(restored.clone()));
+            }
             restored.step(&self.inputs(restored.tick));
         }
         self.sim = restored;
@@ -230,6 +263,9 @@ impl Authority {
     pub fn step(&mut self) -> Result<(), &'static str> {
         if self.game.phase != Phase::InFlight {
             return Ok(());
+        }
+        if self.checkpoint_needed(self.sim.tick, self.sim.release_tick) {
+            self.remember(Arc::new(self.sim.clone()));
         }
         self.sim.step(&self.inputs(self.sim.tick));
         if self.sim.timed_out {
@@ -343,6 +379,42 @@ mod tests {
         assert_eq!(accepted.len(), 12);
         assert_eq!(accepted[0].0, 20);
         assert_eq!(accepted[11].0, 31);
+    }
+    #[test]
+    fn bounded_rewind_matches_full_release_replay() {
+        let mut cached = authority();
+        cached.release(THROWER, Release::draw()).unwrap();
+        let mut reference = cached.clone();
+        for batch in 0..160 {
+            for _ in 0..12 {
+                cached.step().unwrap();
+                reference.step().unwrap();
+            }
+            let tick = cached.sim.tick.saturating_sub(batch % 25);
+            let input = Sweep::centered(2, (batch % 255) as u8);
+            // Force the reference to replay the whole release, independently
+            // of the acceleration cache, across every accepted late offset.
+            reference.rewind.clear();
+            cached.sweep(THROWER, tick, input).unwrap();
+            reference.sweep(THROWER, tick, input).unwrap();
+            assert_eq!(cached.hash(), reference.hash(), "batch {batch}");
+            assert!(cached.rewind.len() <= 4);
+        }
+    }
+    #[test]
+    fn previous_delivery_brush_cannot_retime_into_new_delivery() {
+        let mut a = authority();
+        a.think(1000).unwrap();
+        a.release(THROWER, Release::draw()).unwrap();
+        let before = a.hash();
+        assert!(a.sweep(THROWER, 0, Sweep::centered(2, 255)).is_err());
+        assert!(
+            a.sweep_span(THROWER, 0, Sweep::centered(2, 255), 12)
+                .is_err()
+        );
+        assert_eq!(a.hash(), before);
+        a.sweep_span(THROWER, a.sim.release_tick, Sweep::centered(2, 255), 12)
+            .unwrap();
     }
     #[test]
     fn rejected_release_is_atomic() {

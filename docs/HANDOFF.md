@@ -13,11 +13,12 @@ bible only. Remote: `maccam912/pebble_and_granite`, main branch.
 - [x] Rules/authority/seat ownership and four-peer Iroh lobby transport proof.
 - [x] CI cross-platform core tests, native exports and published numbered releases.
 - [x] Online replication, replay transfer, room UI and initial playable controls.
-- [ ] Full online match/cross-device tests, latency profiling and input refinement.
+- [x] Full online room/match/rematch flow on four local Iroh endpoints.
+- [ ] Cross-device tests, Android latency profiling and input refinement.
 - [x] Installed Android golden/JNI probe using the one-use debug request route.
 - [ ] 3D delivery/cameras, spatial scrubbing, measured calibration/performance and AI.
 
-Latest local gates: 71 core Rust tests (plus native transport identity test), shared golden traces, Godot input/practice/match
+Latest local gates: 73 core Rust tests (plus native transport identity test), shared golden traces, Godot input/practice/match
 save/full-game fixtures. Live network probes are separate from offline CI because
 relay and code-directory availability are external dependencies. Four peers have
 passed a full shot and in-flight reconnect with default and forced-relay transport, but the
@@ -360,3 +361,32 @@ playable scene now includes experimental online rooms. The code-directory test r
   late-span/resimulation profiling, rendering interpolation, explicit host-stall
   UX and refinements for Android background/resume. This is an early online slice,
   not a claim of production-ready multiplayer or approved curling feel.
+
+## Rewind performance and full live match validation
+
+- Added `tests/online_room_flow.gd`: actual room-code registration/resolution,
+  three UI joins, readiness, placement and continuous teammate sweeping. It
+  revokes its code and removes only its own test identities. One initial join
+  attempt timed out; subsequent complete flows passed, so external discovery
+  reliability remains a monitored dependency rather than a claimed solved issue.
+- The initial four-view debug flow took 171.279 s for 25.404 s of simulation.
+  A pure release-core probe measured 5,355.890 ms for 520 late brush spans.
+- Added up to four immutable rewind checkpoints covering the 24-tick late window,
+  invalidated after changed input. Release snapshots and cache entries share Arc
+  ownership across copies. The cache is derived, excluded from saves/hashes, and
+  checked against full-release replay across all accepted late offsets.
+- The identical release-core probe now takes 83.673 ms, worst span 0.146 ms, with
+  unchanged authority hash `0f60680c408b6903`. See `docs/PERFORMANCE.md` for scope.
+  This is a measured workload improvement, not an FPS multiplier claim.
+- Four-view release-native room flow ran in real time: 25.446 s wall / 25.404 s
+  simulated, maximum observed process-frame gap 8.470 ms. The accelerated follow-on
+  test completed nine ends, 4:4 after eight and 5:4 after nine, then synchronized
+  all four players into epoch-2 rematch readiness. No gameplay requests rejected.
+- Native developer builds now default to release optimization; `--debug` remains
+  available for debugging but is unsuitable for gameplay timing. New protocol 6
+  rejects brush timestamps from before the current delivery so stale packets cannot
+  retime into a later end reusing the same stone ID. Normal post-settlement brush
+  arrivals consume their sequence without showing a spurious user-facing error.
+- Core suite now has 73 passing tests plus one opt-in timing probe. Full golden
+  traces remain model 2. Cross-device Android performance, forced-relay full-match
+  latency, host-stall UX and asynchronous long-journal reconstruction remain open.

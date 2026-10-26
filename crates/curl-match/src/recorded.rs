@@ -694,4 +694,44 @@ mod tests {
             m.sealed_records + m.log.records.len()
         );
     }
+    #[test]
+    #[ignore = "manual release-profile latency measurement"]
+    fn profile_continuous_late_sweeping() {
+        let mut m = game();
+        release(&mut m);
+        let start = std::time::Instant::now();
+        let mut spans = 0;
+        let mut slowest = std::time::Duration::ZERO;
+        while m.game.phase == Phase::InFlight {
+            m.advance(12, None).unwrap();
+            if m.game.phase != Phase::InFlight {
+                break;
+            }
+            let began = std::time::Instant::now();
+            m.apply(Record::BrushSpan {
+                seat: Seat {
+                    team: 0,
+                    position: 1,
+                },
+                tick: m.sim.tick - 12,
+                input: Sweep::centered(2, 255),
+                count: 12,
+            })
+            .unwrap();
+            slowest = slowest.max(began.elapsed());
+            spans += 1;
+        }
+        assert_eq!(
+            m.hash(),
+            0x0f60680c408b6903,
+            "model-2 profile trajectory changed"
+        );
+        eprintln!(
+            "LATE_SWEEP_PROFILE spans={spans} simulated_seconds={:.3} wall_ms={:.3} worst_span_ms={:.3} hash={:016x}",
+            (m.sim.tick - m.sim.release_tick) as f64 / 240.0,
+            start.elapsed().as_secs_f64() * 1000.0,
+            slowest.as_secs_f64() * 1000.0,
+            m.hash()
+        );
+    }
 }

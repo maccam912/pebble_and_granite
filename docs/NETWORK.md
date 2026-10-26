@@ -83,7 +83,7 @@ reserved seat. The room remains paused until replay synchronization is verified.
 This is not yet a complete reconnect gameplay flow. Hosts remain ephemeral and
 host loss ends the room; host migration is explicitly out of scope.
 
-## Authoritative replication contract (protocol 5)
+## Authoritative replication contract (protocol 6)
 
 Room gameplay now runs through the same recorded match used by local saves. Each
 accepted update carries an epoch, monotonically increasing revision, before/after
@@ -126,3 +126,11 @@ and tee authorization. This is continuous hold sweeping; spatial brush strokes,
 latency feel and Android performance are not yet approved. Room controls keep the
 host simulation running while its lobby is visible; application stalls/background
 suspension still need explicit user-facing handling and device validation.
+
+The full `online_room_flow.gd -- --full-match` probe passed through nine ends and
+four-player rematch readiness on local Iroh endpoints, using actual room-code UI
+operations. Physical cross-device play remains unverified. Protocol 6 rejects
+brush timestamps predating the current release, including before defending-span
+retiming. Normal stale brush arrivals after settlement are consumed without a
+user-facing rejection; they cannot mutate the match. A bounded derived rewind
+cache now accelerates accepted late spans without changing canonical state.

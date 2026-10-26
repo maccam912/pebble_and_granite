@@ -13,6 +13,9 @@ python3 tools/build_native.py
 godot --path .
 ```
 
+The native build defaults to optimized code for playable simulation performance.
+Use `python3 tools/build_native.py --debug` only for native debugging; it is much slower.
+
 `python3 tools/godot.py --path .` downloads the hash-pinned official editor if
 Godot is not installed. Mouse and held-click trackpad use the same stroke as
 Android touch. Drag the broom in the house to aim. Grip the large stone, pull

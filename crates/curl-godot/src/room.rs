@@ -136,7 +136,22 @@ impl CurlRoom {
         let Some(room) = &mut self.room else {
             return "No hosted room".into();
         };
-        answer(room.command(peer, envelope))
+        let brush = matches!(
+            &envelope.command,
+            curl_match::room::Command::BrushSpan { .. }
+        );
+        let result = room.command(peer, envelope);
+        // Delayed brush samples at the settled/out-of-play boundary are normal.
+        // The authority has consumed their sequence but makes no state change.
+        if brush
+            && matches!(
+                result,
+                Err("sweep unavailable" | "stone out of play" | "sweep predates delivery")
+            )
+        {
+            return GString::new();
+        }
+        answer(result)
     }
     #[func]
     fn advance_match(&mut self, ticks: u32, thinking_ms: u32) -> GString {
