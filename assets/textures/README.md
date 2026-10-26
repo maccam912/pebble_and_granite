@@ -2,16 +2,42 @@
 
 `curling-granite.png`, `curling-ice.png`, and `curling-oak.png` are original generated artwork, created on 26 October 2026
 using the built-in OpenAI image generation tool for this project. No downloaded
-photography or third-party texture is included. These are albedo textures, mapped
-with triplanar sampling; roughness, contact shadows and ice markings are original
+photography or third-party texture is included. These three are albedo textures;
+roughness, contact shadows and ice markings are original
 procedural shaders in `render/`. The ice texture supplies subtle albedo detail
-under the procedural markings. All three textures use mipmaps and VRAM compression.
+under the procedural markings. All three albedos use mipmaps and VRAM compression.
 
 The granite is now mapped at 22 cm after comparing the rendered mineral size
 against the manufacturer reference; the original generated image is unchanged.
 
 The PNGs are tracked with Git LFS. Run `git lfs pull` after checkout; CI fetches LFS
 objects before import/export. No repository history was rewritten.
+
+## Procedural pebble material
+
+`curling-pebble.png` is an original mathematical material generated with
+`python3 tools/ice_pebble_material.py` (NumPy and Pillow). It does not sample any
+photograph or generated albedo. A fixed seed scatters 10,000 shallow, overlapping,
+slightly elliptical ice droplets over a seamless 50 cm square. The base diameters
+span 2-6 mm; the nipped tops are roughly 30% of each base diameter. The shape is
+informed by [measured nipped curling ice](https://www.nature.com/articles/s41598-024-62247-0),
+and is a visual approximation rather than a calibrated simulation surface.
+
+The linear RGBA channels store world X/Z normal components, varying frost on the
+sloping banks, and flattened-top coverage. `render/ice.gdshader` converts the
+normals to the BoxMesh tangent basis and uses the coverage to break up the sheen
+and show a thin frozen layer over the markings. Anisotropic mip filtering retains
+detail at oblique game camera angles without the old procedural distance cutoff.
+
+The 1024-square packed map is imported losslessly with mipmaps (about 5.33 MiB
+uncompressed including mips). Alpha is material data, so alpha-border repair,
+premultiplication, normal-map channel stripping and automatic VRAM compression
+are disabled. This preserves all four channels and shallow normal precision.
+It replaces the runtime nine-cell cap search with one additional filtered texture
+sample. It is tracked with the existing PNG Git LFS rule.
+
+The [visible-pebble photograph by Felix](https://commons.wikimedia.org/wiki/File:Curling_stones_on_rink_with_visible_pebble.jpg)
+was consulted for appearance only; it is not included in game assets.
 
 ## Granite generation prompt
 

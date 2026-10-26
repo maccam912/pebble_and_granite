@@ -204,6 +204,7 @@ func build_club() -> void:
 		var ice := CurlRinkArt.shader_material("res://render/ice.gdshader")
 		ice.set_shader_parameter("lane_center", lane)
 		ice.set_shader_parameter("ice_texture", load("res://assets/textures/curling-ice.png"))
+		ice.set_shader_parameter("pebble_texture", load("res://assets/textures/curling-pebble.png"))
 		box(world, Vector3(4.75, .06, 43), Vector3(lane, -.03, 17.3), ice)
 		for end in [-3.658, 38.408]:
 			for x in [-.17, .17]:

@@ -8,6 +8,8 @@
 [ext_resource type="Shader" path="res://render/club_glass.gdshader" id="6_qkrpa"]
 [ext_resource type="LightmapGIData" path="res://render/club/club.lmbake" id="7_dkf4h"]
 
+[ext_resource type="Texture2D" path="res://assets/textures/curling-pebble.png" id="8_pebble"]
+
 [sub_resource type="StandardMaterial3D" id="StandardMaterial3D_frh8b"]
 albedo_color = Color(0.15294118, 0.19607843, 0.21960784, 1)
 roughness = 0.94
@@ -31,6 +33,7 @@ render_priority = 0
 shader = ExtResource("1_571dp")
 shader_parameter/lane_center = -6.0
 shader_parameter/ice_texture = ExtResource("2_4eywr")
+shader_parameter/pebble_texture = ExtResource("8_pebble")
 
 [sub_resource type="ArrayMesh" id="ArrayMesh_a1tgg"]
 lightmap_size_hint = Vector2i(98, 350)
@@ -201,6 +204,7 @@ render_priority = 0
 shader = ExtResource("1_571dp")
 shader_parameter/lane_center = 0.0
 shader_parameter/ice_texture = ExtResource("2_4eywr")
+shader_parameter/pebble_texture = ExtResource("8_pebble")
 
 [sub_resource type="ArrayMesh" id="ArrayMesh_e1tja"]
 lightmap_size_hint = Vector2i(98, 350)
@@ -361,6 +365,7 @@ render_priority = 0
 shader = ExtResource("1_571dp")
 shader_parameter/lane_center = 6.0
 shader_parameter/ice_texture = ExtResource("2_4eywr")
+shader_parameter/pebble_texture = ExtResource("8_pebble")
 
 [sub_resource type="ArrayMesh" id="ArrayMesh_fwi4q"]
 lightmap_size_hint = Vector2i(98, 350)
