@@ -1,5 +1,5 @@
 class_name CurlRinkView
-extends SubViewportContainer
+extends TextureRect
 ## Presentation only: coordinates, cameras and smoothing never feed the authority.
 const MODES := ["Auto", "Delivery", "Sweeper", "Skip", "House"]
 var view: SubViewport
@@ -40,13 +40,18 @@ var material_cache: Dictionary = {}
 var prepare_lighting_source := false
 func _ready() -> void:
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
-	stretch = true
+	expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	stretch_mode = TextureRect.STRETCH_SCALE
 	view = SubViewport.new()
 	view.size = Vector2i(size)
 	view.own_world_3d = true
 	view.render_target_update_mode = SubViewport.UPDATE_WHEN_VISIBLE
 	view.msaa_3d = Viewport.MSAA_2X if OS.get_name() == "Android" else Viewport.MSAA_4X
 	add_child(view)
+	texture = view.get_texture()
+	resized.connect(sync_render_size)
+	get_viewport().size_changed.connect(sync_render_size)
+	sync_render_size()
 	world = Node3D.new()
 	view.add_child(world)
 	var environment := WorldEnvironment.new()
@@ -403,10 +408,21 @@ func set_camera(selected: String, followed: Vector3) -> void:
 		var heading := (broom.position - origin).normalized()
 		camera.position = origin - heading * 1.1 + Vector3(0, .9, 0)
 		camera.look_at(origin + heading * 1.4 + Vector3(0, .18, 0))
+func sync_render_size() -> void:
+	if view == null: return
+	# Match the displayed pixels instead of enlarging a fixed 1200-pixel image.
+	# Bound the render target on large/Retina displays without changing UI scale.
+	var transform := get_viewport_transform() * get_global_transform()
+	var pixels := size * Vector2(transform.x.length(), transform.y.length())
+	pixels *= minf(1.0, 1920.0 / maxf(2.0, maxf(pixels.x, pixels.y)))
+	var target := Vector2i(maxi(2, roundi(pixels.x)), maxi(2, roundi(pixels.y)))
+	if view.size != target: view.size = target
 func handle_point() -> Vector2:
-	return position + camera.unproject_position(preview.position + Vector3(0, .184, 0)) if camera != null else Vector2.ZERO
+	if camera == null: return Vector2.ZERO
+	return global_position + camera.unproject_position(preview.position + Vector3(0, .184, 0)) * size / Vector2(view.size)
 func broom_point() -> Vector2:
-	return position + camera.unproject_position(broom.position + Vector3(0, .05, 0)) if camera != null else Vector2.ZERO
+	if camera == null: return Vector2.ZERO
+	return global_position + camera.unproject_position(broom.position + Vector3(0, .05, 0)) * size / Vector2(view.size)
 func aim_x(screen: Vector2) -> float:
 	var hit = ice_point(screen)
 	return clampf(hit.x, -2.2, 2.2) if hit != null else broom.position.x

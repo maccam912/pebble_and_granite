@@ -500,3 +500,40 @@ to 8.69 percent. This is a screenshot comparison, not a display-calibration clai
 Before images/source are in ignored `build/handle-tone-review/`. No gameplay,
 shader variant, texture or baked lightmap changed. Android review follows the
 source commit. Weekly quota remaining: 91 percent.
+
+
+## Installed handle checkpoint: build 61
+
+Clean Android build 61 (`509a1e7`, `source_dirty: false`, SHA-256
+`fa9151079e768f4808f15f73f0302d9f0f29e59e1bcb43a37a19185f47027b8a`)
+passed the installed Delivery/four-camera review. The gold pigment retains its
+shading on the Android renderer. No Godot warning/error appears in the captured
+runtime log; Android framework startup warnings are recorded separately in that
+same log. Evidence is in `build/evidence/polish/android-61/`. The wrapper restored
+all four original saves/backups byte for byte and stopped the app.
+
+## Render the rink at its displayed size
+
+Critique: the high-resolution captures softened the handle, granite and fine
+room edges even though the UI stayed crisp. Measurements showed the rink's
+SubViewport remained 1200 x 582 at every window size, including a 1920 x 1200
+window where it occupied 1800 x 873 pixels. Godot's SubViewportContainer stretch
+uses the logical control size ([engine source](https://github.com/godotengine/godot/blob/4.7/scene/gui/subviewport_container.cpp)).
+
+Use a TextureRect for the existing SubViewport texture and size the render target
+from the control's final viewport transform. The longest render-target edge is
+capped at 1920 pixels to bound cost on large displays. The UI layout, cameras,
+MSAA settings, art and simulation remain unchanged. Handle and broom projections
+now convert back to logical coordinates, as the ice/stone helpers already do.
+
+Retained after side-by-side crops at 1920 x 1200 and the 2400 x 1080 window's
+letterboxed game area: fine granite and handle contours are visibly clearer.
+The 1280 x 800 target remains 1200 x 582; the enlarged targets measured 1800 x 873
+and 1620 x 786 respectively. Before source, measurements and comparisons are in
+ignored `build/rink-resolution-review/` and `build/resolution-before-*.png`.
+All ten normal and ten large-window review captures pass. Rendered/headless rink
+gates cover window resizing, bounded resolution, unchanged grip target, ice
+projection round trips and authoritative state. Input routes, delivery-slide,
+held-resume and online UI gates pass with clean logs. Installed Android touch and
+visual validation follows the source commit; GPU cost on physical phones remains
+unverified. Weekly quota remaining: 90 percent.

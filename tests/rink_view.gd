@@ -20,6 +20,26 @@ func run() -> void:
 	await process_frame
 	await capture("delivery")
 	check(scene.rink != null and scene.spatial_view, "Default 3D scene was not created")
+	# Window stretching must sharpen the rink without moving the logical hit targets.
+	var original_size := root.size
+	var original_handle: Vector2 = scene.rink.handle_point()
+	for window_size in [Vector2i(640, 400), Vector2i(1920, 1200), Vector2i(2400, 1080), Vector2i(3840, 2400)]:
+		root.size = window_size
+		await process_frame
+		await process_frame
+		check(scene.rink.size == Vector2(1200, 582), "Rendering resolution changed the UI layout")
+		check(scene.rink.handle_point().distance_to(original_handle) < .5, "Window resize moved the grip target")
+		check(scene.rink.view.size.x <= 1920 and scene.rink.view.size.y <= 1920, "Rink render target exceeded its pixel cap")
+		if window_size == Vector2i(1920, 1200):
+			check(scene.rink.view.size == Vector2i(1800, 873), "Rink did not render at its displayed size")
+		for ice in [Vector2(-1.2, -36.0), Vector2(.5, -35.0), Vector2.ZERO]:
+			var projected: Vector2 = scene.rink.ice_screen_point(ice)
+			if not scene.rink.get_global_rect().has_point(projected): continue
+			var round_trip = scene.rink.ice_point(projected)
+			check(round_trip != null and round_trip.distance_to(ice) < .01, "Scaled rink projection changed the ice hit position")
+	root.size = original_size
+	await process_frame
+	await process_frame
 	for aim in [-2200, 0, 2200]:
 		scene.broom_mm = aim
 		scene.update_spatial(0)
