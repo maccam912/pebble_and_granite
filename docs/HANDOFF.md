@@ -697,3 +697,21 @@ input/performance tuning. Keep the authority/presentation boundary and compatibi
 contracts intact. Physical-device feel, real-ice coefficients, publisher signing,
 career/AI/content and polished art/audio remain explicitly deferred. Weekly usage
 last checked at 57% remaining; continue the authorized goal until below 50%.
+
+## Remote thrower held-reconnect probe and quieter feedback
+
+The cross-device probe now plays two deliveries: the first reconnects during
+flight; the second belongs to the fourth/remote seat. It drives the real online
+scene through push, disconnects while held, checks a frozen restored pose for
+350 ms, regrips the visible handle and finishes with a left flick. Only after both
+shots finish does the owning team concede. The desktop forced-relay rehearsal
+passed at f2992688912f3b68, evidence build/probes/eb84c2a186984980874fbbe43772f822/.
+One earlier fixture run used the wrong team's concession and was corrected;
+another failed before lobby setup because endpoint address discovery was not yet
+available. That terminal attempt was retried; no duplicate live probe remained.
+
+During the slide, feedback is now a small Soft/Draw/Firm label at the lower left,
+widening only for the hog warning. Full instructions remain before the gesture.
+Rendered view inspected; delivery slide, held resume, online UI, input routes and
+rink view gates passed. Installed Android validation of the new remote-thrower
+probe follows the clean package.

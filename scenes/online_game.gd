@@ -116,7 +116,7 @@ func update_delivery() -> void:
 		report = "Starting delivery…"
 	else:
 		var weight := "Soft" if held.target_mm_s < 1950 else ("Draw" if held.target_mm_s < 2300 else "Firm")
-		report = "Release now — hog line." if held.hog_warning else weight + " weight. Hold steady; finish left or right for curl."
+		report = "Release now — hog line." if held.hog_warning else weight + " weight"
 	update_labels()
 func start_delivery(target: int) -> bool:
 	if begin_sent or not frame.get("in_hand", {}).is_empty(): return true

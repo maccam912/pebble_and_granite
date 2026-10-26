@@ -34,6 +34,7 @@ var release_report: Dictionary = {}
 var font := ThemeDB.fallback_font
 var status: Label
 var report_label: Label
+var feedback_bg: Panel
 var hint: Label
 var new_button: Button
 var turn_button: Button
@@ -150,7 +151,7 @@ func create_spatial_view() -> void:
 		toggle.text = "2D lab" if spatial_view else "3D rink"
 		update_labels()
 		queue_redraw())
-	var feedback_bg := Panel.new()
+	feedback_bg = Panel.new()
 	feedback_bg.position = Vector2(50, 580)
 	feedback_bg.size = Vector2(565, 110)
 	feedback_bg.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -230,6 +231,12 @@ func update_labels() -> void:
 	turn_button.disabled = run_active
 	one_button.disabled = run_active
 	report_label.text = report
+	if feedback_bg != null:
+		var compact := phase == "Slide"
+		feedback_bg.position = Vector2(50, 642) if compact else Vector2(50, 580)
+		feedback_bg.size = Vector2(280 if report.to_lower().contains("hog") else 190, 48) if compact else Vector2(565, 110)
+		report_label.position = feedback_bg.position + Vector2(12, 11)
+		report_label.size = feedback_bg.size - Vector2(24, 12)
 	clock_label.visible = match_mode
 	sweep_button.disabled = not run_active
 	mode_button.text = "Practice" if match_mode else "Mixed doubles"
@@ -409,7 +416,7 @@ func update_delivery() -> void:
 	if held.is_empty(): return
 	phase = "Slide"
 	var weight := "Soft" if held.target_mm_s < 1950 else ("Draw" if held.target_mm_s < 2300 else "Firm")
-	report = "Release now — hog line." if held.hog_warning else weight + " weight. Hold steady; finish left or right for curl. A small forward/back finish trims weight."
+	report = "Release now — hog line." if held.hog_warning else weight + " weight"
 	if frame.global_tick - last_save_tick >= 240: save_practice()
 	update_labels()
 
@@ -421,7 +428,7 @@ func update_legacy_delivery() -> void:
 	elif pose.slide_tick > 0:
 		phase = "Slide"
 		var weight := "Soft" if pose.target_mm_s < 1950 else ("Draw" if pose.target_mm_s < 2300 else "Firm")
-		report = "Release now — hog line." if pose.hog_warning else weight + " weight. Hold steady; finish left or right for curl. A small forward/back finish trims weight."
+		report = "Release now — hog line." if pose.hog_warning else weight + " weight"
 		update_labels()
 
 func cancel_pointer() -> void:
@@ -437,6 +444,7 @@ func cancel_pointer() -> void:
 		session.cancel_stroke()
 		if status != null and not run_active and phase != "Stone at rest":
 			phase = "Ready"
+			if not frame.get("in_hand", {}).is_empty(): report = "Delivery paused. Regrip the handle to finish from here."
 			update_labels()
 func _notification(what: int) -> void:
 	if what == NOTIFICATION_APPLICATION_FOCUS_IN or what == NOTIFICATION_APPLICATION_RESUMED:

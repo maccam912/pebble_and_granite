@@ -6,6 +6,9 @@ var stage := "lobby"
 var paused_for_reconnect := false
 var resumed := false
 var released_from_held := false
+var held_reconnect := false
+var held_resumed := false
+var frozen_held_hash := ""
 var next_advance := 0
 var finished := false
 var ready_sent: Dictionary = {}
@@ -53,6 +56,8 @@ func run() -> void:
 		if stage == "placement" and state.get("phase") == "Placement" and not state.paused and rooms.all(func(room): return room.state.get("phase") == "Placement" and not room.state.get("paused", true)):
 			for room in rooms:
 				if room.seat_index() == 2:
+					error = room.send_command({"kind": "Order", "first": 1})
+					if not error.is_empty(): finish(false, error); break
 					error = room.send_command({"kind": "Place", "own_house": true, "side": "None"})
 					if not error.is_empty(): finish(false, error)
 			stage = "release"
@@ -78,14 +83,32 @@ func run() -> void:
 				next_advance = Time.get_ticks_msec() + 50
 				error = host.advance(12, 0)
 				if not error.is_empty(): finish(false, error); break
+			if state.phase == "Calling" and host.frame().delivered_count == 1:
+				stage = "second"
+		if stage == "second":
+			if state.paused and not held_reconnect:
+				held_reconnect = true
+				frozen_held_hash = state.hash
+				if not host.frame().get("in_hand", {}).get("suspended", false): finish(false, "Held disconnect did not freeze plan"); break
+			elif not state.paused and held_reconnect:
+				held_resumed = true
+				if host.frame().get("in_hand", {}).get("suspended", false) and state.hash != frozen_held_hash:
+					finish(false, "Held state changed before regrip"); break
+			if not state.paused and state.phase == "Calling" and host.frame().delivered_count == 2:
+				error = host.send_command({"kind": "Concede"})
+				if not error.is_empty(): finish(false, error); break
+			if not state.paused and Time.get_ticks_msec() >= next_advance:
+				next_advance = Time.get_ticks_msec() + 50
+				error = host.advance(12 if state.phase == "InFlight" else 0, 50 if state.phase == "Calling" else 0)
+				if not error.is_empty(): finish(false, error); break
 			if state.phase == "GameComplete":
-				finish(resumed, "" if resumed else "No verified reconnect")
+				finish(resumed and held_resumed, "" if resumed and held_resumed else "Missing flight or held reconnect")
 				break
 		await create_timer(.01).timeout
 func finish(ok: bool, error: String) -> void:
 	if finished: return
 	finished = true
-	write_result("host.json", {"ok": ok, "error": error, "hash": rooms[0].state.get("hash", ""), "reconnected": resumed, "released_from_held": released_from_held})
+	write_result("host.json", {"ok": ok, "error": error, "hash": rooms[0].state.get("hash", ""), "reconnected": resumed, "released_from_held": released_from_held, "reconnected_held": held_resumed})
 	# Allow the final accepted command/state to reach the Android replica.
 	for i in range(100):
 		for room in rooms: room.poll()

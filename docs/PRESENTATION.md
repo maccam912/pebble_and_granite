@@ -30,7 +30,8 @@ absent from this view; the diagnostic 2D lab remains a separate test scene.
 
 Finishing left/right sets rotation from recent motion, and a small forward/back
 finish trims speed. Quiet-hand release is neutral rotation. Coarse Soft/Draw/Firm
-feedback and the hog warning appear over the ice. Procedural art, gain thresholds,
+feedback appears as a small lower-left label during the slide; it widens for the
+hog warning. Full delivery instructions appear before gripping. Procedural art, gain thresholds,
 rotation magnitude, hand animation and feedback need curler/device iteration.
 Spatial scrubbing, prediction and polished camera transitions remain open.
 
