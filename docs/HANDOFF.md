@@ -715,3 +715,18 @@ widening only for the hog warning. Full instructions remain before the gesture.
 Rendered view inspected; delivery slide, held resume, online UI, input routes and
 rink view gates passed. Installed Android validation of the new remote-thrower
 probe follows the clean package.
+
+Installed 13a3f31 build 4 passed the two-delivery forced-relay flow on Android,
+including the remote thrower's in-hand disconnect, frozen restore, visible-handle
+regrip and left finishing flick. Final host/client hash d82d243a915944fa; full
+provenance in docs/ANDROID_INPUT.md. f2444cd GitHub Actions completed successfully
+(run 40261578313); later checkpoints are still queued/running.
+
+Next foundational rules gap identified from the actual R8/R17 text: mixed doubles
+permits either/both teammates to sweep in front of the far tee. Current authority
+has one brush stream per team and UI only allows the non-thrower. Before adding
+spatial scrub controls, give mixed-doubles brushes stable per-player identities,
+allow both teammates, and enforce one sweeper per team behind the tee at each
+actual simulation tick, including future spans and rewind. Moving own stones are
+also a documented unimplemented sweep target. Current rule/sim versions must not
+silently reinterpret old match journals. Weekly usage remaining: 54%.

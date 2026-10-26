@@ -90,3 +90,19 @@ Both peers finished at `af5dbdcd7faad18c`; evidence is under
 used the held lifecycle. This covers Android replication of held commands and
 in-flight restoration; in-hand reconnect remains validated on four desktop
 endpoints, not yet on the installed Android client.
+
+## Installed remote thrower held reconnect
+
+Clean `13a3f31`, build 4, passed the two-delivery forced-relay probe on Android 35
+ARM64. The client first reconnects during flight, then becomes the next thrower
+and drives the actual online scene's push/regrip/finishing methods. Disconnect
+during that held slide restored a suspended plan at 1900 ms, target 2050 mm/s,
+aim -900 mm and centre -33.473909 m. The client verified the pose stayed unchanged
+for 350 ms before regripping and finishing left. Both peers ended at
+`d82d243a915944fa`. APK SHA-256:
+`73bb46067bbce7ce389415fb3336ea74ef602ad6c9783039158a0051ffc4928d`.
+Evidence: `build/probes/5671d030ca1346f099bf2a9eaa686286/result.json`.
+
+This closes the installed in-hand reconnect gate. Gesture timing here is injected
+through the actual online scene methods; separate touch probes cover Android
+touchscreen routing. It is not a physical-device or uncontrolled-latency playtest.
