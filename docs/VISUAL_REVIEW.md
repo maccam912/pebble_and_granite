@@ -232,3 +232,12 @@ all eight native captures. The rink test passes, with 248 valid baked meshes.
 Android review of this source is pending. The offline editor reported seven
 texture RIDs at shutdown; the Compatibility runtime review reports no renderer
 warnings or errors. Existing gameplay and input contracts remain unchanged.
+
+## Roof reflection visibility
+
+House view previously hid the roof globally to see through it. If it was the
+first rendered camera, the one-time room reflection could also lose its roof
+and fixtures. Give roof geometry layer 3 and hide that layer only from the House
+camera; the probe retains room/roof layers 1 and 3 while excluding moving props
+on layer 2. The camera projection and input geometry stay unchanged. The rink
+test checks roof/probe masks and all eight native review captures pass.

@@ -62,6 +62,11 @@ func run() -> void:
 	scene.camera_button.text = "Camera: House"
 	scene.rink.mode = 4
 	scene.update_spatial(0)
+	check(scene.rink.ceiling.visible and not scene.rink.camera.get_cull_mask_value(3), "House view hid the roof from reflections or failed to look through it")
+	for geometry in scene.rink.ceiling.find_children("*", "MeshInstance3D", true, false):
+		check(geometry.layers == 4, "Roof geometry escaped its camera visibility layer")
+	var probes: Array[Node] = scene.rink.world.find_children("*", "ReflectionProbe", true, false)
+	check(probes.size() == 1 and probes[0].cull_mask == 5, "Static reflection lost the roof or included transient props")
 	var broom: Vector2 = scene.broom_screen_point()
 	check(Rect2(scene.rink.position, scene.rink.size).has_point(broom), "House broom projection left the viewport")
 	check(absf(scene.rink.aim_x(broom) + .9) < .01, "Broom projection does not round-trip")

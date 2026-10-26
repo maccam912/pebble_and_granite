@@ -235,6 +235,8 @@ func build_club() -> void:
 		light.shadow_opacity = .22
 		light.shadow_blur = 1.5
 		world.add_child(light)
+	for geometry in ceiling.find_children("*", "MeshInstance3D", true, false):
+		geometry.layers = 4
 	var reflection := ReflectionProbe.new()
 	reflection.position = Vector3(0, 1.7, 17.2)
 	reflection.size = Vector3(18, 4, 47)
@@ -242,7 +244,7 @@ func build_club() -> void:
 	reflection.interior = true
 	reflection.ambient_mode = ReflectionProbe.AMBIENT_DISABLED
 	reflection.intensity = .65
-	reflection.cull_mask = 1 # Static club only; exclude moving stones and brooms.
+	reflection.cull_mask = 5 # Static room and ceiling; exclude moving props.
 	reflection.max_distance = 55
 	world.add_child(reflection)
 
@@ -355,7 +357,9 @@ func delivery_heading() -> Vector3:
 	return (broom.position + Vector3(float(delivery_aim_mm) / 1000.0, 0, 0) - Vector3(delivery_x, 0, -delivery_y)).normalized()
 func set_camera(selected: String, followed: Vector3) -> void:
 	current_camera = selected
-	ceiling.visible = selected != "House"
+	# The roof stays in the static reflection even when the overhead camera
+	# looks through it. Global visibility would also hide it from the probe.
+	camera.set_cull_mask_value(3, selected != "House")
 	camera.projection = Camera3D.PROJECTION_ORTHOGONAL if selected == "House" else Camera3D.PROJECTION_PERSPECTIVE
 	if selected == "House":
 		camera.size = 6.5
