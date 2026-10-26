@@ -160,6 +160,9 @@ func brush_head(parent: Node3D) -> void:
 
 func build_club() -> void:
 	var wood := CurlRinkArt.shader_material("res://render/oak.gdshader")
+	wood.set_shader_parameter("oak_texture", load("res://assets/textures/curling-oak.png"))
+	var cross_wood := wood.duplicate() as ShaderMaterial
+	cross_wood.set_shader_parameter("grain_along_x", true)
 	var steel := material("66727a", .46)
 	var plaster := CurlRinkArt.shader_material("res://render/club_finish.gdshader")
 	plaster.set_shader_parameter("paint_color", Color("b5babc"))
@@ -175,12 +178,12 @@ func build_club() -> void:
 				box(world, Vector3(.14, .05, .22), Vector3(lane + x, .025, end), rubber)
 		for edge in [-2.48, 2.48]:
 			box(world, Vector3(.15, .18, 43.2), Vector3(lane + edge, .07, 17.3), wood)
-			box(world, Vector3(.16, .025, 43.2), Vector3(lane + edge, .17, 17.3), material("b29670", .4))
+			box(world, Vector3(.16, .025, 43.2), Vector3(lane + edge, .17, 17.3), wood)
 			box(world, Vector3(.035, .045, 43.2), Vector3(lane + edge - signf(edge) * .065, .05, 17.3), material("c9cecb"))
 	for end in [-4.5, 40.0]:
 		box(world, Vector3(18, 3.8, .25), Vector3(0, 1.9, end), plaster)
 		box(world, Vector3(18, .8, .06), Vector3(0, .4, end + (.15 if end < 0 else -.15)), material("2e4851"))
-		box(world, Vector3(18, .065, .08), Vector3(0, .83, end + (.16 if end < 0 else -.16)), wood)
+		box(world, Vector3(18, .065, .08), Vector3(0, .83, end + (.16 if end < 0 else -.16)), cross_wood)
 	for side in [-9.0, 9.0]:
 		box(world, Vector3(.25, 3.8, 47), Vector3(side, 1.9, 17.2), plaster)
 		box(world, Vector3(.07, .9, 47), Vector3(side - signf(side) * .15, .45, 17.2), material("344f58"))
@@ -194,7 +197,7 @@ func build_club() -> void:
 			box(world, Vector3(.24, .045, 3.7), Vector3(side - signf(side) * .22, 2.97, z + 2.5), steel)
 	# Benches, kickboards and sheet signs give familiar scale to the existing club.
 	for lane in [-6.0, 0.0, 6.0]:
-		box(world, Vector3(2.7, .075, .35), Vector3(lane, .45, -4.05), wood)
+		box(world, Vector3(2.7, .075, .35), Vector3(lane, .45, -4.05), cross_wood)
 		for x in [-1.05, 1.05]: box(world, Vector3(.06, .45, .25), Vector3(lane + x, .20, -4.05), steel)
 		club_sign(str(int(lane / 6) + 2).pad_zeros(2), Vector3(lane, 1.12, -4.31), 44, .004, "e2d2ae")
 	box(world, Vector3(6.2, .95, .06), Vector3(0, 2.35, -4.31), material("19333e"))

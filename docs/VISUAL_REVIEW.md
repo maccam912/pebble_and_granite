@@ -218,3 +218,17 @@ the broad reflections. All eight native screenshots pass after comparing three
 material variants. The base lighting captures are retained in
 `build/evidence/lighting/integrated-base/`. Android validation of these material
 adjustments remains pending at this checkpoint. Weekly quota is 94% remaining.
+
+## Original oak comparison
+
+The next review found uniform stripes in the procedural wood, especially along
+the near boards. Generated an original honey-oak base-color texture with the
+built-in image tool, saved as `assets/textures/curling-oak.png`; its complete
+prompt and provenance are in `assets/textures/README.md`. No third-party image is
+included. The material uses world-scale projection with grain aligned to each
+board or bench, and the caps now share the wood material. Regenerated and baked
+the club again (5.05 seconds in this local editor), finalized it, and reviewed
+all eight native captures. The rink test passes, with 248 valid baked meshes.
+Android review of this source is pending. The offline editor reported seven
+texture RIDs at shutdown; the Compatibility runtime review reports no renderer
+warnings or errors. Existing gameplay and input contracts remain unchanged.

@@ -1,13 +1,13 @@
 # Material provenance
 
-`curling-granite.png` and `curling-ice.png` are original generated artwork, created on 26 October 2026
+`curling-granite.png`, `curling-ice.png`, and `curling-oak.png` are original generated artwork, created on 26 October 2026
 using the built-in OpenAI image generation tool for this project. No downloaded
-photography or third-party texture is included. It is an albedo texture, mapped
-with triplanar sampling; roughness, contact shadows, ice and oak are original
+photography or third-party texture is included. These are albedo textures, mapped
+with triplanar sampling; roughness, contact shadows and ice markings are original
 procedural shaders in `render/`. The ice texture supplies subtle albedo detail
-under the procedural markings. Both textures use mipmaps and VRAM compression.
+under the procedural markings. All three textures use mipmaps and VRAM compression.
 
-The PNG is tracked with Git LFS. Run `git lfs pull` after checkout; CI fetches LFS
+The PNGs are tracked with Git LFS. Run `git lfs pull` after checkout; CI fetches LFS
 objects before import/export. No repository history was rewritten.
 
 ## Granite generation prompt
@@ -47,3 +47,13 @@ Natural fine photographic microstructure, no large marks, no footprints, no rink
 lines, no rings, no logos, no text or borders. All edges tile seamlessly
 horizontally and vertically. This image will be a tileable ice surface albedo in
 a photorealistic curling video game.
+
+## Oak generation prompt
+
+Use case: photorealistic-natural. Asset type: seamless PBR base-color texture for the wooden boards and benches of a 3D curling club. Generate one square 1024x1024 photorealistic material scan of gently worn, clear-finished pale honey oak. Perfectly straight-on orthographic view of one continuous wood surface, representing 60 by 60 centimetres. Fine natural long oak grain runs vertically from top to bottom, with subtle irregular curved growth bands, tiny pores, a few restrained natural knots, and small variations in warm beige/tan color. Neutral moderately light honey oak, not orange or dark brown. Matte diffuse cross-polarized flat illumination, no specular glare, no shadows, no gradients, no perspective, no beveled edges. Base color only, no baked lighting. No separate planks, no plank seams, no borders, no text or logo, no objects. All four edges must tile seamlessly; vertical grain must connect at top and bottom. Natural photographic detail with restrained contrast suitable for repeating along long rink boards; avoid striped digital noise, extreme knots, strong discoloration, large cracks, rustic distressing or water stains.
+
+The built-in image generation tool produced this original base-color texture.
+`render/oak.gdshader` projects it at world scale, with grain aligned separately
+for the long rink boards and crosswise benches/trim. Mipmaps and anisotropic
+filtering keep the distant grain stable. No reference photograph was supplied
+to generation or redistributed with the game.
