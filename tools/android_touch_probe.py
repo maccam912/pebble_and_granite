@@ -65,8 +65,24 @@ atexit.register(release_contact)
 
 def fresh():
     # 1280x800 game fitted to 2400x1080: x offset 336, scale 1.35.
+    # A cold renderer may still be busy after its first visible frame. Wait
+    # for the reset's autosave acknowledgement before timing a real stroke;
+    # otherwise queued DOWN/MOVEs can reach the game in the same millisecond.
+    def saved_at():
+        return adb('shell', 'run-as', PACKAGE, 'stat', '-c', '%y',
+                   'files/practice-session.json', check=False).strip()
+    before = saved_at()
     adb('shell', 'input', 'tap', '1880', '1012')
+    started = time.monotonic()
+    while True:
+        after = saved_at()
+        if after and after != before:
+            break
+        if time.monotonic() - started > 45:
+            raise RuntimeError('Fresh ice did not acknowledge its reset within 45 seconds')
+        time.sleep(.1)
     time.sleep(.4)
+    print('FRESH_ICE_READY %.2fs' % (time.monotonic() - started), flush=True)
 
 
 # Reviewed at 1280x800: handle (640, 557.012), fitted at x+336 / 1.35x.

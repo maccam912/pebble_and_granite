@@ -57,6 +57,23 @@ func run() -> void:
 			"turns": float(i) * .13, "velocity": Vector2.ZERO})
 	game.rink.render_frame(display, false, false, -900, 0, false, 0)
 	await capture("03-skip-and-report")
+	var resting_report: String = game.report
+	game.phase = "Travel"
+	game.report = "Scrub ahead of the selected stone, or hold to sweep."
+	game.update_labels()
+	game.rink.mode = 2
+	game.camera_button.text = "Camera: Sweeper"
+	game.rink.sweep_target = 0
+	game.rink.brush_input = {"ahead_mm": 180, "lateral_mm": 20, "steady": false}
+	display.delivered = 0
+	display.stones[0].velocity = Vector2(0, .8)
+	game.rink.render_frame(display, true, true, -900, 0, false, .016)
+	await capture("03b-sweeper")
+	game.rink.sweep_target = -1
+	game.rink.brush_input = {}
+	game.phase = "Stone at rest"
+	game.report = resting_report
+	game.update_labels()
 	game.rink.mode = 4
 	game.camera_button.text = "Camera: House"
 	game.rink.render_frame(display, false, false, -900, 0, false, 0)

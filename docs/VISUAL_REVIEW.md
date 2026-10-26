@@ -275,3 +275,38 @@ This does not prove the cause of the first failure. To avoid adding another
 first-use shader variant for negligible visible detail, retain the new geometry
 with the existing matte StandardMaterial3D instead of the cloth shader. Native
 review remains visually consistent and passes. Original practice files restored.
+
+## Fresh-cache input validation
+
+A fresh Godot shader-cache run of build 53 also missed its first drag. A
+temporary diagnostic APK (54, never published) traced the real touch route:
+coordinates and pointer selection were correct, but all drag events reached
+Godot within roughly one millisecond after a long startup stall. The probe had
+started its timed stroke before the Fresh ice reset was processed. Diagnostic
+logging was removed from the source immediately after building that APK.
+
+The probe now waits for the reset's autosave timestamp to change before timing
+the stroke, with a bounded timeout. It retains all gesture timings and gameplay
+assertions. Production build 53 (`f1530c8`, `source_dirty: false`, SHA-256
+`099b7f26317f80dc9dbb4a66888c0653b9dd7249ea96eb83412ea2222094429f`)
+then passed the full installed probe with a fresh Godot shader cache. The first
+reset took 6.49 seconds to acknowledge after the 30-second test startup wait;
+later resets took about 0.45 seconds. This is an emulator startup observation,
+not a physical-device startup benchmark. No product input/physics fix or added
+loading flow was introduced.
+
+Passing evidence: `build/probes/touch-1d6b8804febd4522a346bf31a2bcd1f0/` and
+`build/android-matte-cold-ack-probe.log`. Reviewed the actual held-delivery image.
+All four original practice/match files and backups were restored byte for byte;
+the original shader cache was restored, temporary caches removed, and app stopped.
+The local review now includes a close Sweeper fixture (ten captures), which also
+shows the new wood and room lighting near the benches. Native sweeping passes.
+Weekly quota remains 93%. Current source is pushed; newest CI is queued behind
+the earlier packaging run, so latest-head CI/release completion remains open.
+
+## Next photographic critique
+
+The boards and bench seats still have mathematically sharp edges. Review a small
+rounded-edge treatment on those existing wooden pieces before deciding whether
+it earns another geometry/lightmap pass. Keep all simulation geometry, input and
+camera contracts unchanged. The broader photographic polish goal remains active.
