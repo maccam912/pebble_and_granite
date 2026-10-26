@@ -20,7 +20,7 @@ bible only. Remote: `maccam912/pebble_and_granite`, main branch.
 - [x] Direct-on-ice 3D delivery/cameras, finishing flick, and local held saves.
 - [ ] Spatial scrubbing, measured calibration/performance and AI.
 
-Latest local gates: 94 core Rust tests (plus native transport identity test), shared golden traces, Godot input/practice/match
+Latest local gates: 100 core Rust tests (plus native transport identity test), shared golden traces, Godot input/practice/match
 save/full-game fixtures. Live network probes are separate from offline CI because
 relay and code-directory availability are external dependencies. Four peers have
 passed a full shot and in-flight reconnect with default and forced-relay transport, but the
@@ -730,3 +730,39 @@ allow both teammates, and enforce one sweeper per team behind the tee at each
 actual simulation tick, including future spans and rewind. Moving own stones are
 also a documented unimplemented sweep target. Current rule/sim versions must not
 silently reinterpret old match journals. Weekly usage remaining: 54%.
+
+## Mixed-doubles brush ownership and tee boundary
+
+Rules 4 / protocol 10 give the four mixed-doubles players separate brush/fatigue
+identities. Both teammates can hold to sweep; the host chooses one contributing
+brush per team behind the tee at each actual simulation tick. Stable player order
+resolves simultaneous behind-tee requests. Future spans and rewind use the same
+rule filter. Moving own stones are accepted by the authority, though UI target
+selection still follows the delivered stone. Stationary targets stop contributing
+without blocking subsequent match steps. Match release preserves fatigue and
+idle time recovers it; standalone practice retains its existing reset semantics.
+
+Old rules-3 match saves remain preserved but cannot be resumed under new brush
+mapping. Model-3 practice records and six single-shot goldens are unchanged. Full
+team multi-brush roles, spatial target/scrub input and fatigue presentation remain
+open. See docs/RULES.md for precise implemented boundaries.
+
+The first new relay sweep test exposed retimed spans colliding with a previous
+span's future tail. Span commands now replace only the same player's unconsumed
+future intent; they never stack heat or rewrite already simulated duplicates.
+Raw duplicate samples remain rejected. Span overlap retains already consumed
+samples instead of applying them twice. A dedicated journal/replay test covers two entirely overlapping retimed
+spans followed by partial future overlap. Installed validation follows rebuild.
+
+Validation for this rules checkpoint: 100 core tests and six unchanged model-3
+traces passed, plus all-target workspace clippy. Eleven Godot gates passed for the
+new brush mapping; replica, online UI and full local match were rerun after the
+span-overlap fix. Four live local peers swept with both teammates, completed eight
+ends (4:5) and rematch. The first shot ran 25.481 s wall / 25.496 s simulated, max
+headless frame gap 16.533 ms (not Android/GPU performance evidence).
+
+The final desktop forced-relay two-reconnect probe also passed continuous sweeping
+by the thrower, after two earlier runs exposed the consumed/future span overlap
+cases now covered in tests. Evidence: build/probes/1b775e5277c247c198ee78ddf6a6d906/.
+Installed Android rules-4 validation follows the clean build. Weekly remaining
+usage at this checkpoint: 51%; prioritize final validation and handoff.

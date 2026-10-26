@@ -11,5 +11,8 @@ a stable development key, not a store publishing identity. macOS is ad-hoc signe
 not notarized. Windows is unsigned.
 
 Mixed doubles is now playable locally: positioned stones, power plays, player rotation, scoring, thinking clocks, extra ends and rematches. Local matches autosave separately from practice, including interrupted throws. Choose Mixed doubles to resume. Online rooms now expose Host/Join by Code, readiness, seat-restricted play, continuous hold sweeping and reconnect. This is an early online prototype; full cross-device match and latency validation remain open.
+Mixed doubles now gives each player a brush/fatigue identity and lets both teammates
+sweep before the tee, with one contributor per team afterward. Rules-3 match saves
+are preserved but incompatible with rules 4; practice saves are unchanged.
 Physics calibration, human curler feel approval, and physical Android validation
 remain open. See repository docs/HANDOFF.md for current evidence and next work.

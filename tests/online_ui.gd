@@ -76,7 +76,7 @@ func run() -> void:
 	check(game.release_report.turn == -1, "Online regrip lost finishing curl")
 	check(game.frame.clock_gold == thinking, "Online clock ran after delivery tee")
 	check(game.run_active and game.frame.match_phase == "InFlight", "Online stroke did not release through authority")
-	check(not game.can_sweep(), "Deliverer stole teammate brush role")
+	check(game.can_sweep(), "Mixed-doubles thrower could not sweep after release")
 	for i in range(1300):
 		if not game.run_active: break
 		game._process(.05)

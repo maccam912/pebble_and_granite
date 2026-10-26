@@ -332,7 +332,11 @@ impl RecordedMatch {
             if !input.valid() {
                 return Err("invalid brush sample");
             }
-            if a.sim.stones.iter().any(|s| s.id == input.stone && s.active) {
+            if a.sim
+                .stones
+                .iter()
+                .any(|s| s.id == input.stone && s.active && s.vel != curl_fx::V2::ZERO)
+            {
                 a.sweep(
                     Seat {
                         team: a.game.delivering_team(),
@@ -697,7 +701,7 @@ mod tests {
         assert_eq!(copy.hash(), m.hash());
     }
     #[test]
-    fn brush_spans_match_tick_samples_and_reject_partial_overlap_atomically() {
+    fn brush_spans_match_tick_samples_and_preserve_consumed_overlap() {
         let mut span = game();
         release(&mut span);
         span.advance(20, None).unwrap();
@@ -720,17 +724,19 @@ mod tests {
                 .unwrap();
         }
         assert_eq!(span.hash(), individual.hash());
-        let before = span.json().unwrap();
-        assert!(
-            span.apply(Record::BrushSpan {
-                seat,
-                tick: 5,
-                input,
-                count: 12
-            })
-            .is_err()
-        );
-        assert_eq!(span.json().unwrap(), before);
+        span.apply(Record::BrushSpan {
+            seat,
+            tick: 5,
+            input,
+            count: 12,
+        })
+        .unwrap();
+        for tick in 5..8 {
+            individual
+                .apply(Record::Sweep { seat, tick, input })
+                .unwrap();
+        }
+        assert_eq!(span.hash(), individual.hash());
         assert!(
             span.apply(Record::BrushSpan {
                 seat,

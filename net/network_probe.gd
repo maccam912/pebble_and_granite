@@ -94,8 +94,9 @@ func _process(_delta: float) -> void:
 			game.end_pointer(point + Vector2(-30, -8))
 			if game.release_report.get("turn") != -1: finish(false, "Regripped delivery lost finishing curl"); return
 			held_finished = true
+			game.hold_sweep = true
 	if frame.match_phase == "GameComplete" and room.replica.state_hash() == room.state.hash:
-		finish(restored_in_flight and held_restored and held_finished and frame.delivered_count == 2, "")
+		finish(restored_in_flight and held_restored and held_finished and frame.delivered_count == 2 and game != null and game.last_brush_tick >= 0, "")
 func create_game() -> void:
 	game = load("res://scenes/online_game.gd").new()
 	game.online = room
@@ -105,7 +106,7 @@ func create_game() -> void:
 func finish(ok: bool, error: String) -> void:
 	if finished: return
 	finished = true
-	var result := {"ok": ok, "error": error, "nonce": request.nonce, "platform": OS.get_name(), "relay_only": request.relay_only, "reconnected_in_flight": restored_in_flight, "reconnected_held": held_restored, "held_finished": held_finished, "frozen_held": frozen_held, "hash": room.replica.state_hash() if room.replica != null else "", "seat": room.seat_index()}
+	var result := {"ok": ok, "error": error, "nonce": request.nonce, "platform": OS.get_name(), "relay_only": request.relay_only, "reconnected_in_flight": restored_in_flight, "reconnected_held": held_restored, "held_finished": held_finished, "swept_as_thrower": game != null and game.last_brush_tick >= 0, "frozen_held": frozen_held, "hash": room.replica.state_hash() if room.replica != null else "", "seat": room.seat_index()}
 	DirAccess.make_dir_recursive_absolute("user://diagnostics")
 	var file := FileAccess.open("user://diagnostics/network-test.json", FileAccess.WRITE)
 	if file != null:

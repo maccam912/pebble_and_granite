@@ -89,7 +89,9 @@ func update_labels() -> void:
 	new_button.text = "Host: next end" if not online.is_host and frame.match_phase == "EndComplete" else new_button.text
 	sweep_button.disabled = paused or not can_sweep()
 	if frame.match_phase == "Calling" and (team != frame.team or player != frame.thrower):
-		report_label.text = "%s player %d is delivering. Their teammate can sweep after release." % [team_name(frame.team), frame.thrower + 1]
+		report_label.text = "%s player %d is delivering. Both teammates can sweep after release." % [team_name(frame.team), frame.thrower + 1]
+	elif run_active and team == frame.team and not delivered_stone().is_empty() and delivered_stone().position.y >= 0:
+		report_label.text = "Past the tee: one sweeper per team. Player 1 takes priority if both hold."
 	elif frame.match_phase == "Placement": report_label.text = "Each team selects its first/last thrower. The indicated team chooses placement."
 func owns_delivery() -> bool:
 	var index := online.seat_index()
@@ -131,9 +133,10 @@ func can_sweep() -> bool:
 	var index := online.seat_index()
 	if index < 0 or frame.get("match_phase") != "InFlight": return false
 	var stone := delivered_stone()
-	if stone.is_empty() or not stone.active: return false
-	# One brush per side in this slice; the delivering teammate is the sweeper.
-	if int(index / 2) == frame.team: return index % 2 != frame.thrower
+	if stone.is_empty() or not stone.active or stone.speed <= 0: return false
+	# Both teammates may sweep before the tee. Authority chooses one behind it
+	# if both request the same tick; a single active player keeps control.
+	if int(index / 2) == frame.team: return true
 	return index % 2 == 1 and stone.position.y >= 0
 func _process(delta: float) -> void:
 	if session == null or online == null: return
@@ -203,7 +206,7 @@ func end_pointer(pos: Vector2) -> void:
 			waiting_release = true
 			phase = "Releasing…"
 			path.clear()
-			report = "Your teammate can sweep while the stone travels."
+			report = "Either teammate can sweep while the stone travels."
 		else: report = error; phase = "Ready"
 	refresh_online()
 func change_order(team: int) -> void:

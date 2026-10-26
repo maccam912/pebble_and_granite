@@ -52,9 +52,10 @@ rematch advances an epoch and requires fresh readiness.
 A disconnected active-game seat remains reserved. Simulation and thinking clocks
 pause until its authenticated identity returns and confirms the matching full
 state hash. This hash covers simulation, rules/clocks, release snapshot and pending
-sweeps. The host does not migrate. This is the authority contract only: replay
-cross-device and full-match testing are still
-required before reconnect can be advertised as a finished game feature.
+sweeps. Held delivery is journaled as suspended on disconnect and waits for the
+thrower to regrip after synchronization. The host does not migrate. Desktop
+full-match/rematch and installed Android held/in-flight reconnect probes pass;
+physical-device full-match and latency testing remain open.
 
 ## Live control-plane probes
 
@@ -80,10 +81,11 @@ multi-client tests use isolated files and remove only their own test keys.
 
 Reconnecting uses the same authenticated endpoint identity and reclaims the
 reserved seat. The room remains paused until replay synchronization is verified.
-This is not yet a complete reconnect gameplay flow. Hosts remain ephemeral and
-host loss ends the room; host migration is explicitly out of scope.
+Installed Android emulator and desktop probes cover the reconnect gameplay flow.
+Hosts remain ephemeral and host loss ends the room; host migration is explicitly
+out of scope.
 
-## Authoritative replication contract (protocol 6)
+## Authoritative replication contract (introduced in protocol 6)
 
 Room gameplay now runs through the same recorded match used by local saves. Each
 accepted update carries an epoch, monotonically increasing revision, before/after
@@ -171,3 +173,18 @@ An Android 35 ARM64 emulator and three macOS peers passed default-route and
 forced-relay probes with exact final hash `571ae17d15022973`. This is installed OS-to-OS transport
 and reconstruction evidence, not physical-device touch, full-match Android timing,
 room-code UI, or background/resume validation.
+
+## Mixed-doubles brush streams (protocol 10 / rules 4)
+
+Each seat has its own canonical brush identity and fatigue. Both delivering
+teammates may sweep before the tee. Behind it, deterministic per-tick arbitration
+allows one contributor per team; the non-delivering team's designated skip is
+player 2. The rule filter runs against the simulated position during both normal
+steps and rewind, so future spans cannot bypass tee crossing.
+
+A delayed span may be shifted to authority arrival. If that overlaps the same
+player's still-unconsumed future intent, the latest accepted span replaces it.
+It does not add a second brush contribution or rewrite past duplicate samples;
+consumed overlap is retained unchanged rather than rejected.
+The record sequence preserves those replacements for replay/synchronization.
+Compatibility rejects prior rules rather than silently changing their journals.

@@ -55,6 +55,7 @@ func run() -> void:
 	check(await until(func(): return panels.all(func(p): return p.game != null and p.game.run_active), 10), "Flight state not delivered")
 	var sweeper := at_seat(1)
 	sweeper.game.sweep_button.button_down.emit()
+	host.game.sweep_button.button_down.emit()
 	timing = [Time.get_ticks_usec(), 0, 0]
 	var monitor := func():
 		var now := Time.get_ticks_usec()
@@ -67,6 +68,7 @@ func run() -> void:
 	var elapsed := float(Time.get_ticks_usec() - began) / 1000000.0
 	process_frame.disconnect(monitor)
 	sweeper.game.sweep_button.button_up.emit()
+	host.game.sweep_button.button_up.emit()
 	if host.game != null: host.game.set_process(false)
 	check(await until(func(): return panels.slice(1).all(func(p): return p.room.replica != null and p.room.replica.state_hash() == host.room.state.hash), 10), "UI replica hashes diverged")
 	var final_frame := host.room.frame()

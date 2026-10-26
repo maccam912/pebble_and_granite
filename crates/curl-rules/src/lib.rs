@@ -3,7 +3,7 @@
 use curl_fx::{Fx, V2};
 use curl_sim::{FAR_HOG, HOUSE, RADIUS, Stone};
 use serde::{Deserialize, Serialize};
-pub const RULES_VERSION: u32 = 3;
+pub const RULES_VERSION: u32 = 4;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub enum Format {

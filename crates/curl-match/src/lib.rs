@@ -5,6 +5,8 @@ use serde::{Deserialize, Serialize};
 use std::collections::{BTreeMap, VecDeque};
 use std::sync::Arc;
 
+#[cfg(test)]
+mod brushing_tests;
 pub mod delivery;
 
 pub const LATE_WINDOW: u32 = 24; // 100 ms; older samples apply at authority arrival.
@@ -100,7 +102,11 @@ impl Authority {
         release.validate()?;
         // Validate both state transitions on clones so failure cannot partially mutate.
         let mut sim = self.sim.clone();
+        let fatigue = sim.brush_fatigue;
         sim.release(release.clone())?;
+        // Match players carry fatigue between deliveries; accepted idle time
+        // provides recovery. The standalone single-shot sim keeps its reset API.
+        sim.brush_fatigue = fatigue;
         let mut game = self.game.clone();
         game.begin(seat.team, release.stone, &self.sim.stones)?;
         self.game = game;
@@ -158,7 +164,7 @@ impl Authority {
         tick: u32,
         input: Sweep,
     ) -> Result<AcceptedSweep, &'static str> {
-        self.accept_sweep(seat, tick, input, true)
+        self.accept_sweep(seat, tick, input, true, false)
     }
     pub fn sweep_span(
         &mut self,
@@ -181,7 +187,7 @@ impl Authority {
         } else {
             tick
         };
-        let first = next.accept_sweep(seat, start, input, false)?;
+        let first = next.accept_sweep(seat, start, input, false, true)?;
         for offset in 1..count as u32 {
             next.accept_sweep(
                 seat,
@@ -191,6 +197,7 @@ impl Authority {
                     .ok_or("brush tick overflow")?,
                 input,
                 false,
+                true,
             )?;
         }
         if first.tick < next.sim.tick {
@@ -205,6 +212,7 @@ impl Authority {
         requested_tick: u32,
         mut input: Sweep,
         resimulate: bool,
+        replace_future: bool,
     ) -> Result<AcceptedSweep, &'static str> {
         if !self.valid_seat(seat) || self.game.phase != Phase::InFlight || !input.valid() {
             return Err("sweep unavailable");
@@ -230,36 +238,61 @@ impl Authority {
             requested_tick.max(self.sim.release_tick)
         };
         let delivered = self.sim.delivered.ok_or("no delivered stone")?;
-        if input.stone != delivered {
-            return Err("only delivered-stone sweeping supported in this slice");
+        let mixed = self.game.rules.format == Format::MixedDoubles;
+        if !mixed && input.stone != delivered {
+            return Err("only delivered-stone sweeping supported in this format");
         }
-        // Behind the tee: one sweeper per side. A defending skip (seat 1 in mixed,
-        // 3 in teams) may sweep only after the stone reaches the far tee.
         let stone = self
             .sim
             .stones
             .iter()
-            .find(|s| s.id == delivered && s.active)
+            .find(|s| s.id == input.stone && s.active)
             .ok_or("stone out of play")?;
-        if seat.team != self.game.delivering_team() {
-            let skip = if self.game.rules.format == Format::MixedDoubles {
-                1
-            } else {
-                3
-            };
-            if seat.position != skip || stone.pos.y < curl_fx::Fx::ZERO {
+        if mixed {
+            if stone.vel == curl_fx::V2::ZERO {
+                return Err("stone is not moving");
+            }
+            if stone.team != seat.team && stone.pos.y < curl_fx::Fx::ZERO {
                 return Err("opponent cannot sweep here");
             }
-            // Do not retroactively authorize a command using the stone's later position.
+            if stone.pos.y >= curl_fx::Fx::ZERO
+                && seat.team != self.game.delivering_team()
+                && seat.position != 1
+            {
+                return Err("only defending skip may sweep behind tee");
+            }
+        } else if seat.team != self.game.delivering_team()
+            && (seat.position != 3 || stone.pos.y < curl_fx::Fx::ZERO)
+        {
+            return Err("opponent cannot sweep here");
+        }
+        if stone.team != seat.team && tick < self.sim.tick {
+            return Err("opponent sweep may not predate tee authorization");
+        }
+        // Mixed doubles has one fatigue identity per player, fixed across throws
+        // and ends. The client cannot select a fresher brush identity.
+        input.brush = if mixed {
+            seat.team * 2 + seat.position
+        } else {
+            seat.team
+        };
+        if let Some(existing) = self.sweeps.get(&(tick, input.brush)) {
+            if !replace_future {
+                return Err("duplicate player sweep tick");
+            }
             if tick < self.sim.tick {
-                return Err("opponent sweep may not predate tee authorization");
+                // Network retiming may make a later span overlap a consumed
+                // tail. Retain that accepted sample; never replay its heat twice.
+                return Ok(AcceptedSweep {
+                    tick,
+                    input: *existing,
+                    retimed: tick != requested_tick,
+                });
             }
         }
-        // One tracked brush stream per team in first slice, no client-selected fatigue id.
-        input.brush = seat.team;
-        if self.sweeps.contains_key(&(tick, input.brush)) {
-            return Err("duplicate team sweep tick");
-        }
+        // Retimed spans can overlap the unconsumed tail of a prior span. The
+        // latest accepted effort replaces future intent for this player; it
+        // never stacks heat or rewrites already simulated duplicate samples.
         self.sweeps.insert((tick, input.brush), input);
         if resimulate && tick < self.sim.tick {
             self.resimulate(tick)?;
@@ -270,10 +303,36 @@ impl Authority {
             retimed: tick != requested_tick,
         })
     }
-    fn inputs(&self, tick: u32) -> Vec<Sweep> {
+    fn inputs(&self, sim: &Sim) -> Vec<Sweep> {
+        let mut behind = [false; 2];
         self.sweeps
-            .range((tick, 0)..=(tick, u8::MAX))
-            .map(|(_, s)| *s)
+            .range((sim.tick, 0)..=(sim.tick, u8::MAX))
+            .filter_map(|(_, input)| {
+                if self.game.rules.format != Format::MixedDoubles {
+                    return Some(*input);
+                }
+                let stone = sim
+                    .stones
+                    .iter()
+                    .find(|s| s.id == input.stone && s.active)?;
+                if input.effort == 0 || stone.vel == curl_fx::V2::ZERO {
+                    return None;
+                }
+                let team = input.brush / 2;
+                if stone.pos.y < curl_fx::Fx::ZERO {
+                    return (stone.team == team).then_some(*input);
+                }
+                // Evaluate against THIS tick's state, including resimulation and
+                // spans scheduled before crossing. Stable player order resolves
+                // simultaneous behind-tee requests, independent of packet order.
+                if team != self.game.delivering_team() && input.brush % 2 != 1 {
+                    return None;
+                }
+                if std::mem::replace(&mut behind[team as usize], true) {
+                    return None;
+                }
+                Some(*input)
+            })
             .collect()
     }
     fn checkpoint_needed(&self, tick: u32, release_tick: u32) -> bool {
@@ -303,7 +362,7 @@ impl Authority {
             if self.checkpoint_needed(restored.tick, restored.release_tick) {
                 self.remember(Arc::new(restored.clone()));
             }
-            restored.step(&self.inputs(restored.tick));
+            restored.step(&self.inputs(&restored));
         }
         self.sim = restored;
         Ok(())
@@ -315,7 +374,7 @@ impl Authority {
         if self.checkpoint_needed(self.sim.tick, self.sim.release_tick) {
             self.remember(Arc::new(self.sim.clone()));
         }
-        self.sim.step(&self.inputs(self.sim.tick));
+        self.sim.step(&self.inputs(&self.sim));
         if self.sim.timed_out {
             return Err("physics time budget exhausted");
         }
@@ -538,6 +597,20 @@ mod tests {
             .is_err()
         );
         a.sweep(THROWER, 0, input).unwrap();
+        assert_eq!(
+            a.sweep(
+                Seat {
+                    team: 0,
+                    position: 1
+                },
+                0,
+                input
+            )
+            .unwrap()
+            .input
+            .brush,
+            1
+        );
         assert!(
             a.sweep(
                 Seat {
