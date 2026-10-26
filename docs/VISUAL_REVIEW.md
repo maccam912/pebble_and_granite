@@ -438,3 +438,27 @@ at shutdown. Atlas and scene are finalized/reviewed together, with uncompressed
 HDR import retained. Before clubs/screens are in ignored `build/glazing-bake-retry/`.
 The regeneration guide includes the observed editor workaround. Installed Android
 review follows the source commit. The photographic polish objective remains active.
+
+
+Clean Android build 59 (`9aa89be`, `source_dirty: false`, SHA-256
+`52caf1caf9741c786ff2cd184eb17b4d2e4fa6260e81b2c745afda186ac69c83`)
+passed the installed Delivery/four-camera review. The shallower glazing renders
+correctly in the Skip view; the captured app log contains no Godot warning/error.
+Evidence is in `build/evidence/polish/android-59/` and `build/android-59-review.log`.
+All four original saves/backups were restored byte for byte and the app stopped.
+
+## Asymmetric sleeve and readable glove
+
+A second sleeve trial varies the shallow folds around the arm instead of adding
+circular ridges. Retained the original wrist/forearm placement and matte material;
+an elliptical cross section and diagonal folds produce a softer cloth silhouette.
+A slightly lighter blue-grey sleeve/glove separates the cuff, palm and fingers
+without a new texture or shader variant. The cuff covers the open sleeve end,
+and the far end remains outside the existing camera framing.
+
+Reviewed the actual held-delivery fixture at normal game scale before retaining
+this version. All ten native captures, rink, held-resume and delivery-slide gates
+pass. The hand remains on the dynamic prop layer and does not alter the handle
+hit target, camera, input mapping, animation state or simulation. Original trial
+source/images are retained in ignored `build/sleeve-sculpt-review/`. Installed
+Android held-delivery validation follows the source commit.

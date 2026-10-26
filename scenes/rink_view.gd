@@ -106,8 +106,8 @@ func _ready() -> void:
 	selection.visible = false
 	hand = Node3D.new()
 	world.add_child(hand)
-	var glove_material := material("283239", .91)
-	var jacket_material := material("203c4a", .91)
+	var glove_material := material("35454c", .91)
+	var jacket_material := material("3b5361", .91)
 	glove_material.metallic_specular = .18
 	jacket_material.metallic_specular = .18
 	var glove := SphereMesh.new()
@@ -129,12 +129,7 @@ func _ready() -> void:
 	CurlRinkArt.capsule_between(hand, Vector3(-.013, .244, .068), wrist, .029, glove_material)
 	var forearm := Vector3(.25, .39, 1.05)
 	var length := wrist.distance_to(forearm)
-	var sleeve_shape := CurlRinkArt.lathe(PackedVector2Array([
-		Vector2(0, -length * .5), Vector2(.074, -length * .5),
-		Vector2(.066, -length * .3), Vector2(.059, 0),
-		Vector2(.048, length * .32), Vector2(.041, length * .40),
-		Vector2(.044, length * .43), Vector2(.038, length * .47),
-		Vector2(.038, length * .5), Vector2(0, length * .5)]))
+	var sleeve_shape := CurlRinkArt.jacket_sleeve(length)
 	var sleeve := mesh(hand, sleeve_shape, (wrist + forearm) * .5, jacket_material)
 	sleeve.quaternion = Quaternion(Vector3.UP, (wrist - forearm).normalized())
 	var cuff := cylinder(hand, .040, .026, wrist, glove_material)

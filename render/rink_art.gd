@@ -92,6 +92,46 @@ static func lathe(profile: PackedVector2Array) -> ArrayMesh:
 	result.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, arrays)
 	return result
 
+static func jacket_sleeve(length: float) -> ArrayMesh:
+	# Soft diagonal folds near the cuff, rather than concentric hard ridges.
+	# This is only the existing first-person prop; no animation/input changes.
+	const RINGS := 36
+	const SIDES := 48
+	var vertices := PackedVector3Array()
+	var normals := PackedVector3Array()
+	var uvs := PackedVector2Array()
+	var indices := PackedInt32Array()
+	for row in range(RINGS + 1):
+		var t := float(row) / RINGS
+		for column in range(SIDES + 1):
+			var angle := float(column) / SIDES * TAU
+			vertices.append(sleeve_point(length, t, angle))
+			var along := sleeve_point(length, t + .001, angle) - sleeve_point(length, t - .001, angle)
+			var around := sleeve_point(length, t, angle + .001) - sleeve_point(length, t, angle - .001)
+			normals.append(along.cross(around).normalized())
+			uvs.append(Vector2(float(column) / SIDES, t))
+			if row < RINGS and column < SIDES:
+				var a := row * (SIDES + 1) + column
+				var b := a + SIDES + 1
+				indices.append_array(PackedInt32Array([a, a + 1, b, a + 1, b + 1, b]))
+	var arrays := []
+	arrays.resize(Mesh.ARRAY_MAX)
+	arrays[Mesh.ARRAY_VERTEX] = vertices
+	arrays[Mesh.ARRAY_NORMAL] = normals
+	arrays[Mesh.ARRAY_TEX_UV] = uvs
+	arrays[Mesh.ARRAY_INDEX] = indices
+	var result := ArrayMesh.new()
+	result.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, arrays)
+	return result
+
+static func sleeve_point(length: float, t: float, angle: float) -> Vector3:
+	var taper := lerpf(.074, .038, t)
+	var folds := smoothstep(.38, .66, t) * (1.0 - smoothstep(.94, 1.0, t))
+	var crease := sin(t * 39.0 + sin(angle * 2.0) * 1.8) * .0028
+	crease += sin(t * 27.0 - angle * 3.0) * .0018
+	var radius := taper + folds * crease
+	return Vector3(cos(angle) * radius, (t - .5) * length, sin(angle) * radius * .92)
+
 static func handle_grip() -> ArrayMesh:
 	# A single molded cantilever, rather than the prototype's square bracket.
 	var path := PackedVector2Array([Vector2(.039, .145), Vector2(.036, .163),
