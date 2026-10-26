@@ -59,6 +59,7 @@ func run() -> void:
 	await process_frame
 	var mouse := scrub(scene, false)
 	var touch := scrub(scene, true)
+	check(not mouse.is_empty() and not touch.is_empty(), "Scrub fixture did not complete")
 	check(mouse == touch, "Mouse/trackpad and touch mapped different spatial input")
 	launch(scene)
 	var stone: Dictionary = scene.selected_sweep_stone()

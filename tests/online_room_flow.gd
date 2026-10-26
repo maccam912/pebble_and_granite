@@ -54,7 +54,7 @@ func run() -> void:
 	if failed: await cleanup(); quit(1); return
 	check(await until(func(): return panels.all(func(p): return p.game != null and p.game.run_active), 10), "Flight state not delivered")
 	var sweeper := at_seat(1)
-	await exercise_spatial_scrub(sweeper.game)
+	check(await exercise_spatial_scrub(sweeper.game), "Remote spatial scrub fixture did not complete")
 	sweeper.game.sweep_button.button_down.emit()
 	host.game.sweep_button.button_down.emit()
 	timing = [Time.get_ticks_usec(), 0, 0]
@@ -111,7 +111,7 @@ func run() -> void:
 	print("ONLINE_ROOM_FLOW_OK" if not failed else "ONLINE_ROOM_FLOW_FAILED")
 	quit(1 if failed else 0)
 
-func exercise_spatial_scrub(game: Control) -> void:
+func exercise_spatial_scrub(game: Control) -> bool:
 	game.input_clock = Time.get_ticks_usec
 	game.rink.mode = 2
 	game.update_spatial(0)
@@ -120,7 +120,7 @@ func exercise_spatial_scrub(game: Control) -> void:
 		game.refresh_online()
 		game.update_spatial(.016)
 		var stone: Dictionary = game.selected_sweep_stone()
-		if not check(not stone.is_empty(), "Remote scrub has no eligible target"): return
+		if not check(not stone.is_empty(), "Remote scrub has no eligible target"): return false
 		var node: Node3D = game.rink.stones[stone.id]
 		var shown := Vector2(node.position.x, -node.position.z)
 		var direction: Vector2 = stone.velocity.normalized()
@@ -140,6 +140,7 @@ func exercise_spatial_scrub(game: Control) -> void:
 	check(samples > 0, "No spatial scrub reached the online command queue")
 	check(game.current_brush().is_empty(), "Remote scrub lift retained intent")
 	print("ONLINE_SPATIAL_SCRUB samples=", samples)
+	return samples > 0 and game.current_brush().is_empty()
 
 func deliver_gesture(game: Control, release_us: int, hold := false, reconnect := false) -> void:
 	var clock := [0]

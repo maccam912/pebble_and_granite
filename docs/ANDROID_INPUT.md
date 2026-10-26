@@ -123,3 +123,28 @@ two-delivery forced-relay probe with continuous sweeping by the remote thrower.
 Desktop full-match coverage also swept with both teammates. The installed probe
 does not establish a physical two-device full-match/performance result. Local
 APK build numbers are diagnostic labels; GitHub release numbers are independent.
+
+## Spatial sweeping / analog delivery package
+
+Clean `12849e6`, local build 6, is model 3 / protocol 11 / rules 4 / input 5.
+It uses the existing installed Godot 4.7 Android templates; package metadata
+records `source_dirty: false`. APK SHA-256:
+`5e1d0212fb9fdc3b6ca9a0632e9aa3145421fdff51c4f2ca2460df5a811e8027`.
+
+Installed on Android 35 ARM64 `emulator-5580`, it passed all six native golden
+traces/JNI checks, both direct-touch curl directions, Home/pause/regrip and the
+exact-once held hog fault. The expanded touch probe also drove actual moving
+touch contacts ahead of the stone. Its journal recorded 22 spatial brush spans,
+effort 59–255, and lateral offsets -124/+139 mm. The saved sweep spans stopped
+changing after UP. A separate real touchscreen hold on the GUI button produced
+255 effort at 0 mm lateral / 180 mm ahead.
+
+Evidence: `build/probes/touch-c3719bed70544f69b4f616a3a6519023/result.json`,
+the journal files/screenshots beside it, and `build/evidence/android-self-test.json`.
+The Android Sweeper view and selection disc were visually inspected. This is
+installed emulator input evidence, not physical-device feel or GPU performance.
+
+The same APK passed the Android↔macOS forced-relay two-delivery probe, including
+held/in-flight reconnect, suspended analog position, regrip/release and continuous
+thrower sweeping. Host/client hash: `b932c1c5128ec7cd`. Evidence:
+`build/probes/2f0cc14f4cf842038562725e5360c2d6/result.json`.

@@ -33,9 +33,9 @@ are in `docs/ANDROID_INPUT.md`; full chronological evidence follows below.
 
 Next priorities, in order:
 
-1. Validate spatial scrubbing/selection in live rooms and installed Android, then
-   feel-test analog pull/push, gentle curl, broom sightline, transitions and brush
-   gains on trackpad/physical Android. Keep the accessible steady-effort hold
+1. Feel-test analog pull/push, gentle curl, broom sightline, transitions and
+   spatial brush gains on trackpad/physical Android. Live rooms and installed
+   emulator input now pass; they do not approve feel. Keep the accessible hold
    button. Fatigue should affect presentation without power/fatigue bars.
 2. Physical Android and trackpad feel/latency tests; tune gains and camera/body
    presentation with curlers. Emulator and synthetic input tests cannot approve feel.
@@ -951,3 +951,28 @@ Unswept local steps retain the existing single-batch path rather than splitting
 every step into brush spans. The Android touch probe now checks real scrub
 events, no heat after lift and the accessible hold route against saved journals;
 installed evidence follows the clean package build.
+
+### Final installed checkpoint and requested stop
+
+Clean `12849e6`, local Android build 6, passed installed golden/JNI checks and
+the expanded direct-touch probe on Android 35 ARM64 emulator-5580. The journal
+contains 22 spatial spans with effort 59–255 and lateral -124/+139 mm, no new
+sweep spans after lift, and the separate steady centered hold input. Both curl
+directions, Home/pause/regrip and exact-once hog fault passed. APK hash and exact
+evidence paths are in docs/ANDROID_INPUT.md.
+
+The same APK passed forced-relay Android↔macOS held/in-flight reconnect, analog
+position restoration, regrip/release and continuous thrower sweeping, finishing
+at host/client hash `b932c1c5128ec7cd`. The final desktop build also passed all
+twelve integration gates; the strengthened spatial helper completion checks
+passed another focused live room flow. Rendered desktop/Android selection and
+brush views were inspected. Human feel, physical devices and measured calibration
+remain separate gates.
+
+Stopped at the user's explicit request on 26 October, with weekly usage at 3%
+used / 97% remaining. The user replaced the usage cutoff with a request to finish
+this task, commit/push and stop. No new feature or background work should start
+without another request. At the last CI check, 63e8f0b's four core platform jobs
+and Linux package passed; the other exports were still running. Run 40371904714
+for 12849e6 was pending. Final notes/tests will trigger another run on push;
+remote publication of this milestone is not claimed verified.

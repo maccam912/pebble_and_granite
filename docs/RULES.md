@@ -34,8 +34,12 @@ retains its existing fatigue reset behavior. Rules-3 match journals are preserve
 and rejected rather than silently replayed with new brush identities; model-3
 practice saves are unchanged.
 
+The spatial UI now selects eligible moving collision stones, including own stones
+while the delivered stone is stopped. Scrub position/effort and accessible hold
+use the same authoritative per-player brush path. The UI checks current eligibility;
+the host remains responsible for actual tick-by-tick permission and arbitration.
+
 Still open: full clause audit beyond these rules; timeout/break UI; physical
-alternation of sheet ends and their ice coordinates; last-stone draw; spatial
-selection of moved-own-stone sweep targets (authority supports them); full-team
+alternation of sheet ends and their ice coordinates; last-stone draw; full-team
 multi-brush roles; burned stones; wrong-delivery remedies; calibrated fatigue
-animation/audio. Current online UI follows the delivered stone for sweeping.
+animation/audio.
