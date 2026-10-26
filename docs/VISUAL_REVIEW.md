@@ -153,3 +153,22 @@ would first need ArrayMesh conversion and UV2 unwrap; LightmapGI baking is an
 editor operation, not an exposed runtime GDScript method. Keep experiments
 isolated until they produce a reviewed improvement, and repeat Android rendering
 checks before publishing a lighting change.
+
+## Verified layout checkpoint
+
+Local Android export 48 is a clean build of `f907bff` (`source_dirty: false`,
+SHA-256 `1c250adc763507a04b137d61f0a461c9342dde21141289d527aa9881d8c79bda`).
+It was installed on `emulator-5554`; the actual corrected setup capture is
+`build/evidence/polish/android-48/match-setup.png`, reviewed without row overlap.
+The emulator's original practice/match files and backups were restored byte for
+byte after testing; the app is stopped. The test AVD `pebble_granite_lab` remains
+running for subsequent rendering checks. LFS integrity passes.
+
+All code through this checkpoint is pushed. Current core/native/rendered checks
+pass; the newest GitHub workflow is queued behind the prior in-progress build,
+so no CI/release completion is claimed. Weekly usage last reports 4% used / 96%
+remaining. The polish goal remains active for the lighting critique above.
+
+Also review static reflection culling during that pass: stones use layer 2, but
+the broom/brush/hand meshes still default to layer 1 and can enter the one-time
+club probe. Exclude those transient props before reviewing the final cubemap.
