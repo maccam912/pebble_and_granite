@@ -59,7 +59,7 @@ impl SnapshotSender {
 pub struct SnapshotReceiver {
     transfer: Option<IncomingSnapshot>,
 }
-struct IncomingSnapshot {
+pub struct IncomingSnapshot {
     epoch: u32,
     revision: u32,
     size: usize,
@@ -70,13 +70,19 @@ impl SnapshotReceiver {
     /// Callers impose a wall-clock deadline and reset by dropping this object.
     /// Errors discard only the incomplete transfer; an existing replica is intact.
     pub fn receive(&mut self, packet: &[u8]) -> Result<Option<Replica>, String> {
+        self.receive_journal(packet)?
+            .map(|journal| journal.restore(|_, _| true))
+            .transpose()
+    }
+    /// Assembles bytes only. Checksum, decoding and simulation belong on a worker.
+    pub fn receive_journal(&mut self, packet: &[u8]) -> Result<Option<IncomingSnapshot>, String> {
         let result = self.accept(packet);
         if result.is_err() {
             self.transfer = None;
         }
         result
     }
-    fn accept(&mut self, packet: &[u8]) -> Result<Option<Replica>, String> {
+    fn accept(&mut self, packet: &[u8]) -> Result<Option<IncomingSnapshot>, String> {
         if packet.len() <= HEADER || packet.len() > HEADER + CHUNK || &packet[..4] != b"PGS1" {
             return Err("invalid snapshot packet".into());
         }
@@ -122,10 +128,90 @@ impl SnapshotReceiver {
             return Ok(None);
         }
         let transfer = self.transfer.take().unwrap();
-        if checksum(&transfer.journal) != expected {
+        Ok(Some(transfer))
+    }
+}
+
+impl IncomingSnapshot {
+    fn restore(self, progress: impl FnMut(usize, usize) -> bool) -> Result<Replica, String> {
+        if checksum(&self.journal) != self.checksum {
             return Err("snapshot checksum mismatch".into());
         }
-        Replica::restore(epoch, revision, &transfer.journal).map(Some)
+        Ok(Replica {
+            game: RecordedMatch::parse_controlled(&self.journal, progress)?,
+            epoch: self.epoch,
+            revision: self.revision,
+        })
+    }
+}
+
+/// Godot never enters the worker: only owned Rust data crosses this boundary.
+/// Dropping a job requests cancellation; it never joins on the caller thread.
+/// A process-wide cap also bounds abandoned jobs while cancellation is observed.
+pub struct SnapshotRestore {
+    result: std::sync::mpsc::Receiver<Result<Replica, String>>,
+    control: std::sync::Arc<RestoreControl>,
+}
+#[derive(Default)]
+struct RestoreControl {
+    cancelled: std::sync::atomic::AtomicBool,
+    progress: std::sync::atomic::AtomicU64,
+}
+static RESTORE_WORKERS: std::sync::atomic::AtomicUsize = std::sync::atomic::AtomicUsize::new(0);
+struct WorkerPermit;
+impl Drop for WorkerPermit {
+    fn drop(&mut self) {
+        RESTORE_WORKERS.fetch_sub(1, std::sync::atomic::Ordering::Relaxed);
+    }
+}
+impl SnapshotRestore {
+    pub fn start(journal: IncomingSnapshot) -> Result<Self, String> {
+        use std::sync::atomic::Ordering::Relaxed;
+        RESTORE_WORKERS
+            .fetch_update(Relaxed, Relaxed, |n| (n < 4).then_some(n + 1))
+            .map_err(|_| "too many match restores")?;
+        let permit = WorkerPermit;
+        let control = std::sync::Arc::new(RestoreControl::default());
+        let worker = control.clone();
+        let (sender, result) = std::sync::mpsc::sync_channel(1);
+        std::thread::Builder::new()
+            .name("curl-restore".into())
+            .spawn(move || {
+                let _permit = permit;
+                let restored = journal.restore(|done, total| {
+                    worker
+                        .progress
+                        .store(((total as u64) << 32) | done as u64, Relaxed);
+                    !worker.cancelled.load(Relaxed)
+                });
+                let _ = sender.send(restored);
+            })
+            .map_err(|e| e.to_string())?;
+        Ok(Self { result, control })
+    }
+    pub fn progress(&self) -> (usize, usize) {
+        use std::sync::atomic::Ordering::Relaxed;
+        let progress = self.control.progress.load(Relaxed);
+        (
+            (progress & u32::MAX as u64) as usize,
+            (progress >> 32) as usize,
+        )
+    }
+    pub fn poll(&self) -> Option<Result<Replica, String>> {
+        match self.result.try_recv() {
+            Ok(result) => Some(result),
+            Err(std::sync::mpsc::TryRecvError::Empty) => None,
+            Err(std::sync::mpsc::TryRecvError::Disconnected) => {
+                Some(Err("match restore worker stopped".into()))
+            }
+        }
+    }
+}
+impl Drop for SnapshotRestore {
+    fn drop(&mut self) {
+        self.control
+            .cancelled
+            .store(true, std::sync::atomic::Ordering::Relaxed);
     }
 }
 
@@ -411,6 +497,44 @@ mod tests {
         assert_eq!(replica.game.hash(), room.state_hash().unwrap());
     }
 
+    #[test]
+    fn asynchronous_restore_checks_hash_before_publication() {
+        let room = room();
+        let bytes = room.journal().unwrap().into_bytes();
+        let make = |bytes: Vec<u8>, expected| IncomingSnapshot {
+            epoch: room.epoch(),
+            revision: room.revision(),
+            size: bytes.len(),
+            checksum: expected,
+            journal: bytes,
+        };
+        let wait = |job: SnapshotRestore| {
+            let deadline = std::time::Instant::now() + std::time::Duration::from_secs(5);
+            loop {
+                if let Some(result) = job.poll() {
+                    return result;
+                }
+                assert!(std::time::Instant::now() < deadline);
+                std::thread::sleep(std::time::Duration::from_millis(1));
+            }
+        };
+        let expected = checksum(&bytes);
+        let restored =
+            wait(SnapshotRestore::start(make(bytes.clone(), expected)).unwrap()).unwrap();
+        assert_eq!(restored.game.hash(), room.state_hash().unwrap());
+        let error = wait(SnapshotRestore::start(make(bytes.clone(), expected ^ 1)).unwrap())
+            .err()
+            .unwrap();
+        assert_eq!(error, "snapshot checksum mismatch");
+        let mut tampered: serde_json::Value = serde_json::from_slice(&bytes).unwrap();
+        tampered["hash"] = 0.into();
+        let tampered = serde_json::to_vec(&tampered).unwrap();
+        let expected = checksum(&tampered);
+        let error = wait(SnapshotRestore::start(make(tampered, expected)).unwrap())
+            .err()
+            .unwrap();
+        assert_eq!(error, "match state verification failed");
+    }
     #[test]
     fn corruption_gaps_duplicates_and_old_epochs_are_atomic() {
         let mut room = room();

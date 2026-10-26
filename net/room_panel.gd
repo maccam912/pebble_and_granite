@@ -23,6 +23,7 @@ var busy := false
 var last_address := ""
 var ready_value := false
 var view_match := true
+var was_restoring := false
 func _ready() -> void:
 	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	mouse_filter = Control.MOUSE_FILTER_STOP
@@ -173,6 +174,13 @@ func refresh() -> void:
 func _process(_delta: float) -> void:
 	room.poll()
 	if not visible: return
+	if room.receiving_snapshot and room.replica != null:
+		var progress: Dictionary = room.replica.restore_progress()
+		message.text = "Receiving match history…" if progress.is_empty() else "Rebuilding match: %d / %d records. You can leave at any time." % [progress.records, progress.total]
+		was_restoring = true
+	elif was_restoring:
+		was_restoring = false
+		if room.peer != null: message.text = "Match synchronized."
 	if expires > 0 and Time.get_ticks_msec() > expires:
 		expires = 0
 		message.text = "The code expired. Existing players stay connected; choose New room code for new arrivals."

@@ -18,7 +18,7 @@ bible only. Remote: `maccam912/pebble_and_granite`, main branch.
 - [x] Installed Android golden/JNI probe using the one-use debug request route.
 - [ ] 3D delivery/cameras, spatial scrubbing, measured calibration/performance and AI.
 
-Latest local gates: 73 core Rust tests (plus native transport identity test), shared golden traces, Godot input/practice/match
+Latest local gates: 75 core Rust tests (plus native transport identity test), shared golden traces, Godot input/practice/match
 save/full-game fixtures. Live network probes are separate from offline CI because
 relay and code-directory availability are external dependencies. Four peers have
 passed a full shot and in-flight reconnect with default and forced-relay transport, but the
@@ -390,3 +390,29 @@ playable scene now includes experimental online rooms. The code-directory test r
 - Core suite now has 73 passing tests plus one opt-in timing probe. Full golden
   traces remain model 2. Cross-device Android performance, forced-relay full-match
   latency, host-stall UX and asynchronous long-journal reconstruction remain open.
+
+## Responsive network reconstruction
+
+- Snapshot byte assembly stays bounded on the receiving thread; checksum checking,
+  archive decoding and deterministic reconstruction now run in a Rust worker.
+  No Godot objects cross the worker boundary. Only a verified final authority is
+  installed by main-thread polling, after which the client acknowledges its hash.
+- The room displays receive/replay progress and remains usable while rebuilding.
+  Leaving cancels between bounded records/blocks without waiting on a thread join.
+  A process-wide four-worker cap includes cancelled jobs until they finish. The
+  existing total 60-second synchronization deadline remains enforced.
+- Added cancellation/progress checks across compressed blocks and worker rejection
+  of checksum/state-hash corruption. 75 core tests, every-tick goldens and clippy
+  pass. Offline native recovery of a 300-span compressed in-flight journal yielded
+  nine frames; the largest observed packet handler took 29 microseconds in one
+  optimized macOS probe. This is not a long-match or Android latency guarantee.
+- Forced-relay four-player placement, full-shot and in-flight reconnect pass with
+  worker reconstruction. The real room-UI flow also passes all nine ends, scores
+  5:4 after the extra end, and synchronizes a ready epoch-2 rematch. Its initial
+  swept shot took 25.460 s wall for 25.404 s simulated in four local views.
+- Local practice/match autosave reconstruction is still synchronous. Android
+  long-match profiling and local-load cancellation remain follow-up work. Also
+  stress cross-channel stale commits during snapshot transfer under jitter.
+- Both ec86c7c and d4fc29c release pipelines passed all jobs. The 68278dd rewind
+  milestone is pushed and its pipeline is still running at this checkpoint.
+- Usage checkpoint: 26% used / 74% remaining; requested work continues.

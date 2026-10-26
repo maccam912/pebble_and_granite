@@ -157,6 +157,22 @@ impl RecordedMatch {
         Ok(json)
     }
     pub fn parse(bytes: &[u8]) -> Result<Self, String> {
+        Self::parse_controlled(bytes, |_, _| true)
+    }
+    /// Called before decoding and between bounded records/blocks. Returning false
+    /// cancels without publishing any partially reconstructed authority.
+    pub fn parse_controlled(
+        bytes: &[u8],
+        mut progress: impl FnMut(usize, usize) -> bool,
+    ) -> Result<Self, String> {
+        let mut checkpoint = |done, total| {
+            if progress(done, total) {
+                Ok(())
+            } else {
+                Err("match restore cancelled")
+            }
+        };
+        checkpoint(0, 0)?;
         if bytes.len() > MAX_BYTES {
             return Err("match save exceeds byte limit".into());
         }
@@ -174,9 +190,12 @@ impl RecordedMatch {
                 return Err("incompatible legacy match log".into());
             }
             let mut restored = Self::new(log.seed, log.rules, log.hammer)?;
-            for record in log.records {
+            let total = log.records.len();
+            for (done, record) in log.records.into_iter().enumerate() {
+                checkpoint(done, total)?;
                 restored.apply(record)?;
             }
+            checkpoint(total, total)?;
             if restored.hash() != log.hash {
                 return Err("match state verification failed".into());
             }
@@ -192,7 +211,10 @@ impl RecordedMatch {
             return Err("incompatible or oversized match log".into());
         }
         let mut restored = Self::new(archive.seed, archive.rules, archive.hammer)?;
+        let total = archive.blocks.len() * BLOCK_RECORDS + archive.tail.len();
+        let mut done = 0;
         for block in archive.blocks {
+            checkpoint(done, total)?;
             let compressed = BASE64_STANDARD
                 .decode(block)
                 .map_err(|_| "invalid journal block encoding")?;
@@ -204,12 +226,17 @@ impl RecordedMatch {
                 return Err("invalid journal block count".into());
             }
             for record in records {
+                checkpoint(done, total)?;
                 restored.apply(record)?;
+                done += 1;
             }
         }
         for record in archive.tail {
+            checkpoint(done, total)?;
             restored.apply(record)?;
+            done += 1;
         }
+        checkpoint(done, total)?;
         if restored.hash() != archive.hash {
             return Err("match state verification failed".into());
         }
@@ -438,6 +465,48 @@ mod tests {
             Release::draw(),
         )
         .unwrap();
+    }
+    #[test]
+    fn controlled_restore_progress_and_cancellation_cross_blocks() {
+        let mut m = game();
+        release(&mut m);
+        // Alternating efforts prevent adjacent records from being coalesced.
+        for i in 0..300 {
+            m.advance(
+                1,
+                Some(Brush {
+                    effort: 180 + (i % 2) as u8,
+                    lateral_mm: 0,
+                    ahead_mm: 180,
+                }),
+            )
+            .unwrap();
+        }
+        assert!(!m.blocks.is_empty());
+        let json = m.json().unwrap();
+        let mut previous = 0;
+        let mut final_total = 0;
+        let restored = RecordedMatch::parse_controlled(json.as_bytes(), |done, total| {
+            assert!(done >= previous && done <= total);
+            previous = done;
+            final_total = total;
+            true
+        })
+        .unwrap();
+        assert!(final_total > BLOCK_RECORDS);
+        assert_eq!(previous, final_total);
+        assert_eq!(restored.hash(), m.hash());
+        for stop_at in [0, 1, 256, 270] {
+            let mut last = 0;
+            let error = RecordedMatch::parse_controlled(json.as_bytes(), |done, _| {
+                last = done;
+                done < stop_at
+            })
+            .err()
+            .unwrap();
+            assert_eq!(error, "match restore cancelled");
+            assert_eq!(last, stop_at);
+        }
     }
     #[test]
     fn interrupted_swept_shot_continues_identically() {

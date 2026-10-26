@@ -105,8 +105,16 @@ malformed updates and chunk-transfer failures. The network loop routes these pac
 control on channel 0. Start/reconnect freezes play until exact epoch/revision/hash
 acknowledgement; transfers expire after 60 seconds. A four-peer live test covers
 placement, a complete shot and in-flight reconnect under default/relay routing.
-The scene exposes room UI, shared presentation frames and seat-restricted online input. Restore remains synchronous and live updates currently copy/trial state;
-measure Android cost before shipping long-match reconnect as finished.
+The scene exposes room UI, shared presentation frames and seat-restricted online input.
+Reconnect checksum validation, decompression and simulation replay run on a Rust
+worker, with no Godot objects crossing threads. Main-thread polling publishes a
+replica only after full-hash verification and then acknowledges synchronization.
+The room shows decoded-record progress; leaving drops the job and requests
+cancellation between bounded records/blocks. At most four reconstruction workers
+exist per process, including abandoned jobs until they observe cancellation.
+The original 60-second total synchronization deadline still applies; progress
+cannot extend it indefinitely. Local autosave restore remains synchronous.
+Measure Android latency and full-game recovery before shipping it as finished.
 
 ## Journal storage
 

@@ -197,9 +197,18 @@ func poll() -> void:
 	for id: int in pending.keys():
 		if Time.get_ticks_msec() > pending[id]: drop_peer(id)
 	if is_host: pump_snapshots()
-	elif receiving_snapshot and Time.get_ticks_msec() > snapshot_deadline:
-		fail("Match synchronization timed out")
-		return
+	elif receiving_snapshot:
+		if Time.get_ticks_msec() > snapshot_deadline:
+			fail("Match synchronization timed out")
+			return
+		var result: String = replica.poll_restore()
+		if not result.is_empty():
+			fail(result)
+			return
+		if not replica.state_hash().is_empty():
+			receiving_snapshot = false
+			queue_packet(1, ClassDB.class_call_static("CurlRoom", "synced_packet", replica.epoch(), replica.revision(), replica.state_hash()))
+			changed.emit()
 	var sent := 0
 	while not outbox.is_empty() and sent < 32 and peer != null and peer.get_connection_status() == MultiplayerPeer.CONNECTION_CONNECTED:
 		var item: Dictionary = outbox[0]
@@ -246,10 +255,6 @@ func poll() -> void:
 			var result: String = replica.receive_snapshot(bytes)
 			if not result.is_empty():
 				fail(result)
-			elif not replica.state_hash().is_empty():
-				receiving_snapshot = false
-				queue_packet(1, ClassDB.class_call_static("CurlRoom", "synced_packet", replica.epoch(), replica.revision(), replica.state_hash()))
-				changed.emit()
 		else: drop_peer(sender)
 
 func receive(sender: int, bytes: PackedByteArray) -> void:

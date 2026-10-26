@@ -240,6 +240,7 @@ impl CurlSnapshot {
 pub struct CurlReplica {
     replica: Option<curl_match::sync::Replica>,
     receiver: curl_match::sync::SnapshotReceiver,
+    restoring: Option<curl_match::sync::SnapshotRestore>,
     base: Base<RefCounted>,
 }
 #[godot_api]
@@ -248,6 +249,7 @@ impl IRefCounted for CurlReplica {
         Self {
             replica: None,
             receiver: Default::default(),
+            restoring: None,
             base,
         }
     }
@@ -268,14 +270,44 @@ impl CurlReplica {
     }
     #[func]
     fn receive_snapshot(&mut self, bytes: PackedByteArray) -> GString {
-        match self.receiver.receive(bytes.as_slice()) {
-            Ok(Some(replica)) => {
-                self.replica = Some(replica);
-                GString::new()
-            }
+        if self.restoring.is_some() {
+            return "Snapshot already restoring".into();
+        }
+        match self.receiver.receive_journal(bytes.as_slice()) {
+            Ok(Some(journal)) => match curl_match::sync::SnapshotRestore::start(journal) {
+                Ok(job) => {
+                    self.restoring = Some(job);
+                    GString::new()
+                }
+                Err(error) => (&error).into(),
+            },
             Ok(None) => GString::new(),
             Err(error) => (&error).into(),
         }
+    }
+    #[func]
+    fn poll_restore(&mut self) -> GString {
+        let Some(result) = self.restoring.as_ref().and_then(|job| job.poll()) else {
+            return GString::new();
+        };
+        self.restoring = None;
+        match result {
+            Ok(replica) => {
+                self.replica = Some(replica);
+                GString::new()
+            }
+            Err(error) => (&error).into(),
+        }
+    }
+    #[func]
+    fn restore_progress(&self) -> VarDictionary {
+        let mut result = VarDictionary::new();
+        if let Some(job) = &self.restoring {
+            let (done, total) = job.progress();
+            result.set("records", done as i64);
+            result.set("total", total as i64);
+        }
+        result
     }
     #[func]
     fn apply_commit(&mut self, bytes: PackedByteArray) -> GString {
