@@ -3,6 +3,7 @@
 import argparse,hashlib,json,os,pathlib,platform,shutil,subprocess,sys,zipfile
 from godot import executable,templates
 from verify_export import verify
+from macos_package import finalize as finalize_macos
 from android_services import build as build_android_services, verify_package as verify_android_services
 ROOT=pathlib.Path(__file__).resolve().parents[1]
 p=argparse.ArgumentParser();p.add_argument('platform',choices=['linux','windows','macos','android']);p.add_argument('--number',default='1');p.add_argument('--use-installed-android-templates',action='store_true',help='Local diagnostics: use existing Android templates instead of downloading the full pinned bundle');a=p.parse_args()
@@ -54,6 +55,7 @@ try:
     run([godot,'--headless','--path',str(ROOT),'--editor','--import','--frame-delay','1000'])
     run([godot,'--headless','--path',str(ROOT),*(['--install-android-build-template'] if a.platform=='android' else []),'--export-debug',preset,str(out/filename)])
     if a.platform=='android':verify_android_services(out/filename)
+    if a.platform=='macos':finalize_macos(out/filename)
     if a.platform!='android':verify(a.platform,out/filename)
     downloads=ROOT/'build/download';downloads.mkdir(exist_ok=True)
     name='pebble-and-granite-'+a.number+'-'+a.platform

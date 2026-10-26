@@ -27,6 +27,21 @@ may sweep before the far tee, with per-player fatigue; only one contributes per
 team behind it. Online play is an early prototype: four local peers pass full-game, rematch and in-flight reconnect tests, while cross-device match and Android latency/feel testing remain open. Reconnect recovery runs in the background with visible progress. Held deliveries
 freeze during interruptions and wait for the thrower to regrip after synchronization.
 
+## Downloaded macOS builds
+
+Extract the Mac ZIP and move **Pebble & Granite.app** to Applications.
+Development builds are ad-hoc signed, but not notarized by Apple. If macOS blocks
+the first launch, open **System Settings → Privacy & Security → Open Anyway**
+after attempting to open the app.
+
+Build 40 contains malformed XML caused by the ampersand in the
+game name, which macOS reports as a damaged app. From a source checkout, repair
+the extracted app with:
+
+```sh
+python3 tools/macos_package.py "$HOME/Downloads/pebble-and-granite-40-macos/Pebble & Granite.app"
+```
+
 ## Check
 
 ```sh

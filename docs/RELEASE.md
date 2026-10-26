@@ -10,6 +10,11 @@ The Godot bridge has a native integration check. Android packages are signed wit
 a stable development key, not a store publishing identity. macOS is ad-hoc signed,
 not notarized. Windows is unsigned.
 
+On macOS, extract the ZIP and move Pebble & Granite.app to Applications. If the
+first launch is blocked, use System Settings → Privacy & Security → Open Anyway.
+Mac packages now repair the exporter's ampersand escaping and pass Apple's strict
+signature verification for both architectures before the exported runtime test.
+
 Mixed doubles is now playable locally: positioned stones, power plays, player rotation, scoring, thinking clocks, extra ends and rematches. Local matches autosave separately from practice, including interrupted throws. Choose Mixed doubles to resume. Online rooms now expose Host/Join by Code, readiness, seat-restricted play, continuous hold sweeping and reconnect. This is an early online prototype; full cross-device match and latency validation remain open.
 Mixed doubles now gives each player a brush/fatigue identity and lets both teammates
 sweep before the tee, with one contributor per team afterward. Rules-3 match saves
