@@ -718,3 +718,39 @@ label rendering leaves the authoritative hash unchanged. Before source/screens
 and review evidence are in ignored `build/setup-depth-review/`.
 Installed Android menu review follows the source commit. No new asset or feature
 was added; the forward handle orientation remains in place.
+
+
+## Installed setup checkpoint: build 67
+
+Clean Android build 67 (`0487b15`, `source_dirty: false`, SHA-256
+`32a3e048bec078bb84f18c695b2f0968898e56091a5b316d4b0dcdfee62a140f`)
+passed Delivery/four-camera, mixed-doubles placement and online-dialog review.
+The setup shadow and Cyan placement heading render clearly without overlapping
+the thinking clock. The room dialog remains readable over it. The review entered
+a temporary fresh match for the menu capture, then verified restoration of all
+four original practice/match files and backups byte for byte and stopped the app.
+No Godot warning/error appears in the captured runtime log. Evidence is in
+`build/evidence/polish/android-67/` and `build/android-67-review.log`.
+
+## Irregular pebble placement
+
+The low-angle material inspection exposed faint rows in the ice pebble normals.
+The restricted center jitter kept each cap within its original grid cell, making
+the lattice perceptible in a close-up. Replaced that distribution with full-cell
+scatter and neighbouring-cell evaluation so caps remain continuous across cell
+edges. Only the highest overlapping cap supplies the normal. The search is
+conditional on the existing pixel-footprint fade; fully faded distant fragments
+do not need pebble normals.
+
+Retained after normal Delivery, close-up before/after, all ten review captures,
+and four small camera-shift captures. The rows are no longer apparent in the
+close-up, while normal game scale remains subtle. Cap size, normal strength,
+distance fade, albedo, painted lines/rings, roughness, geometry, lightmap and
+simulation are unchanged. This adds shader arithmetic near the camera, with no
+new texture fetches, images or draw calls. Physical-phone GPU cost remains
+unverified; installed Android rendering/touch validation follows the commit.
+
+Sources, baseline close-up, comparisons and clean native review logs are in
+ignored `build/ice-scatter-review/`. The inspection camera is not a game feature.
+The requested forward handle orientation remains intact. Weekly quota remaining
+is 89 percent.

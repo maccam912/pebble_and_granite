@@ -31,12 +31,28 @@ void fragment() {
 	// and fades with pixel footprint while retaining texture in close views.
 	float cloud = surface_noise(p * 2.0) * 0.018 + surface_noise(p * 9.0) * 0.012;
 	float detail = 1.0 - smoothstep(0.35, 1.0, length(fwidth(p * 160.0)));
-	vec2 pebble_cell = floor(p * 160.0);
-	vec2 pebble_center = (vec2(hash21(pebble_cell), hash21(pebble_cell + 17.7)) - 0.5) * 0.36;
-	float pebble_radius = 0.20 + hash21(pebble_cell + 8.1) * 0.12;
-	vec2 pebble_offset = (fract(p * 160.0) - 0.5 - pebble_center) / pebble_radius;
-	float pebble_cap = 1.0 - dot(pebble_offset, pebble_offset);
-	vec2 pebble_normal = pebble_offset * smoothstep(0.0, 0.25, pebble_cap);
+	vec2 pebble_normal = vec2(0.0);
+	if (detail > 0.0) {
+		vec2 pebble_cell = floor(p * 160.0);
+		vec2 local = fract(p * 160.0);
+		float highest_cap = 0.0;
+		// Full-cell scatter breaks visible rows. Neighbours keep droplets
+		// continuous across cell edges; distant fragments skip this search.
+		for (int y = -1; y <= 1; y++) {
+			for (int x = -1; x <= 1; x++) {
+				vec2 neighbour = vec2(float(x), float(y));
+				vec2 seed = pebble_cell + neighbour;
+				vec2 center = neighbour + vec2(hash21(seed), hash21(seed + 17.7));
+				float radius = 0.20 + hash21(seed + 8.1) * 0.12;
+				vec2 offset = (local - center) / radius;
+				float cap = 1.0 - dot(offset, offset);
+				if (cap > highest_cap) {
+					highest_cap = cap;
+					pebble_normal = offset * smoothstep(0.0, 0.25, cap);
+				}
+			}
+		}
+	}
 	float ice_grain = texture(ice_texture, p * 2.0).r;
 	ALBEDO = (mix(paint, vec3(0.64, 0.68, 0.70), 0.035) + cloud - 0.015) * mix(0.96, 1.025, ice_grain);
 	ROUGHNESS = 0.30 + ice_grain * 0.12;
