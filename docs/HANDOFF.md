@@ -596,3 +596,19 @@ passed. A rendered slide was inspected. Four live peers completed the revised
 first delivery, automatic hog fault, nine ends (4:5) and rematch. First-shot timing
 was 27.337 s wall / 27.308 s simulated, max headless frame gap 10.181 ms; this is
 not physical Android performance evidence. Weekly remaining usage: 64%.
+
+## Installed direct-on-ice Android validation
+
+Clean `eecf858` was built and installed on Android 35 ARM64. All six golden
+traces/JNI checks passed. Actual touchscreen MOVE/UP sequences verified direct
+handle grip, pull/push/held slide, both curl directions, and exactly one hog fault
+when held too long. Existing emulator practice files were preserved before tests.
+Added tools/android_touch_probe.py for repeatable, explicitly selected emulator
+runs; see docs/ANDROID_INPUT.md for APK provenance, evidence and layout constraints.
+This does not establish physical-device feel or Android frame-time performance.
+
+The same APK also passed Android↔macOS forced-relay shot/in-flight reconnect;
+final hashes matched at 1f145c13ee8ae46b. Result is under
+build/probes/9f0c034758d3408e8a520e876afb5b3a/. The first runner invocation was
+stopped before host launch because it attempted an unnecessary editor download;
+the successful run explicitly used GODOT_BIN for the installed editor.
