@@ -754,3 +754,42 @@ Sources, baseline close-up, comparisons and clean native review logs are in
 ignored `build/ice-scatter-review/`. The inspection camera is not a game feature.
 The requested forward handle orientation remains intact. Weekly quota remaining
 is 89 percent.
+
+
+## Installed checkpoint: materials, setup and irregular ice (build 68)
+
+Clean Android build 68 (`cd4edcf`, `source_dirty: false`, SHA-256
+`890c1d805cd660bb593820cde90959da39899f8036c7050dee13acec9e22bf03`)
+passed the complete installed direct-touch probe: both curl directions, spatial
+scrub/lift, accessible hold sweeping, held pause/resume and regrip, and exactly
+one held hog fault. Fresh-ice acknowledgement took 0.44-0.46 seconds on the existing
+emulator. The result records the APK hash above. Evidence is in
+`build/probes/touch-9ec89de3bb55441fbeca8fe38ae674e9/` and
+`build/android-68-full-probe.log`.
+
+A separate installed review then captured Delivery, all four camera selections,
+placement setup and the online dialog. Reviewed the material, ice and menu
+captures with clean Godot logs. Both wrappers restored all four original saves
+and backups byte for byte and stopped the app. Evidence is in
+`build/evidence/polish/android-68/` and `build/android-68-review.log`.
+The full-probe runtime log is preserved as `probe-app-log.txt`; `app-log.txt`
+contains the later camera/menu review.
+
+An aggregate EGL-log observation is stored in
+`build/ice-scatter-review/emulator-egl-observation.json`: filtering intervals
+with reported count at least 50 gives median reported average intervals of
+9.78 ms in build 65 (59 intervals) and 10.32 ms in build 68 (58 intervals).
+These are different warm emulator probe runs and do not isolate shader cost.
+Physical-device GPU performance and human feel remain separate validation.
+
+The finer-bake commit `9aace04` has completed all remote core, package and publish
+jobs successfully. Setup/material commit `0487b15` has all four OS core jobs and
+the Linux package green, with the other packages still running. Newer ice/head
+CI is pending at this checkpoint. LFS integrity passes. All changes remain
+presentation work, with the requested forward handle retained and compatibility
+versions unchanged. Weekly quota remaining is 89 percent.
+
+The photographic polish objective remains active. The next comparison should
+review the room-wide lighting/material balance against the retained curling
+photos before choosing further changes. The low-angle inspection camera remains
+an ignored review artifact, not a new game feature.
