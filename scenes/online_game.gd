@@ -7,6 +7,7 @@ var waiting_release := false
 func _ready() -> void:
 	persistence_enabled = false
 	allow_online = false
+	spatial_view = true
 	super._ready()
 	match_mode = true
 	fresh_button.hide()
@@ -84,6 +85,7 @@ func _process(delta: float) -> void:
 	if run_active and not delivered_stone().is_empty():
 		var pos: Vector2 = delivered_stone().position
 		if path.is_empty() or path[-1] != pos: path.append(pos)
+	update_spatial(delta)
 	queue_redraw()
 func begin_pointer(id: int, pos: Vector2) -> void:
 	if not is_visible_in_tree() or online.state.get("paused", true) or waiting_release: return

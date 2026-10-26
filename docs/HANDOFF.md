@@ -449,3 +449,33 @@ playable scene now includes experimental online rooms. The code-directory test r
   these verified input/authority boundaries; preserve the 2D lab for diagnostics.
   Local async loading, jitter/stall UX and long Android recovery remain tracked
   reliability work, alongside physical-device and curler evaluation.
+
+## Shared 3D rink and camera slice
+
+- Added a presentation-only `CurlRinkView` used by the default practice scene and
+  online game. It renders the shared authoritative frame into a separate viewport:
+  three-sheet club geometry, exact house/hog/back/tee markings, stable stone IDs,
+  rotating team handles, broom and an accessible held-brush animation.
+- Auto, Delivery, Sweeper, Skip and orthographic House cameras are available.
+  Projected broom dragging in House view changes the existing integer aim input.
+  Camera buttons cannot accidentally begin sweeping. The original 2D lab remains
+  available; both views retain the same mouse/held-trackpad/touch delivery mapper.
+- Position smoothing is presentation-only. Reset/end changes remove stale meshes;
+  rendering/camera cycling cannot change the authoritative hash. New offline tests
+  cover projection round-trip, aim, delivery, camera-input isolation and reset,
+  and join the desktop CI gates. Existing input and online-UI checks pass.
+- Captured and inspected delivery/sweeper/skip/house frames under Compatibility
+  rendering. Adjusted lighting and removed overhead roof obstruction. Images are
+  under `build/evidence/rink-*.png`. This is procedural prototype art, not final art.
+- The right-side delivery card remains for now. The bible's body/slide model,
+  direct 3D hand interaction, hog-release timing and spatial brush input are still
+  required; no physical feel or Android GPU performance claim is made here.
+- d392ab6 asynchronous reconstruction passed all CI jobs. caa6ae1 Android-probe
+  pipeline remains in progress. Weekly checkpoint remains 72% available.
+
+- The live four-room flow passed after the router restart with 3D scene integration:
+  nine ends, 5:4 final score, and synchronized rematch readiness. The initial swept
+  shot took 25.450 s wall / 25.404 s simulation in four headless views; this is a
+  networking/scene regression check, not a rendering benchmark.
+- Reused stone IDs refresh team colors and snap on end changes. Camera switching
+  is blocked during a held pointer gesture, so a second touch cannot redirect aim.

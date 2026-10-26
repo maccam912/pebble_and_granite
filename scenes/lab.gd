@@ -5,6 +5,10 @@ const INK := Color("0b2330")
 const GOLD := Color("eabf69")
 const CYAN := Color("64cdd1")
 var allow_online := true
+var spatial_view := false
+var rink: CurlRinkView
+var camera_button: Button
+var view_button: Button
 var room_panel: CurlRoomPanel
 var self_test_nonce := ""
 var network_probe_request: Dictionary = {}
@@ -116,11 +120,40 @@ func _ready() -> void:
 	create_match_controls()
 	reset(false)
 	restore_practice()
+	if spatial_view: create_spatial_view()
 	if allow_online:
 		button("Online rooms", Vector2(840, 30), open_online)
 		room_panel = CurlRoomPanel.new()
 		add_child(room_panel)
 		room_panel.hide()
+
+func create_spatial_view() -> void:
+	rink = CurlRinkView.new()
+	rink.position = Vector2(40, 110)
+	rink.size = Vector2(740, 590)
+	add_child(rink)
+	move_child(rink, 0)
+	camera_button = button("Camera: Auto", Vector2(52, 122), func():
+		if pointer == -99: camera_button.text = "Camera: " + rink.cycle_camera())
+	camera_button.custom_minimum_size = Vector2(190, 40)
+	var toggle := button("2D lab", Vector2(600, 122), func(): pass)
+	view_button = toggle
+	toggle.custom_minimum_size = Vector2(165, 40)
+	toggle.pressed.connect(func():
+		if pointer != -99: return
+		spatial_view = not spatial_view
+		rink.visible = spatial_view
+		camera_button.visible = spatial_view
+		toggle.text = "2D lab" if spatial_view else "3D rink"
+		update_labels()
+		queue_redraw())
+	update_spatial(0.0)
+func update_spatial(delta: float) -> void:
+	if rink == null or not spatial_view: return
+	var aiming: bool = not run_active and phase != "Stone at rest" and frame.get("match_phase", "Calling") == "Calling"
+	rink.render_frame(frame, run_active, hold_sweep or sweeping, broom_mm, turn, aiming, delta)
+func broom_screen_point() -> Vector2:
+	return rink.broom_point() if spatial_view and rink != null else house_point(Vector2(float(broom_mm) / 1000.0, 0))
 
 func open_online() -> void:
 	save_practice()
@@ -156,7 +189,7 @@ func reset(persist := true) -> void:
 	accumulator = 0.0
 	path.clear()
 	stroke_trace.clear()
-	report = "Drag the broom in the house.\nGrip the stone below, pull back, push forward, hold steady, then lift."
+	report = ("House camera: drag the broom to aim." if spatial_view else "Drag the broom in the house.") + "\nGrip the stone below, pull back, push forward, hold steady, then lift."
 	update_labels()
 	queue_redraw()
 	if match_mode:
@@ -166,7 +199,7 @@ func reset(persist := true) -> void:
 
 func update_labels() -> void:
 	status.text = "PEBBLE & GRANITE  /  " + phase
-	hint.text = "FEEL LAB     •     Seed 42     •     Mouse / trackpad / touch"
+	hint.text = "CLUB ICE     •     Mouse / trackpad / touch" if spatial_view else "FEEL LAB     •     Seed 42     •     Mouse / trackpad / touch"
 	turn_button.text = "Turn: clockwise ↻" if turn == 1 else "Turn: counterclockwise ↺"
 	one_button.text = "One-push: on" if one_push else "One-push: off"
 	new_button.disabled = run_active
@@ -308,6 +341,7 @@ func _process(delta: float) -> void:
 				update_labels()
 			if frame.resting or frame.global_tick - last_save_tick >= 240:
 				save_practice()
+	update_spatial(delta)
 	queue_redraw()
 
 func _notification(what: int) -> void:
@@ -344,6 +378,8 @@ func units(p: Vector2) -> Vector2i:
 	return Vector2i(p * (1000000.0 / 800.0))
 
 func begin_pointer(id: int, p: Vector2) -> void:
+	for control in [camera_button, view_button]:
+		if control != null and control.is_visible_in_tree() and control.get_global_rect().has_point(p): return
 	if match_mode and not run_active and frame.get("match_phase", "") != "Calling": return
 	if pointer != -99 or p.y > 710: return
 	if run_active:
@@ -352,7 +388,7 @@ func begin_pointer(id: int, p: Vector2) -> void:
 			pointer = id
 			sweeping = true
 		return
-	if p.distance_to(house_point(Vector2(float(broom_mm) / 1000.0, 0))) < 55:
+	if p.distance_to(broom_screen_point()) < 55:
 		pointer = id
 		dragging_broom = true
 	elif phase == "Ready" and p.distance_to(handle_point()) < 80:
@@ -366,7 +402,7 @@ func begin_pointer(id: int, p: Vector2) -> void:
 func move_pointer(p: Vector2) -> void:
 	if sweeping: return
 	if dragging_broom:
-		broom_mm = clampi(int((p.x - 555) / 94.0 * 1000), -2200, 2200)
+		broom_mm = int(rink.aim_x(p) * 1000.0) if spatial_view and rink != null else clampi(int((p.x - 555) / 94.0 * 1000), -2200, 2200)
 	elif not run_active:
 		var q := units(p)
 		session.motion(input_clock.call(), q.x, q.y)
@@ -400,35 +436,36 @@ func end_pointer(p: Vector2) -> void:
 	update_labels()
 
 func _draw() -> void:
-	# Broad, quiet panels preserve contrast on desktop and landscape phones.
-	draw_style_box(panel(Color("102b37")), Rect2(40, 110, 250, 590))
-	draw_style_box(panel(Color("102b37")), Rect2(315, 110, 465, 590))
 	draw_style_box(panel(Color("102b37")), Rect2(800, 110, 440, 380))
-	draw_rect(Rect2(sheet_point(Vector2(-2.375, 2.2)), Vector2(142.5, 550)), ICE)
-	for y in [-28.349, -6.401]:
-		draw_line(sheet_point(Vector2(-2.375, y)), sheet_point(Vector2(2.375, y)), Color("b3464d"), 3)
-	draw_line(sheet_point(Vector2(0, -30)), sheet_point(Vector2(0, 2)), Color("87a1ad"), 1)
-	rings(sheet_point(Vector2.ZERO), 30)
-	draw_string(font, Vector2(65, 680), "FULL SHEET", HORIZONTAL_ALIGNMENT_LEFT, -1, 15, CYAN)
-	draw_rect(Rect2(330, 125, 450, 560), ICE)
-	rings(house_point(Vector2.ZERO), 94)
-	draw_line(Vector2(555, 125), Vector2(555, 685), Color("96a7af"), 1)
-	draw_line(Vector2(330, 325), Vector2(780, 325), Color("96a7af"), 1)
-	draw_line(Vector2(330, 153), Vector2(780, 153), Color("b3464d"), 2)
-	if path.size() > 1:
-		for i in range(1, path.size()):
-			draw_line(sheet_point(path[i-1]), sheet_point(path[i]), Color("4b9ea5"), 2)
-			if path[i].y > -3.7: draw_line(house_point(path[i-1]), house_point(path[i]), Color("4b9ea5"), 2)
-	var bp := house_point(Vector2(float(broom_mm) / 1000.0, 0))
-	draw_line(bp - Vector2(0, 35), bp + Vector2(0, 18), INK, 3)
-	draw_rect(Rect2(bp - Vector2(18, 6), Vector2(36, 12)), GOLD)
-	for s in frame.get("stones", []):
-		if s.active:
-			stone(sheet_point(s.position), 5.0, s.turns, s.team)
-			if s.position.y > -3.6: stone(house_point(s.position), 13.35, s.turns, s.team)
-	if run_active and (hold_sweep or sweeping) and not delivered_stone().is_empty():
-		var sp: Vector2 = delivered_stone().position + Vector2(0, 0.3)
-		draw_line(sheet_point(sp) - Vector2(10, 0), sheet_point(sp) + Vector2(10, 0), GOLD, 5)
+	if not spatial_view:
+		# Broad, quiet panels preserve contrast on desktop and landscape phones.
+		draw_style_box(panel(Color("102b37")), Rect2(40, 110, 250, 590))
+		draw_style_box(panel(Color("102b37")), Rect2(315, 110, 465, 590))
+		draw_rect(Rect2(sheet_point(Vector2(-2.375, 2.2)), Vector2(142.5, 550)), ICE)
+		for y in [-28.349, -6.401]:
+			draw_line(sheet_point(Vector2(-2.375, y)), sheet_point(Vector2(2.375, y)), Color("b3464d"), 3)
+		draw_line(sheet_point(Vector2(0, -30)), sheet_point(Vector2(0, 2)), Color("87a1ad"), 1)
+		rings(sheet_point(Vector2.ZERO), 30)
+		draw_string(font, Vector2(65, 680), "FULL SHEET", HORIZONTAL_ALIGNMENT_LEFT, -1, 15, CYAN)
+		draw_rect(Rect2(330, 125, 450, 560), ICE)
+		rings(house_point(Vector2.ZERO), 94)
+		draw_line(Vector2(555, 125), Vector2(555, 685), Color("96a7af"), 1)
+		draw_line(Vector2(330, 325), Vector2(780, 325), Color("96a7af"), 1)
+		draw_line(Vector2(330, 153), Vector2(780, 153), Color("b3464d"), 2)
+		if path.size() > 1:
+			for i in range(1, path.size()):
+				draw_line(sheet_point(path[i-1]), sheet_point(path[i]), Color("4b9ea5"), 2)
+				if path[i].y > -3.7: draw_line(house_point(path[i-1]), house_point(path[i]), Color("4b9ea5"), 2)
+		var bp := house_point(Vector2(float(broom_mm) / 1000.0, 0))
+		draw_line(bp - Vector2(0, 35), bp + Vector2(0, 18), INK, 3)
+		draw_rect(Rect2(bp - Vector2(18, 6), Vector2(36, 12)), GOLD)
+		for s in frame.get("stones", []):
+			if s.active:
+				stone(sheet_point(s.position), 5.0, s.turns, s.team)
+				if s.position.y > -3.6: stone(house_point(s.position), 13.35, s.turns, s.team)
+		if run_active and (hold_sweep or sweeping) and not delivered_stone().is_empty():
+			var sp: Vector2 = delivered_stone().position + Vector2(0, 0.3)
+			draw_line(sheet_point(sp) - Vector2(10, 0), sheet_point(sp) + Vector2(10, 0), GOLD, 5)
 	draw_string(font, Vector2(825, 147), "THE DELIVERY", HORIZONTAL_ALIGNMENT_LEFT, -1, 16, CYAN)
 	draw_string(font, Vector2(825, 183), "Pull • push • settle • lift", HORIZONTAL_ALIGNMENT_LEFT, -1, 24, Color.WHITE)
 	stone(handle_point(), 63, float(turn) / 12.0, int(frame.get("team", 0)))

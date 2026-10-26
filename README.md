@@ -1,7 +1,7 @@
 # Pebble & Granite
 
 A curling game in Godot with a shared deterministic Rust simulation. The first
-playable milestone is a feel lab: aim the broom, pull/push/settle/lift the stone,
+playable milestone is a 3D club feel slice: aim the broom, pull/push/settle/lift the stone,
 then sweep during travel and inspect the release report. No power sliders.
 
 ## Run
@@ -20,7 +20,7 @@ Use `python3 tools/build_native.py --debug` only for native debugging; it is muc
 Godot is not installed. Mouse and held-click trackpad use the same stroke as
 Android touch. Drag the broom in the house to aim. Grip the large stone, pull
 back, push upward, settle, then lift. One-push removes the pull/settle requirement.
-Hold the ice or the sweep button to sweep; release to stop. Next stone retains the field and evolving ice; Fresh ice starts a new session.
+Cycle Camera for delivery, sweeper, skip or overhead house views; drag the broom in House view to aim. The 2D lab button retains the diagnostic view. Hold the ice or the sweep button to sweep; release to stop. Next stone retains the field and evolving ice; Fresh ice starts a new session.
 Practice saves automatically, including interrupted shots, with a previous-save backup. Choose Mixed doubles for a local pass-and-play game: select positioned stones, power plays and first/last throwers, then play through scoring and extra ends. Local matches autosave separately from practice; choose Mixed doubles again to resume, including interrupted shots. Choose Online rooms to host or join by four-character code. Four players ready up for online mixed doubles; the host stays open. Online play is an early prototype: four local peers pass full-game, rematch and in-flight reconnect tests, while cross-device match and Android latency/feel testing remain open. Reconnect recovery runs in the background with visible progress.
 
 ## Check
