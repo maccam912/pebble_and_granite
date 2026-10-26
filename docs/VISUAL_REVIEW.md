@@ -357,3 +357,24 @@ light through diffuse glazing, without adding a runtime light or exterior image.
 Ten native captures and the rink gate pass, with clean runtime logs. Before
 images remain in `build/glazing-review/base-screenshots/`. Installed Android review
 of this shader follows the source commit. Weekly quota remaining: 92 percent.
+
+
+Clean Android build 56 (`c744a20`, `source_dirty: false`, SHA-256
+`0f0617fc87bc4b87c7cbddbfa07dfd2229838f119b457dff8f641ca57fb4a36c`)
+passed the installed Delivery/four-camera review. The diffuse window gradient
+renders correctly; captured app log has no Godot warnings/errors. Evidence is in
+`build/evidence/polish/android-56/` and `build/android-56-review.log`. All four
+original save files/backups were restored byte for byte, and the app stopped.
+CI for rounded timber `6ec771c` has completed successfully, including packaging;
+CI for `c744a20` is still running at this checkpoint.
+
+## Neutral white ice comparison
+
+The white ice appeared grey beside the photographic references, especially in
+the overhead view. Raised only its neutral base from `(0.62, 0.66, 0.67)` to
+`(0.72, 0.75, 0.76)` in linear shader colour. Ring/hog colours, surface noise,
+roughness, normal strength, lighting, reflection and camera exposure are unchanged.
+Reviewed Delivery, Skip and House: brighter ice separates the dark blue house
+and granite while retaining the broad glancing fixture reflection. All ten native
+captures pass with a clean runtime log. Before images and shader are retained in
+ignored `build/ice-white-review/`. Android validation follows the source commit.

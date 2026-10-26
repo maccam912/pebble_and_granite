@@ -15,11 +15,11 @@ void fragment() {
 	vec2 p = world_position.xz - vec2(lane_center, 0.0);
 	float radius = length(vec2(p.x, min(abs(p.y), abs(p.y - 34.75))));
 	float aa = max(fwidth(radius), 0.001);
-	vec3 paint = vec3(0.62, 0.66, 0.67);
+	vec3 paint = vec3(0.72, 0.75, 0.76);
 	paint = mix(paint, vec3(0.055, 0.19, 0.30), 1.0 - smoothstep(1.829-aa, 1.829+aa, radius));
-	paint = mix(paint, vec3(0.62, 0.66, 0.67), 1.0 - smoothstep(1.219-aa, 1.219+aa, radius));
+	paint = mix(paint, vec3(0.72, 0.75, 0.76), 1.0 - smoothstep(1.219-aa, 1.219+aa, radius));
 	paint = mix(paint, vec3(0.59, 0.075, 0.105), 1.0 - smoothstep(0.610-aa, 0.610+aa, radius));
-	paint = mix(paint, vec3(0.62, 0.66, 0.67), 1.0 - smoothstep(0.152-aa, 0.152+aa, radius));
+	paint = mix(paint, vec3(0.72, 0.75, 0.76), 1.0 - smoothstep(0.152-aa, 0.152+aa, radius));
 	float line_aa = max(fwidth(p.y), 0.001);
 	float hog = min(abs(p.y - 6.35), abs(p.y - 28.40));
 	paint = mix(paint, vec3(0.55, 0.08, 0.10), 1.0 - smoothstep(0.051-line_aa, 0.051+line_aa, hog));
