@@ -197,6 +197,7 @@ func build_club() -> void:
 	var steel := material("66727a", .46)
 	var plaster := CurlRinkArt.shader_material("res://render/club_finish.gdshader")
 	plaster.set_shader_parameter("paint_color", Color("b5babc"))
+	var glass := CurlRinkArt.shader_material("res://render/club_glass.gdshader")
 	var rubber := material("273238", .94)
 	box(world, Vector3(18, .2, 47), Vector3(0, -.16, 17.2), rubber)
 	for lane in [-6.0, 0.0, 6.0]:
@@ -221,7 +222,7 @@ func build_club() -> void:
 		plank(world, Vector3(.09, .06, 47), Vector3(side - signf(side) * .16, .92, 17.2), wood)
 		for z in range(0, 40, 6):
 			box(world, Vector3(.18, 3.8, .13), Vector3(side - signf(side) * .19, 1.9, z), steel)
-			box(world, Vector3(.20, 1.0, 3.6), Vector3(side - signf(side) * .21, 2.45, z + 2.5), material("526e79", .2))
+			box(world, Vector3(.20, 1.0, 3.6), Vector3(side - signf(side) * .21, 2.45, z + 2.5), glass)
 			for division in [-1.8, 0.0, 1.8]:
 				box(world, Vector3(.23, 1.08, .045), Vector3(side - signf(side) * .23, 2.45, z + 2.5 + division), steel)
 			box(world, Vector3(.24, .045, 3.7), Vector3(side - signf(side) * .22, 1.93, z + 2.5), steel)

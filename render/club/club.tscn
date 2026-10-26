@@ -6,6 +6,7 @@
 [ext_resource type="Texture2D" path="res://assets/textures/curling-oak.png" id="4_5uapo"]
 [ext_resource type="Shader" path="res://render/club_finish.gdshader" id="5_y30uk"]
 [ext_resource type="LightmapGIData" path="res://render/club/club.lmbake" id="6_g0238"]
+[ext_resource type="Shader" path="res://render/club_glass.gdshader" id="7_glass"]
 
 [sub_resource type="StandardMaterial3D" id="StandardMaterial3D_db0hd"]
 albedo_color = Color(0.15294118, 0.19607843, 0.21960784, 1)
@@ -679,9 +680,8 @@ _surfaces = [{
 "vertex_data": PackedByteArray("7FG4vTMz8z+4HoU97FG4PTMz8z+4HoU97FG4vTMz87+4HoU97FG4PTMz87+4HoU97FG4PTMz8z+4HoW97FG4vTMz8z+4HoW97FG4PTMz87+4HoW97FG4vTMz87+4HoW97FG4PTMz8z+4HoU97FG4PTMz8z+4HoW97FG4PTMz87+4HoU97FG4PTMz87+4HoW97FG4vTMz8z+4HoW97FG4vTMz8z+4HoU97FG4vTMz87+4HoW97FG4vTMz87+4HoU97FG4PTMz8z+4HoU97FG4vTMz8z+4HoU97FG4PTMz8z+4HoW97FG4vTMz8z+4HoW97FG4vTMz87+4HoU97FG4PTMz87+4HoU97FG4vTMz87+4HoW97FG4PTMz87+4HoW9/3//f////7//f/9/////v/9//3////+//3//f////7//////AAD/v/////8AAP+//////wAA/7//////AAD/v///AID///////8AgP///////wCA////////AID/////AAAAgP9//78AAACA/3//vwAAAID/f/+/AAAAgP9//78AgP//AAD/vwCA//8AAP+/AID//wAA/78AgP//AAD/vwCAAAD///+/AIAAAP///78AgAAA////vwCAAAD///+/")
 }]
 
-[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_aebse"]
-albedo_color = Color(0.32156864, 0.43137255, 0.4745098, 1)
-roughness = 0.2
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_glass"]
+shader = ExtResource("7_glass")
 
 [sub_resource type="ArrayMesh" id="ArrayMesh_h4na5"]
 lightmap_size_hint = Vector2i(22, 22)
@@ -3826,7 +3826,7 @@ mesh = SubResource("ArrayMesh_hfnyc")
 
 [node name="MeshInstance3D044" type="MeshInstance3D" parent="." unique_id=1858555823]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -8.79, 2.45, 2.5)
-material_override = SubResource("StandardMaterial3D_aebse")
+material_override = SubResource("ShaderMaterial_glass")
 mesh = SubResource("ArrayMesh_h4na5")
 
 [node name="MeshInstance3D045" type="MeshInstance3D" parent="." unique_id=1630985603]
@@ -3861,7 +3861,7 @@ mesh = SubResource("ArrayMesh_kausf")
 
 [node name="MeshInstance3D051" type="MeshInstance3D" parent="." unique_id=944122808]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -8.79, 2.45, 8.5)
-material_override = SubResource("StandardMaterial3D_aebse")
+material_override = SubResource("ShaderMaterial_glass")
 mesh = SubResource("ArrayMesh_1g52v")
 
 [node name="MeshInstance3D052" type="MeshInstance3D" parent="." unique_id=1927076294]
@@ -3896,7 +3896,7 @@ mesh = SubResource("ArrayMesh_pruky")
 
 [node name="MeshInstance3D058" type="MeshInstance3D" parent="." unique_id=939726381]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -8.79, 2.45, 14.5)
-material_override = SubResource("StandardMaterial3D_aebse")
+material_override = SubResource("ShaderMaterial_glass")
 mesh = SubResource("ArrayMesh_4wt4s")
 
 [node name="MeshInstance3D059" type="MeshInstance3D" parent="." unique_id=111347439]
@@ -3931,7 +3931,7 @@ mesh = SubResource("ArrayMesh_xu6qi")
 
 [node name="MeshInstance3D065" type="MeshInstance3D" parent="." unique_id=1449978465]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -8.79, 2.45, 20.5)
-material_override = SubResource("StandardMaterial3D_aebse")
+material_override = SubResource("ShaderMaterial_glass")
 mesh = SubResource("ArrayMesh_l8h3o")
 
 [node name="MeshInstance3D066" type="MeshInstance3D" parent="." unique_id=1091263195]
@@ -3966,7 +3966,7 @@ mesh = SubResource("ArrayMesh_wxhlu")
 
 [node name="MeshInstance3D072" type="MeshInstance3D" parent="." unique_id=374805533]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -8.79, 2.45, 26.5)
-material_override = SubResource("StandardMaterial3D_aebse")
+material_override = SubResource("ShaderMaterial_glass")
 mesh = SubResource("ArrayMesh_eenxm")
 
 [node name="MeshInstance3D073" type="MeshInstance3D" parent="." unique_id=28751031]
@@ -4001,7 +4001,7 @@ mesh = SubResource("ArrayMesh_o5q5c")
 
 [node name="MeshInstance3D079" type="MeshInstance3D" parent="." unique_id=1643318785]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -8.79, 2.45, 32.5)
-material_override = SubResource("StandardMaterial3D_aebse")
+material_override = SubResource("ShaderMaterial_glass")
 mesh = SubResource("ArrayMesh_80o3o")
 
 [node name="MeshInstance3D080" type="MeshInstance3D" parent="." unique_id=377773763]
@@ -4036,7 +4036,7 @@ mesh = SubResource("ArrayMesh_jcdba")
 
 [node name="MeshInstance3D086" type="MeshInstance3D" parent="." unique_id=2069580587]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -8.79, 2.45, 38.5)
-material_override = SubResource("StandardMaterial3D_aebse")
+material_override = SubResource("ShaderMaterial_glass")
 mesh = SubResource("ArrayMesh_wfbnq")
 
 [node name="MeshInstance3D087" type="MeshInstance3D" parent="." unique_id=1784061150]
@@ -4086,7 +4086,7 @@ mesh = SubResource("ArrayMesh_yxrg8")
 
 [node name="MeshInstance3D096" type="MeshInstance3D" parent="." unique_id=1398397804]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 8.79, 2.45, 2.5)
-material_override = SubResource("StandardMaterial3D_aebse")
+material_override = SubResource("ShaderMaterial_glass")
 mesh = SubResource("ArrayMesh_y40a0")
 
 [node name="MeshInstance3D097" type="MeshInstance3D" parent="." unique_id=1542691147]
@@ -4121,7 +4121,7 @@ mesh = SubResource("ArrayMesh_u8trp")
 
 [node name="MeshInstance3D103" type="MeshInstance3D" parent="." unique_id=1003574113]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 8.79, 2.45, 8.5)
-material_override = SubResource("StandardMaterial3D_aebse")
+material_override = SubResource("ShaderMaterial_glass")
 mesh = SubResource("ArrayMesh_nnycs")
 
 [node name="MeshInstance3D104" type="MeshInstance3D" parent="." unique_id=820618296]
@@ -4156,7 +4156,7 @@ mesh = SubResource("ArrayMesh_rlxgp")
 
 [node name="MeshInstance3D110" type="MeshInstance3D" parent="." unique_id=1604704809]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 8.79, 2.45, 14.5)
-material_override = SubResource("StandardMaterial3D_aebse")
+material_override = SubResource("ShaderMaterial_glass")
 mesh = SubResource("ArrayMesh_b14oc")
 
 [node name="MeshInstance3D111" type="MeshInstance3D" parent="." unique_id=1374831377]
@@ -4191,7 +4191,7 @@ mesh = SubResource("ArrayMesh_mif7m")
 
 [node name="MeshInstance3D117" type="MeshInstance3D" parent="." unique_id=2060134152]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 8.79, 2.45, 20.5)
-material_override = SubResource("StandardMaterial3D_aebse")
+material_override = SubResource("ShaderMaterial_glass")
 mesh = SubResource("ArrayMesh_ldg1e")
 
 [node name="MeshInstance3D118" type="MeshInstance3D" parent="." unique_id=1286664062]
@@ -4226,7 +4226,7 @@ mesh = SubResource("ArrayMesh_kofi7")
 
 [node name="MeshInstance3D124" type="MeshInstance3D" parent="." unique_id=932530498]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 8.79, 2.45, 26.5)
-material_override = SubResource("StandardMaterial3D_aebse")
+material_override = SubResource("ShaderMaterial_glass")
 mesh = SubResource("ArrayMesh_hw1vj")
 
 [node name="MeshInstance3D125" type="MeshInstance3D" parent="." unique_id=2144083783]
@@ -4261,7 +4261,7 @@ mesh = SubResource("ArrayMesh_di834")
 
 [node name="MeshInstance3D131" type="MeshInstance3D" parent="." unique_id=707059490]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 8.79, 2.45, 32.5)
-material_override = SubResource("StandardMaterial3D_aebse")
+material_override = SubResource("ShaderMaterial_glass")
 mesh = SubResource("ArrayMesh_abj3i")
 
 [node name="MeshInstance3D132" type="MeshInstance3D" parent="." unique_id=1843102349]
@@ -4296,7 +4296,7 @@ mesh = SubResource("ArrayMesh_ipw3u")
 
 [node name="MeshInstance3D138" type="MeshInstance3D" parent="." unique_id=787258824]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 8.79, 2.45, 38.5)
-material_override = SubResource("StandardMaterial3D_aebse")
+material_override = SubResource("ShaderMaterial_glass")
 mesh = SubResource("ArrayMesh_g6kiw")
 
 [node name="MeshInstance3D139" type="MeshInstance3D" parent="." unique_id=69693004]

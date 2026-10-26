@@ -326,3 +326,34 @@ and original club are retained in ignored `build/bevel-review/base-screenshots/`
 and `base-club/`. Compared Delivery and the close Sweeper view before retaining
 the change. The offline editor again reports seven texture RIDs at shutdown;
 the finalized Compatibility runtime is clean. Installed Android review is next.
+
+
+## Rounded timber on Android
+
+Clean Android build 55 (`6ec771c`, `source_dirty: false`, SHA-256
+`87515c590f4df4e76912a15ffc2d558bb99612d836d71181ebf14641ac2ef3ab`)
+was installed on the existing test emulator. Reviewed Delivery and four camera
+captures, including the rounded rails/bench edges. Evidence is in
+`build/evidence/polish/android-55/` and `build/android-55-review.log`.
+No Godot warnings/errors appeared in the captured app log. All four original
+practice/match files and backups were restored byte for byte, and the app stopped.
+This was a renderer/camera review; the complete gesture probe remains the separate
+build-53 result above.
+
+## Upper glazing material
+
+The flat blue panes read as solid wall panels. The upper glazing in the
+[Banff recreation centre reference](https://www.athleticbusiness.com/project-galleries/architectural-showcase/j6ZYVJdHWQ/banff-community-recreation-centre-renovation-and-addition-banff-alta)
+suggested a restrained vertical light gradient and diffusing edges. The photo
+was viewed only as reference in ignored `build/reference/`; it is not an asset.
+The new glass shader is original procedural code, shared by all fourteen panes.
+
+Reviewed the material on the existing baked meshes. It retains the geometry,
+UV2, atlas and baked-data bytes exactly. A thinner frame/pane geometry variant
+was prepared but not finalized: the native editor accepted node selection yet
+did not activate its bake command, including after a normal reopen. That variant
+stays out of the shipped source. The material has modest emission to suggest
+light through diffuse glazing, without adding a runtime light or exterior image.
+Ten native captures and the rink gate pass, with clean runtime logs. Before
+images remain in `build/glazing-review/base-screenshots/`. Installed Android review
+of this shader follows the source commit. Weekly quota remaining: 92 percent.
