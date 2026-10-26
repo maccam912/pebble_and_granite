@@ -106,8 +106,53 @@ impl Authority {
     pub fn sweep(
         &mut self,
         seat: Seat,
+        tick: u32,
+        input: Sweep,
+    ) -> Result<AcceptedSweep, &'static str> {
+        self.accept_sweep(seat, tick, input, true)
+    }
+    pub fn sweep_span(
+        &mut self,
+        seat: Seat,
+        tick: u32,
+        input: Sweep,
+        count: u8,
+    ) -> Result<(), &'static str> {
+        if count == 0 || count > 12 {
+            return Err("invalid brush span");
+        }
+        let mut next = self.clone();
+        // Defending sweep authorization begins at receipt after the tee, never
+        // retroactively at the client's older rendered tick.
+        let start = if seat.team != next.game.delivering_team() {
+            tick.max(next.sim.tick)
+        } else {
+            tick
+        };
+        let first = next.accept_sweep(seat, start, input, false)?;
+        for offset in 1..count as u32 {
+            next.accept_sweep(
+                seat,
+                first
+                    .tick
+                    .checked_add(offset)
+                    .ok_or("brush tick overflow")?,
+                input,
+                false,
+            )?;
+        }
+        if first.tick < next.sim.tick {
+            next.resimulate()?;
+        }
+        *self = next;
+        Ok(())
+    }
+    fn accept_sweep(
+        &mut self,
+        seat: Seat,
         requested_tick: u32,
         mut input: Sweep,
+        resimulate: bool,
     ) -> Result<AcceptedSweep, &'static str> {
         if !self.valid_seat(seat) || self.game.phase != Phase::InFlight || !input.valid() {
             return Err("sweep unavailable");
@@ -155,7 +200,7 @@ impl Authority {
             return Err("duplicate team sweep tick");
         }
         self.sweeps.insert((tick, input.brush), input);
-        if tick < self.sim.tick {
+        if resimulate && tick < self.sim.tick {
             self.resimulate()?;
         }
         Ok(AcceptedSweep {
@@ -278,6 +323,26 @@ mod tests {
         assert_eq!(a.sim.delivered, Some(2));
         assert_eq!(a.sim.stones[0].team, 0);
         assert!(a.release(THROWER, Release::draw()).is_err());
+    }
+    #[test]
+    fn defending_brush_span_starts_at_authorized_receipt_tick() {
+        let mut a = authority();
+        a.release(THROWER, Release::draw()).unwrap();
+        for _ in 0..20 {
+            a.step().unwrap();
+        }
+        let defender = Seat {
+            team: 1,
+            position: 1,
+        };
+        let input = Sweep::centered(2, 200);
+        assert!(a.sweep_span(defender, 0, input, 12).is_err());
+        a.sim.stones.iter_mut().find(|s| s.id == 2).unwrap().pos.y = curl_fx::Fx::ratio(1, 10);
+        a.sweep_span(defender, 0, input, 12).unwrap();
+        let accepted = a.accepted_sweeps();
+        assert_eq!(accepted.len(), 12);
+        assert_eq!(accepted[0].0, 20);
+        assert_eq!(accepted[11].0, 31);
     }
     #[test]
     fn rejected_release_is_atomic() {

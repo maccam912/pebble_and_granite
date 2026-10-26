@@ -23,8 +23,8 @@ bind each connection to a seat before interpreting any gameplay command.
 
 ## Current scope
 
-The playable scene currently provides local practice and mixed doubles. Online
-gameplay and room UI are under construction. Android includes a small Godot plugin supplying a JNI application context before
+The playable scene provides local practice/mixed doubles and an experimental
+online room/match interface. Full cross-device match validation remains open. Android includes a small Godot plugin supplying a JNI application context before
 Iroh starts; Build 14 passed export CI and installed Android-emulator golden/JNI checks. Public relay availability remains an
 external service dependency. No host migration is planned for the first slice.
 
@@ -53,7 +53,7 @@ A disconnected active-game seat remains reserved. Simulation and thinking clocks
 pause until its authenticated identity returns and confirms the matching full
 state hash. This hash covers simulation, rules/clocks, release snapshot and pending
 sweeps. The host does not migrate. This is the authority contract only: replay
-reconnect UI and playable-scene integration are still
+cross-device and full-match testing are still
 required before reconnect can be advertised as a finished game feature.
 
 ## Live control-plane probes
@@ -83,7 +83,7 @@ reserved seat. The room remains paused until replay synchronization is verified.
 This is not yet a complete reconnect gameplay flow. Hosts remain ephemeral and
 host loss ends the room; host migration is explicitly out of scope.
 
-## Authoritative replication contract (protocol 4)
+## Authoritative replication contract (protocol 5)
 
 Room gameplay now runs through the same recorded match used by local saves. Each
 accepted update carries an epoch, monotonically increasing revision, before/after
@@ -105,7 +105,7 @@ malformed updates and chunk-transfer failures. The network loop routes these pac
 control on channel 0. Start/reconnect freezes play until exact epoch/revision/hash
 acknowledgement; transfers expire after 60 seconds. A four-peer live test covers
 placement, a complete shot and in-flight reconnect under default/relay routing.
-The scene still needs room UI, presentation frames and online input routing. Restore remains synchronous and live updates currently copy/trial state;
+The scene exposes room UI, shared presentation frames and seat-restricted online input. Restore remains synchronous and live updates currently copy/trial state;
 measure Android cost before shipping long-match reconnect as finished.
 
 ## Journal storage
@@ -118,3 +118,11 @@ Whole archives remain limited to 16 MiB; decoded records and flight ticks are
 bounded separately at 2 million and 4 million. Immutable blocks are shared across
 transactional state copies. The 80-throw/two-brush/60-Hz capacity fixture measures
 5.42 MB for 432,001 records; it is a storage test, not a full online game test.
+
+Protocol 5 brush spans cover up to twelve simulation ticks per input sample. The
+host retimes an obsolete span's start once and preserves its duration, validates
+all ticks atomically, and resimulates once. Defending spans never predate receipt
+and tee authorization. This is continuous hold sweeping; spatial brush strokes,
+latency feel and Android performance are not yet approved. Room controls keep the
+host simulation running while its lobby is visible; application stalls/background
+suspension still need explicit user-facing handling and device validation.

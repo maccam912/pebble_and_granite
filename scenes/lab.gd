@@ -4,6 +4,8 @@ const ICE := Color("dfecef")
 const INK := Color("0b2330")
 const GOLD := Color("eabf69")
 const CYAN := Color("64cdd1")
+var allow_online := true
+var room_panel: CurlRoomPanel
 var self_test_nonce := ""
 var session: Object
 var frame: Dictionary = {}
@@ -101,6 +103,17 @@ func _ready() -> void:
 	create_match_controls()
 	reset(false)
 	restore_practice()
+	if allow_online:
+		button("Online rooms", Vector2(840, 30), open_online)
+		room_panel = CurlRoomPanel.new()
+		add_child(room_panel)
+		room_panel.hide()
+
+func open_online() -> void:
+	save_practice()
+	pointer = -99
+	session.cancel_stroke()
+	room_panel.show()
 
 func button(text: String, pos: Vector2, action: Callable) -> Button:
 	var b := Button.new()
@@ -252,7 +265,7 @@ func handle_point() -> Vector2:
 	return Vector2(1030, 365)
 
 func _process(delta: float) -> void:
-	if session == null or suspended: return
+	if session == null or suspended or (room_panel != null and room_panel.visible): return
 	if match_mode and not run_active and frame.get("match_phase", "") == "Calling":
 		clock_remainder += delta * 1000.0
 		var elapsed := mini(int(clock_remainder), 60000)
@@ -301,6 +314,7 @@ func _notification(what: int) -> void:
 				update_labels()
 
 func _input(event: InputEvent) -> void:
+	if room_panel != null and room_panel.visible: return
 	if session == null: return
 	if event is InputEventScreenTouch:
 		if event.pressed: begin_pointer(event.index, event.position)

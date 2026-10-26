@@ -44,6 +44,12 @@ pub enum Record {
         tick: u32,
         input: Sweep,
     },
+    BrushSpan {
+        seat: Seat,
+        tick: u32,
+        input: Sweep,
+        count: u8,
+    },
     Think {
         ms: u32,
     },
@@ -219,6 +225,12 @@ impl RecordedMatch {
             Record::Order { team, first } => a.game.set_first_thrower(*team, *first),
             Record::Release { seat, release } => a.release(*seat, release.clone()),
             Record::Sweep { seat, tick, input } => a.sweep(*seat, *tick, *input).map(|_| ()),
+            Record::BrushSpan {
+                seat,
+                tick,
+                input,
+                count,
+            } => a.sweep_span(*seat, *tick, *input, *count),
             Record::Think { ms } => a.think(*ms),
             Record::Choose { seat, remedy } => a.choose(*seat, *remedy),
             Record::NextEnd {} => a.next_end(),
@@ -551,6 +563,69 @@ mod tests {
         assert_eq!(restored.hash(), m.hash());
         assert_eq!(restored.last_release_speed(), m.last_release_speed());
         assert_eq!(copy.hash(), m.hash());
+    }
+    #[test]
+    fn brush_spans_match_tick_samples_and_reject_partial_overlap_atomically() {
+        let mut span = game();
+        release(&mut span);
+        span.advance(20, None).unwrap();
+        let mut individual = span.clone();
+        let seat = Seat {
+            team: 0,
+            position: 1,
+        };
+        let input = Sweep::centered(2, 220);
+        span.apply(Record::BrushSpan {
+            seat,
+            tick: 8,
+            input,
+            count: 12,
+        })
+        .unwrap();
+        for tick in 8..20 {
+            individual
+                .apply(Record::Sweep { seat, tick, input })
+                .unwrap();
+        }
+        assert_eq!(span.hash(), individual.hash());
+        let before = span.json().unwrap();
+        assert!(
+            span.apply(Record::BrushSpan {
+                seat,
+                tick: 5,
+                input,
+                count: 12
+            })
+            .is_err()
+        );
+        assert_eq!(span.json().unwrap(), before);
+        assert!(
+            span.apply(Record::BrushSpan {
+                seat,
+                tick: 20,
+                input,
+                count: 13
+            })
+            .is_err()
+        );
+        span.advance(40, None).unwrap();
+        individual.advance(40, None).unwrap();
+        // Old spans retime their starting tick once, then keep their duration.
+        span.apply(Record::BrushSpan {
+            seat,
+            tick: 0,
+            input,
+            count: 12,
+        })
+        .unwrap();
+        for tick in 60..72 {
+            individual
+                .apply(Record::Sweep { seat, tick, input })
+                .unwrap();
+        }
+        assert_eq!(span.hash(), individual.hash());
+        let restored = RecordedMatch::parse(span.json().unwrap().as_bytes()).unwrap();
+        assert_eq!(restored.hash(), span.hash());
     }
     #[test]
     fn legacy_saves_migrate_and_expansion_bombs_are_bounded() {

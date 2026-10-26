@@ -48,12 +48,10 @@ impl CurlSession {
     /// All public input units are integers: mm/s, millimetres, milli-revolutions/s.
     #[func]
     fn deliver(&mut self, speed_mm_s: i64, broom_mm: i64, turn: i64) -> GString {
-        if !(100..=6000).contains(&speed_mm_s)
-            || !(-2200..=2200).contains(&broom_mm)
-            || ![-1, 1].contains(&turn)
-        {
-            return "Invalid delivery".into();
-        }
+        let mut r = match input_release(speed_mm_s, broom_mm, turn) {
+            Ok(release) => release,
+            Err(error) => return error.into(),
+        };
         let id = if let Some(a) = &self.game {
             a.game.next_stone_id()
         } else {
@@ -62,11 +60,8 @@ impl CurlSession {
             };
             id
         };
-        let mut r = Release::draw();
         r.stone = id;
         r.team = id % 2;
-        r.vel = V2::new(Fx::ratio(broom_mm, 1000), -r.pos.y).unit() * Fx::ratio(speed_mm_s, 1000);
-        r.spin = Fx::ratio(12 * turn, 100);
         let result = if let Some(a) = &mut self.game {
             let speed = r.vel.length();
             let result = a.release(
@@ -126,83 +121,30 @@ impl CurlSession {
     }
     #[func]
     fn frame(&self) -> VarDictionary {
-        let sim = self.game.as_ref().map_or(&self.practice.sim, |a| &a.sim);
-        let mut frame = VarDictionary::new();
-        let mut stones = Array::<VarDictionary>::new();
-        for s in &sim.stones {
-            let mut d = VarDictionary::new();
-            d.set("id", s.id as i64);
-            d.set("team", s.team as i64);
-            d.set(
-                "position",
-                Vector2::new(render(s.pos.x) as f32, render(s.pos.y) as f32),
-            );
-            d.set("speed", render(s.vel.length()));
-            d.set("turns", render(s.turns));
-            d.set("active", s.active);
-            stones.push(&d);
-        }
-        let last_release = self.practice.log.records.iter().rev().find_map(|r| {
-            if let curl_proto::session::Record::Shot(s) = r {
-                Some(s.release.vel.length())
-            } else {
-                None
-            }
-        });
-        frame.set("release_speed", last_release.map_or(0.0, render));
-        frame.set("stones", &stones);
-        frame.set("tick", (sim.tick - sim.release_tick) as i64);
-        frame.set("global_tick", sim.tick as i64);
-        frame.set("delivered", sim.delivered.map_or(-1, |id| id as i64));
-        frame.set("can_deliver_next", self.practice.next_id().is_some());
-        frame.set("ice_cells", sim.ice.cells.len() as i64);
-        frame.set("resting", sim.is_resting());
-        frame.set("contacts", sim.contacts as i64);
-        frame.set(
-            "hog_tick",
-            sim.hog_tick.map_or(-1, |t| (t - sim.release_tick) as i64),
-        );
-        frame.set("timed_out", sim.timed_out);
-        frame.set(
-            "mode",
+        let last_release = self
+            .practice
+            .log
+            .records
+            .iter()
+            .rev()
+            .find_map(|r| {
+                if let curl_proto::session::Record::Shot(s) = r {
+                    Some(s.release.vel.length())
+                } else {
+                    None
+                }
+            })
+            .unwrap_or(Fx::ZERO);
+        presentation_frame(
+            self.game.as_ref().map_or(&self.practice.sim, |a| &a.sim),
+            self.game.as_deref(),
             if self.game.is_some() {
-                "match"
+                self.match_release_speed
             } else {
-                "practice"
+                last_release
             },
-        );
-        if let Some(a) = &self.game {
-            frame.set("release_speed", render(self.match_release_speed));
-            frame.set("match_phase", format!("{:?}", a.game.phase));
-            frame.set("end", a.game.end as i64);
-            frame.set("scheduled_ends", a.game.rules.ends as i64);
-            frame.set("team", a.game.delivering_team() as i64);
-            frame.set("thrower", a.game.throwing_seat() as i64);
-            frame.set("delivered_count", a.game.delivered as i64);
-            frame.set("hammer", a.game.hammer as i64);
-            frame.set("placement_team", a.game.placement_team as i64);
-            frame.set("clock_gold", a.game.thinking_ms[0] as i64);
-            frame.set("clock_cyan", a.game.thinking_ms[1] as i64);
-            frame.set("score_gold", a.game.score[0] as i64);
-            frame.set("score_cyan", a.game.score[1] as i64);
-            frame.set("first_gold", a.game.first_thrower[0] as i64);
-            frame.set("first_cyan", a.game.first_thrower[1] as i64);
-            frame.set(
-                "power_available",
-                !a.game.power_play_used[a.game.placement_team as usize]
-                    && a.game.end <= a.game.rules.ends,
-            );
-            frame.set("winner", a.game.winner.map_or(-1, |t| t as i64));
-            frame.set("can_deliver_next", a.game.phase == Phase::Calling);
-            frame.set(
-                "violation",
-                a.last_resolution
-                    .as_ref()
-                    .and_then(|r| r.violation)
-                    .map_or(String::new(), |v| format!("{v:?}")),
-            );
-        }
-        frame
+            self.practice.next_id().is_some(),
+        )
     }
     #[func]
     fn golden_trace(&self) -> GString {
@@ -406,3 +348,91 @@ impl CurlSession {
 }
 
 mod room;
+
+pub(crate) fn presentation_frame(
+    sim: &curl_sim::Sim,
+    game: Option<&curl_match::Authority>,
+    release_speed: Fx,
+    can_deliver_next: bool,
+) -> VarDictionary {
+    let mut frame = VarDictionary::new();
+    let mut stones = Array::<VarDictionary>::new();
+    for s in &sim.stones {
+        let mut d = VarDictionary::new();
+        d.set("id", s.id as i64);
+        d.set("team", s.team as i64);
+        d.set(
+            "position",
+            Vector2::new(render(s.pos.x) as f32, render(s.pos.y) as f32),
+        );
+        d.set("speed", render(s.vel.length()));
+        d.set("turns", render(s.turns));
+        d.set("active", s.active);
+        stones.push(&d);
+    }
+    frame.set("release_speed", render(release_speed));
+    frame.set("stones", &stones);
+    frame.set("tick", (sim.tick - sim.release_tick) as i64);
+    frame.set("global_tick", sim.tick as i64);
+    frame.set("delivered", sim.delivered.map_or(-1, |id| id as i64));
+    frame.set("can_deliver_next", can_deliver_next);
+    frame.set("ice_cells", sim.ice.cells.len() as i64);
+    frame.set("resting", sim.is_resting());
+    frame.set("contacts", sim.contacts as i64);
+    frame.set(
+        "hog_tick",
+        sim.hog_tick.map_or(-1, |t| (t - sim.release_tick) as i64),
+    );
+    frame.set("timed_out", sim.timed_out);
+    frame.set("mode", if game.is_some() { "match" } else { "practice" });
+    if let Some(a) = game {
+        frame.set("release_speed", render(release_speed));
+        frame.set("match_phase", format!("{:?}", a.game.phase));
+        frame.set("end", a.game.end as i64);
+        frame.set("scheduled_ends", a.game.rules.ends as i64);
+        frame.set("team", a.game.delivering_team() as i64);
+        frame.set("thrower", a.game.throwing_seat() as i64);
+        frame.set("delivered_count", a.game.delivered as i64);
+        frame.set("hammer", a.game.hammer as i64);
+        frame.set("placement_team", a.game.placement_team as i64);
+        frame.set("clock_gold", a.game.thinking_ms[0] as i64);
+        frame.set("clock_cyan", a.game.thinking_ms[1] as i64);
+        frame.set("score_gold", a.game.score[0] as i64);
+        frame.set("score_cyan", a.game.score[1] as i64);
+        frame.set("first_gold", a.game.first_thrower[0] as i64);
+        frame.set("first_cyan", a.game.first_thrower[1] as i64);
+        frame.set(
+            "power_available",
+            !a.game.power_play_used[a.game.placement_team as usize]
+                && a.game.end <= a.game.rules.ends,
+        );
+        frame.set("winner", a.game.winner.map_or(-1, |t| t as i64));
+        frame.set("can_deliver_next", a.game.phase == Phase::Calling);
+        frame.set(
+            "violation",
+            a.last_resolution
+                .as_ref()
+                .and_then(|r| r.violation)
+                .map_or(String::new(), |v| format!("{v:?}")),
+        );
+    }
+    frame
+}
+
+pub(crate) fn input_release(
+    speed_mm_s: i64,
+    broom_mm: i64,
+    turn: i64,
+) -> Result<Release, &'static str> {
+    if !(100..=6000).contains(&speed_mm_s)
+        || !(-2200..=2200).contains(&broom_mm)
+        || ![-1, 1].contains(&turn)
+    {
+        return Err("Invalid delivery");
+    }
+    let mut release = Release::draw();
+    release.vel =
+        V2::new(Fx::ratio(broom_mm, 1000), -release.pos.y).unit() * Fx::ratio(speed_mm_s, 1000);
+    release.spin = Fx::ratio(12 * turn, 100);
+    Ok(release)
+}

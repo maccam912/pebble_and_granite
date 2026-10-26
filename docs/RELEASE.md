@@ -9,6 +9,6 @@ The Godot bridge has a native integration check. Android packages are signed wit
 a stable development key, not a store publishing identity. macOS is ad-hoc signed,
 not notarized. Windows is unsigned.
 
-Mixed doubles is now playable locally: positioned stones, power plays, player rotation, scoring, thinking clocks, extra ends and rematches. Local matches autosave separately from practice, including interrupted throws. Choose Mixed doubles to resume. Online rooms are still under construction.
+Mixed doubles is now playable locally: positioned stones, power plays, player rotation, scoring, thinking clocks, extra ends and rematches. Local matches autosave separately from practice, including interrupted throws. Choose Mixed doubles to resume. Online rooms now expose Host/Join by Code, readiness, seat-restricted play, continuous hold sweeping and reconnect. This is an early online prototype; full cross-device match and latency validation remain open.
 Physics calibration, human curler feel approval, and physical Android validation
 remain open. See repository docs/HANDOFF.md for current evidence and next work.

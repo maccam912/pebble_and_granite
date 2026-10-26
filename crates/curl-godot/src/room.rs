@@ -86,6 +86,48 @@ impl CurlRoom {
         })
     }
     #[func]
+    fn frame(&self) -> VarDictionary {
+        let Some(room) = &self.room else {
+            return VarDictionary::new();
+        };
+        let Some(a) = room.authority() else {
+            return VarDictionary::new();
+        };
+        crate::presentation_frame(&a.sim, Some(a), room.last_release_speed(), false)
+    }
+    #[func]
+    fn delivery_packet(
+        epoch: u32,
+        sequence: u32,
+        speed: i64,
+        broom: i64,
+        turn: i64,
+    ) -> PackedByteArray {
+        let Ok(release) = crate::input_release(speed, broom, turn) else {
+            return PackedByteArray::new();
+        };
+        let envelope = curl_match::room::Envelope {
+            epoch,
+            sequence,
+            command: curl_match::room::Command::Release { release },
+        };
+        serde_json::to_vec(&envelope).map_or(PackedByteArray::new(), |b| b.as_slice().into())
+    }
+    #[func]
+    fn rematch(&mut self) -> GString {
+        let Some(room) = &mut self.room else {
+            return "No hosted room".into();
+        };
+        answer(room.rematch(1))
+    }
+    #[func]
+    fn next_end(&mut self) -> GString {
+        let Some(room) = &mut self.room else {
+            return "No hosted room".into();
+        };
+        answer(room.next_end(1))
+    }
+    #[func]
     fn command_peer(&mut self, peer: i32, bytes: PackedByteArray) -> GString {
         let envelope = match curl_match::room::Envelope::parse(bytes.as_slice()) {
             Ok(envelope) => envelope,
@@ -198,6 +240,18 @@ impl IRefCounted for CurlReplica {
 #[godot_api]
 impl CurlReplica {
     #[func]
+    fn frame(&self) -> VarDictionary {
+        let Some(replica) = &self.replica else {
+            return VarDictionary::new();
+        };
+        crate::presentation_frame(
+            &replica.game.sim,
+            Some(&replica.game),
+            replica.game.last_release_speed(),
+            false,
+        )
+    }
+    #[func]
     fn receive_snapshot(&mut self, bytes: PackedByteArray) -> GString {
         match self.receiver.receive(bytes.as_slice()) {
             Ok(Some(replica)) => {
@@ -217,6 +271,11 @@ impl CurlReplica {
         let Some(replica) = &mut self.replica else {
             return "Replica not initialized".into();
         };
+        // Reliable channels are ordered individually; an old game's final
+        // commit can arrive after the new epoch's snapshot on another channel.
+        if commit.epoch < replica.epoch {
+            return GString::new();
+        }
         answer(replica.apply(&commit))
     }
     #[func]

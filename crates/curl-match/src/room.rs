@@ -39,6 +39,7 @@ pub enum Command {
     Order { first: u8 },
     Release { release: Release },
     Sweep { tick: u32, input: Sweep },
+    BrushSpan { tick: u32, input: Sweep, count: u8 },
     Remedy { remedy: Remedy },
     Concede {},
 }
@@ -272,6 +273,12 @@ impl Room {
             },
             Command::Release { release } => Record::Release { seat, release },
             Command::Sweep { tick, input } => Record::Sweep { seat, tick, input },
+            Command::BrushSpan { tick, input, count } => Record::BrushSpan {
+                seat,
+                tick,
+                input,
+                count,
+            },
             Command::Remedy { remedy } => Record::Choose { seat, remedy },
             Command::Concede {} => Record::Concede { team: seat.team },
         };
@@ -307,6 +314,11 @@ impl Room {
         self.revision = revision;
         self.commits.push_back(commit);
         Ok(())
+    }
+    pub fn last_release_speed(&self) -> curl_fx::Fx {
+        self.authority
+            .as_ref()
+            .map_or(curl_fx::Fx::ZERO, |a| a.last_release_speed())
     }
     pub fn revision(&self) -> u32 {
         self.revision

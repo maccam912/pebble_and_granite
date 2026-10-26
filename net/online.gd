@@ -326,3 +326,46 @@ func close() -> void:
 	pending_failure = ""
 	error = ""
 	closing = false
+
+func frame() -> Dictionary:
+	if state.get("phase") == null: return {}
+	if is_host and authority != null: return authority.frame()
+	if replica != null and not receiving_snapshot: return replica.frame()
+	return {}
+
+func seat_index() -> int:
+	if peer == null: return -1
+	for index in range(state.get("players", []).size()):
+		var player = state.players[index]
+		if player != null and player.peer == peer.get_unique_id(): return index
+	return -1
+
+func release_stone(speed: int, broom: int, turn: int) -> String:
+	if peer == null or state.get("paused", true): return "Match is not ready"
+	var index := seat_index()
+	if index < 0: return "No player seat"
+	sequence = maxi(sequence, int(state.players[index].sequence))
+	if sequence >= 4294967295: return "Command sequence exhausted"
+	sequence += 1
+	var bytes: PackedByteArray = ClassDB.class_call_static("CurlRoom", "delivery_packet", int(state.epoch), sequence, speed, broom, turn)
+	if bytes.is_empty(): return "Invalid delivery"
+	if is_host:
+		var result: String = authority.command_peer(1, bytes)
+		if result.is_empty(): flush_commits()
+		return result
+	queue_packet(1, bytes, false, 1)
+	return ""
+
+func next_end() -> String:
+	if not is_host or authority == null: return "Only the host can begin the next end"
+	var result: String = authority.next_end()
+	if result.is_empty(): flush_commits()
+	return result
+
+func rematch() -> String:
+	if not is_host or authority == null: return "Only the host can offer a rematch"
+	var result: String = authority.rematch()
+	if result.is_empty():
+		sequence = 0
+		broadcast_state()
+	return result

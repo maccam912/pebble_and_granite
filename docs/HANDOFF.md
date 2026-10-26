@@ -12,15 +12,16 @@ bible only. Remote: `maccam912/pebble_and_granite`, main branch.
 - [x] Local mixed doubles through complete games/rematches, with command-journal saves.
 - [x] Rules/authority/seat ownership and four-peer Iroh lobby transport proof.
 - [x] CI cross-platform core tests, native exports and published numbered releases.
-- [ ] Online gameplay replication, replay transfer and room UI.
+- [x] Online replication, replay transfer, room UI and initial playable controls.
+- [ ] Full online match/cross-device tests, latency profiling and input refinement.
 - [x] Installed Android golden/JNI probe using the one-use debug request route.
 - [ ] 3D delivery/cameras, spatial scrubbing, measured calibration/performance and AI.
 
-Latest local gates: 69 core Rust tests (plus native transport identity test), shared golden traces, Godot input/practice/match
+Latest local gates: 71 core Rust tests (plus native transport identity test), shared golden traces, Godot input/practice/match
 save/full-game fixtures. Live network probes are separate from offline CI because
 relay and code-directory availability are external dependencies. Four peers have
 passed a full shot and in-flight reconnect with default and forced-relay transport, but the
-playable scene is still local-only. The code-directory test revoked its own entry.
+playable scene now includes experimental online rooms. The code-directory test revoked its own entry.
 
 ## Owner follow-up / gates
 
@@ -331,3 +332,31 @@ playable scene is still local-only. The code-directory test revoked its own entr
 - Synchronous reconstruction and live simulation-copy costs still need Android
   profiling. Input sampling/continuous brush-span semantics must be finalized when
   the online input route is wired; the capacity fixture does not approve feel.
+
+## Playable online room and match interface
+
+- Added Host/Join by four-character code, team/player roster, Ready/Start,
+  reconnect, code expiry/renewal and Leave. Late registration after cancellation
+  revokes its own code; explicit Leave revokes the current code. Closing the app
+  relies on the service's ten-minute TTL. Tokens are not persisted.
+- Online matches reuse the local renderer and integer stroke mapper through a
+  shared native presentation boundary. Controls follow authenticated seats;
+  placement, first/last throwers, deliveries, next ends and host-offered rematches
+  route to the authority. Online state never overwrites local practice/match saves.
+- Protocol 5 adds 1–12-tick brush spans so a 20-Hz hold stream applies effort on
+  every 240-Hz simulation tick. Late spans resimulate once, overlapping spans reject
+  atomically, and defending spans begin at authorized receipt time after the tee.
+  UI assigns the delivering teammate as the single sweeper; the defending skip
+  may sweep behind the tee. Spatial scrubbing remains future work.
+- Native UI test covers room validation, seat-owned setup, stroke delivery,
+  shot completion, wrong-seat input rejection and rematch readiness. Added to CI.
+  Live four-peer test includes brush-span replication and in-flight restore.
+  Existing input and local end-flow tests pass; 71 core tests and goldens pass.
+- Captured and visually inspected `build/evidence/online-room.png`; corrected
+  overlapping roster text and made the modal opaque. The host simulation continues
+  while its room panel is shown. Old-epoch commits arriving across channels after
+  a rematch snapshot are ignored instead of breaking the new replica.
+- Still required: full room-UI-to-network match test, cross-device Android play,
+  late-span/resimulation profiling, rendering interpolation, explicit host-stall
+  UX and refinements for Android background/resume. This is an early online slice,
+  not a claim of production-ready multiplayer or approved curling feel.

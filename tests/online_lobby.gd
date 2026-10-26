@@ -67,6 +67,8 @@ func run() -> void:
 			check(await settled_network(host), "Flight replicas differ")
 		check(host.send_command({"kind": "Sweep", "tick": 60, "input": {"stone": 2, "brush": 0, "effort": 220, "lateral_mm": 0, "ahead_mm": 180}}).is_empty(), "Late network sweep failed")
 		check(await settled_network(host), "Late sweep replicas differ")
+		check(host.send_command({"kind": "BrushSpan", "tick": 61, "count": 12, "input": {"stone": 2, "brush": 0, "effort": 200, "lateral_mm": 0, "ahead_mm": 180}}).is_empty(), "Network brush span failed")
+		check(await settled_network(host), "Brush span replicas differ")
 		var departed: int = rooms[2].peer.get_unique_id()
 		rooms[2].close()
 		deadline = Time.get_ticks_msec() + 5000
