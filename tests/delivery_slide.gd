@@ -10,6 +10,38 @@ func stroke(session: Object, when: int) -> Dictionary:
 	session.motion(20000, 0, -5250)
 	session.motion(120000, 0, -31500)
 	return session.lift(when, 0, -31500)
+func gesture_event(scene: Control, touch: bool, point: Vector2, kind: String) -> void:
+	var event: InputEvent
+	if kind == "move":
+		event = InputEventScreenDrag.new() if touch else InputEventMouseMotion.new()
+	else:
+		event = InputEventScreenTouch.new() if touch else InputEventMouseButton.new()
+		event.pressed = kind == "down"
+		if not touch: event.button_index = MOUSE_BUTTON_LEFT
+	if touch: event.index = 0
+	event.position = point
+	scene._input(event)
+func direct_throw(scene: Control, touch: bool, direction: int) -> Dictionary:
+	scene.reset(false)
+	scene.one_push = false
+	scene.rink.mode = 0
+	scene.update_spatial(0)
+	var clock := [0]
+	scene.input_clock = func(): return clock[0]
+	var handle: Vector2 = scene.handle_point()
+	check(scene.rink.get_global_rect().has_point(handle), "3D handle is not on the ice viewport")
+	gesture_event(scene, touch, handle, "down")
+	check(scene.pointer != -99, "Direct handle touch did not grip")
+	for sample in [[100000, 24.0], [120000, 19.2], [240000, -9.6], [2880000, -9.6]]:
+		clock[0] = sample[0]
+		gesture_event(scene, touch, handle + Vector2(0, sample[1]), "move")
+	clock[0] = 3000000
+	gesture_event(scene, touch, handle + Vector2(direction * 30, -20), "up")
+	check(scene.run_active, "Direct ice flick did not release")
+	check(scene.release_report.turn == direction, "Flick direction did not set rotation")
+	check(scene.release_report.trim_mm_s > 0, "Forward finish did not trim weight")
+	check(scene.release_report.line_mm == 0, "Curl flick also changed broom aim")
+	return scene.release_report.duplicate()
 func run() -> void:
 	var early: Object = ClassDB.instantiate("CurlSession")
 	var late: Object = ClassDB.instantiate("CurlSession")
@@ -32,6 +64,11 @@ func run() -> void:
 	scene.persistence_enabled = false
 	root.add_child(scene)
 	scene.set_process(false)
+	# Let the native window deliver its initial focus/visibility events before
+	# injecting a held gesture; focus cancellation has separate coverage.
+	await process_frame
+	await process_frame
+	await process_frame
 	var clock := [0]
 	scene.input_clock = func(): return clock[0]
 	scene.one_push = true
@@ -42,6 +79,7 @@ func run() -> void:
 	clock[0] = 120000
 	scene.move_pointer(handle + Vector2(0, -25.2))
 	clock[0] = 3000000
+	scene.update_delivery()
 	scene.update_spatial(0)
 	check(scene.rink.preview.position.z < 37.8, "Held stone did not slide in 3D")
 	if "--capture" in OS.get_cmdline_user_args():
@@ -58,6 +96,10 @@ func run() -> void:
 	var fault_hash: String = scene.session.state_hash()
 	scene.update_delivery()
 	check(scene.session.state_hash() == fault_hash, "Repeated frame consumed another stone")
+	var mouse := direct_throw(scene, false, 1)
+	var touch := direct_throw(scene, true, 1)
+	check(mouse == touch, "Direct mouse and touch gestures diverged")
+	direct_throw(scene, true, -1)
 	scene.queue_free()
 	print("DELIVERY_SLIDE_OK" if not failed else "DELIVERY_SLIDE_FAILED")
 	quit(1 if failed else 0)

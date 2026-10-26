@@ -35,13 +35,39 @@ pub struct Player {
 #[derive(Clone, Debug, Serialize, Deserialize)]
 #[serde(tag = "kind", deny_unknown_fields)]
 pub enum Command {
+    BeginDelivery {
+        target_mm_s: i64,
+        broom_mm: i64,
+    },
+    ReleaseDelivery {
+        trim_mm_s: i64,
+        line_mm: i64,
+        turn: i64,
+    },
+    CancelDelivery {},
     HogViolation {},
-    Place { own_house: bool, side: PowerPlay },
-    Order { first: u8 },
-    Release { release: Release },
-    Sweep { tick: u32, input: Sweep },
-    BrushSpan { tick: u32, input: Sweep, count: u8 },
-    Remedy { remedy: Remedy },
+    Place {
+        own_house: bool,
+        side: PowerPlay,
+    },
+    Order {
+        first: u8,
+    },
+    Release {
+        release: Release,
+    },
+    Sweep {
+        tick: u32,
+        input: Sweep,
+    },
+    BrushSpan {
+        tick: u32,
+        input: Sweep,
+        count: u8,
+    },
+    Remedy {
+        remedy: Remedy,
+    },
     Concede {},
 }
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -263,6 +289,25 @@ impl Room {
         // rejected requests are consumed so retries cannot replay a failed action.
         let seat = Self::seat(index);
         let record = match envelope.command {
+            Command::BeginDelivery {
+                target_mm_s,
+                broom_mm,
+            } => Record::BeginDelivery {
+                seat,
+                target_mm_s,
+                broom_mm,
+            },
+            Command::ReleaseDelivery {
+                trim_mm_s,
+                line_mm,
+                turn,
+            } => Record::ReleaseDelivery {
+                seat,
+                trim_mm_s,
+                line_mm,
+                turn,
+            },
+            Command::CancelDelivery {} => Record::CancelDelivery { seat },
             Command::HogViolation {} => Record::HogViolation { seat },
             Command::Place { own_house, side } => Record::Place {
                 seat,

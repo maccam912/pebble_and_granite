@@ -5,6 +5,7 @@ edition.workspace = true
 license.workspace = true
 [dependencies]
 curl-fx.workspace = true
+curl-input = { path = "../curl-input" }
 curl-sim.workspace = true
 curl-rules.workspace = true
 serde.workspace = true

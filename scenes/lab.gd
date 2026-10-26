@@ -130,7 +130,7 @@ func _ready() -> void:
 func create_spatial_view() -> void:
 	rink = CurlRinkView.new()
 	rink.position = Vector2(40, 110)
-	rink.size = Vector2(740, 590)
+	rink.size = Vector2(1200, 590)
 	add_child(rink)
 	move_child(rink, 0)
 	camera_button = button("Camera: Auto", Vector2(52, 122), func():
@@ -147,10 +147,24 @@ func create_spatial_view() -> void:
 		toggle.text = "2D lab" if spatial_view else "3D rink"
 		update_labels()
 		queue_redraw())
+	var feedback_bg := Panel.new()
+	feedback_bg.position = Vector2(50, 580)
+	feedback_bg.size = Vector2(565, 110)
+	feedback_bg.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	feedback_bg.add_theme_stylebox_override("panel", panel(Color(0.04, 0.10, 0.13, 0.88)))
+	add_child(feedback_bg)
+	move_child(feedback_bg, report_label.get_index())
+	report_label.position = Vector2(60, 590)
+	report_label.size = Vector2(540, 100)
+	report_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	turn_button.hide()
+	view_button.hide()
 	update_spatial(0.0)
 func update_spatial(delta: float) -> void:
 	if rink == null or not spatial_view: return
 	var aiming: bool = not run_active and phase != "Stone at rest" and frame.get("match_phase", "Calling") == "Calling"
+	rink.hand_held = pointer != -99 and not dragging_broom and not sweeping and not run_active
+	rink.pull_offset = clampf((stroke_trace[-1].y - stroke_trace[0].y) * .004, -.08, .18) if rink.hand_held and stroke_trace.size() > 1 and phase in ["Grip", "Pull", "Drive"] else 0.0
 	rink.delivery_y = float(session.delivery_pose(input_clock.call()).y_um) / 1000000.0 if aiming else -37.8
 	rink.render_frame(frame, run_active, hold_sweep or sweeping, broom_mm, turn, aiming, delta)
 func broom_screen_point() -> Vector2:
@@ -179,6 +193,7 @@ func reset(persist := true) -> void:
 	frame = session.frame()
 	previous = frame
 	phase = "Ready"
+	if spatial_view: turn = 0
 	clock_remainder = 0.0
 	last_save_tick = 0
 	save_allowed = true
@@ -190,7 +205,7 @@ func reset(persist := true) -> void:
 	accumulator = 0.0
 	path.clear()
 	stroke_trace.clear()
-	report = ("House camera: drag the broom to aim." if spatial_view else "Drag the broom in the house.") + "\nGrip the stone below, pull back, push forward, hold steady, then lift."
+	report = ("House camera: drag the broom to aim." if spatial_view else "Drag the broom in the house.") + "\nGrab the handle on the ice. Pull back, push forward, hold, then flick left or right as you release."
 	update_labels()
 	queue_redraw()
 	if match_mode:
@@ -309,7 +324,7 @@ func house_point(p: Vector2) -> Vector2:
 	return Vector2(555 + p.x * 94, 325 - p.y * 94)
 
 func handle_point() -> Vector2:
-	return Vector2(1030, 365)
+	return rink.handle_point() if spatial_view and rink != null else Vector2(1030, 365)
 
 func _process(delta: float) -> void:
 	if session == null or suspended or (room_panel != null and room_panel.visible): return
@@ -353,7 +368,8 @@ func update_delivery() -> void:
 		end_pointer(stroke_trace[-1])
 	elif pose.slide_tick > 0:
 		phase = "Slide"
-		report = "Release the handle before the hog line." if pose.hog_warning else "Keep your hand steady as you slide. Lift to release before the hog line."
+		var weight := "Soft" if pose.target_mm_s < 1950 else ("Draw" if pose.target_mm_s < 2300 else "Firm")
+		report = "Release now — hog line." if pose.hog_warning else weight + " weight. Hold steady; finish left or right for curl. A small forward/back finish trims weight."
 		update_labels()
 
 func _notification(what: int) -> void:
@@ -396,7 +412,7 @@ func begin_pointer(id: int, p: Vector2) -> void:
 	if pointer != -99 or p.y > 710: return
 	if run_active:
 		# The lab's accessible hold gesture follows the stone's brush position.
-		if p.x < 780:
+		if (spatial_view and rink != null and rink.get_global_rect().has_point(p)) or (not spatial_view and p.x < 780):
 			pointer = id
 			sweeping = true
 		return
@@ -408,6 +424,7 @@ func begin_pointer(id: int, p: Vector2) -> void:
 		var q := units(p)
 		session.grip(input_clock.call(), q.x, q.y, one_push)
 		stroke_trace = PackedVector2Array([p])
+		if spatial_view and rink != null: rink.mode = 0
 		phase = "Grip"
 		update_labels()
 
@@ -426,12 +443,18 @@ func end_pointer(p: Vector2) -> void:
 	pointer = -99
 	if dragging_broom:
 		dragging_broom = false
+		if spatial_view and rink != null:
+			rink.mode = 0
+			update_spatial(0)
 		return
 	if sweeping or run_active:
 		sweeping = false
 		return
 	var q := units(p)
 	release_report = session.lift(input_clock.call(), q.x, q.y)
+	if spatial_view:
+		turn = int(release_report.get("turn", 0))
+		if turn != 0: release_report.line_mm = 0
 	if release_report.get("hog_violation", false):
 		var error: String = session.hog_violation()
 		frame = session.frame()
@@ -454,8 +477,8 @@ func end_pointer(p: Vector2) -> void:
 	update_labels()
 
 func _draw() -> void:
-	draw_style_box(panel(Color("102b37")), Rect2(800, 110, 440, 380))
 	if not spatial_view:
+		draw_style_box(panel(Color("102b37")), Rect2(800, 110, 440, 380))
 		# Broad, quiet panels preserve contrast on desktop and landscape phones.
 		draw_style_box(panel(Color("102b37")), Rect2(40, 110, 250, 590))
 		draw_style_box(panel(Color("102b37")), Rect2(315, 110, 465, 590))
@@ -484,11 +507,11 @@ func _draw() -> void:
 		if run_active and (hold_sweep or sweeping) and not delivered_stone().is_empty():
 			var sp: Vector2 = delivered_stone().position + Vector2(0, 0.3)
 			draw_line(sheet_point(sp) - Vector2(10, 0), sheet_point(sp) + Vector2(10, 0), GOLD, 5)
-	draw_string(font, Vector2(825, 147), "THE DELIVERY", HORIZONTAL_ALIGNMENT_LEFT, -1, 16, CYAN)
-	draw_string(font, Vector2(825, 183), "Pull • push • settle • lift", HORIZONTAL_ALIGNMENT_LEFT, -1, 24, Color.WHITE)
-	stone(handle_point(), 63, float(turn) / 12.0, int(frame.get("team", 0)))
-	if stroke_trace.size() > 1: draw_polyline(stroke_trace, Color(0.91, 0.75, 0.41, 0.5), 2)
-	draw_string(font, Vector2(900, 464), "Your hand on the handle", HORIZONTAL_ALIGNMENT_LEFT, -1, 17, Color("92acb7"))
+		draw_string(font, Vector2(825, 147), "THE DELIVERY", HORIZONTAL_ALIGNMENT_LEFT, -1, 16, CYAN)
+		draw_string(font, Vector2(825, 183), "Pull • push • settle • lift", HORIZONTAL_ALIGNMENT_LEFT, -1, 24, Color.WHITE)
+		stone(handle_point(), 63, float(turn) / 12.0, int(frame.get("team", 0)))
+		if stroke_trace.size() > 1: draw_polyline(stroke_trace, Color(0.91, 0.75, 0.41, 0.5), 2)
+		draw_string(font, Vector2(900, 464), "Your hand on the handle", HORIZONTAL_ALIGNMENT_LEFT, -1, 17, Color("92acb7"))
 
 func rings(center: Vector2, scale_m: float) -> void:
 	for entry in [[1.829, Color("346f8e")], [1.219, ICE], [0.610, Color("c06462")], [0.152, ICE]]:

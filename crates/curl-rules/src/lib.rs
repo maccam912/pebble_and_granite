@@ -3,7 +3,7 @@
 use curl_fx::{Fx, V2};
 use curl_sim::{FAR_HOG, HOUSE, RADIUS, Stone};
 use serde::{Deserialize, Serialize};
-pub const RULES_VERSION: u32 = 2;
+pub const RULES_VERSION: u32 = 3;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub enum Format {
@@ -349,6 +349,13 @@ impl Match {
     /// Called only by authority elapsed-time accounting, never from client time.
     pub fn think(&mut self, elapsed_ms: u32) {
         if self.phase != Phase::Calling {
+            return;
+        }
+        self.charge_delivery_time(elapsed_ms);
+    }
+    /// Authority-only accounting while a released stone has not reached the tee.
+    pub fn charge_delivery_time(&mut self, elapsed_ms: u32) {
+        if !matches!(self.phase, Phase::Calling | Phase::InFlight) {
             return;
         }
         let team = self.delivering_team() as usize;

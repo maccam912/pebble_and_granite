@@ -99,10 +99,17 @@ func begin_pointer(id: int, pos: Vector2) -> void:
 	super.begin_pointer(id, pos)
 func end_pointer(pos: Vector2) -> void:
 	pointer = -99
-	if dragging_broom: dragging_broom = false; return
+	if dragging_broom:
+		dragging_broom = false
+		rink.mode = 0
+		update_spatial(0)
+		return
 	if sweeping or run_active: sweeping = false; return
 	var q := units(pos)
 	release_report = session.lift(input_clock.call(), q.x, q.y)
+	if spatial_view:
+		turn = int(release_report.get("turn", 0))
+		if turn != 0: release_report.line_mm = 0
 	if release_report.get("hog_violation", false):
 		waiting_count = int(frame.get("delivered_count", -1))
 		var error := online.send_command({"kind": "HogViolation"})

@@ -19,7 +19,7 @@ bible only. Remote: `maccam912/pebble_and_granite`, main branch.
 - [x] Installed Android golden/JNI probe using the one-use debug request route.
 - [ ] 3D delivery/cameras, spatial scrubbing, measured calibration/performance and AI.
 
-Latest local gates: 84 core Rust tests (plus native transport identity test), shared golden traces, Godot input/practice/match
+Latest local gates: 89 core Rust tests (plus native transport identity test), shared golden traces, Godot input/practice/match
 save/full-game fixtures. Live network probes are separate from offline CI because
 relay and code-directory availability are external dependencies. Four peers have
 passed a full shot and in-flight reconnect with default and forced-relay transport, but the
@@ -561,3 +561,38 @@ held hog fault, finished nine ends (5:4), and synchronized rematch. The first
 continuously swept slide shot took 27.037 s wall / 27.046 s simulated; observed
 maximum headless frame gap 10.151 ms. This is not Android/GPU performance evidence.
 Weekly remaining usage: 67%; continue development.
+
+## Direct-on-ice delivery correction
+
+User clarified the intended interaction: curler's perspective from the hack,
+pull back directly on the stone, push forward, hold while sliding, then flick left
+or right for curl with a small forward/back finish for weight trim. Prioritize
+this over the separate gesture card.
+
+- Default local and online scenes now use a full-width ice viewport and projected
+  3D handle picking. Removed the gesture card and turn-toggle control from that
+  view. Added a simple glove/forearm and pullback motion; house aiming returns
+  automatically to the delivery camera.
+- Recent 120 ms finishing motion selects left/right rotation; no flick means
+  neutral rotation. Forward/back finish trims speed by at most ±70 mm/s. Curl
+  flick does not also deflect the broom aim. Coarse weight feedback appears over
+  the ice, with a release-now warning near the hog line.
+- Added matching direct mouse and touch gestures, both curl directions, weight
+  trim and on-screen handle tests. Rendered full-width slide was inspected.
+- Authority groundwork in curl-match/delivery.rs now journals an in-hand plan,
+  stops thinking time at the tee, rejects cancellation after that point, and
+  consumes held stones at the hog deadline. Four new core tests cover boundaries,
+  replay, chunking and expiry. Early free-release clocks also run until the tee.
+- IMPORTANT NEXT: route the actual UI through this authority plan,
+  persist/recover held practice
+  deliveries, and restore/regrip after focus loss or reconnect. Those lifecycle
+  commands are not yet used by the new direct-on-ice gesture. Physical feel and
+  installed Android validation of the revised gesture remain open.
+
+Validation for this checkpoint: 89 core tests, six deterministic traces, workspace
+clippy and ten Godot gates passed against the final rebuilt native library. Direct
+mouse/trackpad and touch gestures matched; both flick directions and forward trim
+passed. A rendered slide was inspected. Four live peers completed the revised
+first delivery, automatic hog fault, nine ends (4:5) and rematch. First-shot timing
+was 27.337 s wall / 27.308 s simulated, max headless frame gap 10.181 ms; this is
+not physical Android performance evidence. Weekly remaining usage: 64%.

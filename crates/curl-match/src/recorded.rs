@@ -22,6 +22,20 @@ pub struct Brush {
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(tag = "kind", deny_unknown_fields)]
 pub enum Record {
+    BeginDelivery {
+        seat: Seat,
+        target_mm_s: i64,
+        broom_mm: i64,
+    },
+    ReleaseDelivery {
+        seat: Seat,
+        trim_mm_s: i64,
+        line_mm: i64,
+        turn: i64,
+    },
+    CancelDelivery {
+        seat: Seat,
+    },
     HogViolation {
         seat: Seat,
     },
@@ -253,7 +267,24 @@ impl RecordedMatch {
                 own_house,
                 side,
             } => a.place_mixed(*seat, *own_house, *side),
-            Record::Order { team, first } => a.game.set_first_thrower(*team, *first),
+            Record::Order { team, first } => {
+                if a.in_hand.is_some() {
+                    return Err("delivery already started");
+                }
+                a.game.set_first_thrower(*team, *first)
+            }
+            Record::BeginDelivery {
+                seat,
+                target_mm_s,
+                broom_mm,
+            } => a.begin_delivery(*seat, *target_mm_s, *broom_mm),
+            Record::ReleaseDelivery {
+                seat,
+                trim_mm_s,
+                line_mm,
+                turn,
+            } => a.release_delivery(*seat, *trim_mm_s, *line_mm, *turn),
+            Record::CancelDelivery { seat } => a.cancel_delivery(*seat),
             Record::Release { seat, release } => a.release(*seat, release.clone()),
             Record::Sweep { seat, tick, input } => a.sweep(*seat, *tick, *input).map(|_| ()),
             Record::BrushSpan {
@@ -265,7 +296,11 @@ impl RecordedMatch {
             Record::Think { ms } => a.think(*ms),
             Record::Choose { seat, remedy } => a.choose(*seat, *remedy),
             Record::NextEnd {} => a.next_end(),
-            Record::Concede { team } => a.game.concede(*team),
+            Record::Concede { team } => {
+                a.game.concede(*team)?;
+                a.in_hand = None;
+                Ok(())
+            }
             Record::Step { ticks, brush } => {
                 if *ticks == 0 || *ticks > MAX_TICKS {
                     return Err("invalid match step span");
@@ -365,7 +400,20 @@ impl RecordedMatch {
         if let Record::Release { release, .. } = &r {
             self.last_speed = release.vel.length();
         }
-        if matches!(&r, Record::HogViolation { .. }) {
+        if matches!(&r, Record::ReleaseDelivery { .. }) {
+            self.last_speed = next
+                .sim
+                .stones
+                .iter()
+                .find(|s| Some(s.id) == next.sim.delivered)
+                .map_or(curl_fx::Fx::ZERO, |s| s.vel.length());
+        }
+        if matches!(&r, Record::HogViolation { .. })
+            || next
+                .last_resolution
+                .as_ref()
+                .is_some_and(|r| r.violation == Some(curl_rules::Violation::HogRelease))
+        {
             self.last_speed = curl_fx::Fx::ZERO;
         }
         self.authority = next;
@@ -426,6 +474,9 @@ impl RecordedMatch {
     pub fn think(&mut self, ms: u32) -> Result<(), &'static str> {
         if ms == 0 || self.game.phase != Phase::Calling {
             return Ok(());
+        }
+        if self.in_hand.is_some() {
+            return self.apply(Record::Think { ms });
         }
         let journal = self.prepare_append(Record::Think { ms })?;
         // Authority::think checks before mutating; it needs no copy of the last

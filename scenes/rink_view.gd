@@ -8,6 +8,9 @@ var ceiling: Node3D
 var camera: Camera3D
 var broom: Node3D
 var brush: Node3D
+var hand: Node3D
+var hand_held := false
+var pull_offset := 0.0
 var preview: Node3D
 var stones: Dictionary = {}
 var preview_team := 0
@@ -61,6 +64,12 @@ func _ready() -> void:
 	box(brush, Vector3(.30, .05, .09), Vector3(0, .04, 0), material("e9bb61"))
 	var brush_shaft := cylinder(brush, .013, .8, Vector3(.30, .34, 0), material("d8e5e5"))
 	brush_shaft.rotation.z = -.8
+	hand = Node3D.new()
+	world.add_child(hand)
+	box(hand, Vector3(.095, .045, .11), Vector3(0, .305, .015), material("384849"))
+	var sleeve := cylinder(hand, .055, .48, Vector3(.10, .355, .26), material("203c4a"))
+	sleeve.rotation_degrees = Vector3(90, 16, 0)
+	hand.visible = false
 	preview = stone_mesh(0)
 	world.add_child(preview)
 	preview.position = Vector3(0, 0, 29)
@@ -182,7 +191,9 @@ func render_frame(frame: Dictionary, running: bool, sweep: bool, broom_mm: int, 
 		world.add_child(preview)
 		preview.position = Vector3(0, 0, 29)
 		preview_team = team
-	preview.position = Vector3(0, 0, -delivery_y)
+	preview.position = Vector3(0, 0, -delivery_y + pull_offset)
+	hand.position = preview.position
+	hand.visible = aiming and hand_held
 	preview.visible = aiming
 	preview.rotation.y = -float(turn) * PI / 6.0
 	brush.visible = running and sweep and has_followed
@@ -207,8 +218,10 @@ func set_camera(selected: String, followed: Vector3) -> void:
 		camera.position = followed + Vector3(.55, 1.6, 2.6)
 		camera.look_at(followed + Vector3(0, .08, -.8))
 	else:
-		camera.position = Vector3(.65, 1.25, -delivery_y + 3)
-		camera.look_at(Vector3(0, .15, -delivery_y - 4))
+		camera.position = Vector3(0, .9, -delivery_y + 1.1)
+		camera.look_at(Vector3(0, .18, -delivery_y - 1.4))
+func handle_point() -> Vector2:
+	return position + camera.unproject_position(preview.position + Vector3(0, .274, 0)) if camera != null else Vector2.ZERO
 func broom_point() -> Vector2:
 	return position + camera.unproject_position(broom.position + Vector3(0, .05, 0)) if camera != null else Vector2.ZERO
 func aim_x(screen: Vector2) -> float:

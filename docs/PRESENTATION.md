@@ -22,12 +22,17 @@ delivery route. Camera changes are blocked during an active pointer gesture;
 camera/view buttons cannot start a sweep. Mouse, held-click trackpad and touch
 still share the timestamped stroke mapper.
 
-The procedural club, stone meshes and brush are placeholders. The delivery card
-is intentionally still the input surface at this milestone. The bible's body/slide
-simulation, hand-on-3D-handle interaction, near-hog release enforcement, calibrated
-device gain, spatial scrub strokes, prediction, camera transitions and sensory
-feedback remain subsequent work. Do not disguise a cosmetic animation as those
-mechanics or couple their authority to rendering frame rate.
+The main scene now uses the full-width 3D ice view. Delivery starts by gripping
+the projected handle from the curler's viewpoint behind the hack. Pull/push input
+moves the in-hand preview; the camera follows the deterministic slide. A simple
+glove/forearm is presentation only. The separate delivery card and turn toggle are
+absent from this view; the diagnostic 2D lab remains a separate test scene.
+
+Finishing left/right sets rotation from recent motion, and a small forward/back
+finish trims speed. Quiet-hand release is neutral rotation. Coarse Soft/Draw/Firm
+feedback and the hog warning appear over the ice. Procedural art, gain thresholds,
+rotation magnitude, hand animation and feedback need curler/device iteration.
+Spatial scrubbing, prediction and polished camera transitions remain open.
 
 `tests/rink_view.gd` verifies aiming, camera isolation, shared delivery, stone
 identity/reset and end transitions. Running without `--headless` captures the

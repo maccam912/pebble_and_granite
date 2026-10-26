@@ -5,6 +5,8 @@ use serde::{Deserialize, Serialize};
 use std::collections::{BTreeMap, VecDeque};
 use std::sync::Arc;
 
+pub mod delivery;
+
 pub const LATE_WINDOW: u32 = 24; // 100 ms; older samples apply at authority arrival.
 pub const FUTURE_WINDOW: u32 = 12;
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
@@ -22,6 +24,8 @@ pub struct AcceptedSweep {
 pub struct Authority {
     pub sim: Sim,
     pub game: Match,
+    pub in_hand: Option<delivery::InHand>,
+    flight_clock: Option<delivery::FlightClock>,
     release_snapshot: Option<Arc<Sim>>,
     // Derived acceleration cache: never part of save data or canonical hashes.
     rewind: VecDeque<Arc<Sim>>,
@@ -33,6 +37,8 @@ impl Authority {
     pub fn new(seed: u64, rules: Rules, hammer: u8) -> Result<Self, &'static str> {
         Ok(Self {
             sim: Sim::new(seed),
+            in_hand: None,
+            flight_clock: None,
             game: Match::new(rules, hammer)?,
             release_snapshot: None,
             rewind: VecDeque::new(),
@@ -69,6 +75,8 @@ impl Authority {
         sim.advance_idle(60 * 240)?;
         self.game = game;
         self.sim = sim;
+        self.in_hand = None;
+        self.flight_clock = None;
         self.release_snapshot = None;
         self.rewind.clear();
         self.sweeps.clear();
@@ -76,6 +84,9 @@ impl Authority {
         Ok(())
     }
     pub fn release(&mut self, seat: Seat, mut release: Release) -> Result<(), &'static str> {
+        if self.in_hand.is_some() {
+            return Err("release the active slide instead");
+        }
         if !self.valid_seat(seat)
             || seat.team != self.game.delivering_team()
             || seat.position != self.game.throwing_seat()
@@ -94,6 +105,14 @@ impl Authority {
         game.begin(seat.team, release.stone, &self.sim.stones)?;
         self.game = game;
         self.sim = sim;
+        self.flight_clock = if release.pos.y + curl_sim::RADIUS < delivery::DELIVERY_TEE {
+            Some(delivery::FlightClock {
+                remainder: 0,
+                stop_tick: None,
+            })
+        } else {
+            None
+        };
         let snapshot = Arc::new(self.sim.clone());
         self.release_snapshot = Some(snapshot.clone());
         self.rewind = VecDeque::from([snapshot]);
@@ -116,6 +135,8 @@ impl Authority {
         sim.hog_violation(id, seat.team)?;
         self.game = game;
         self.sim = sim;
+        self.in_hand = None;
+        self.flight_clock = None;
         self.release_snapshot = None;
         self.rewind.clear();
         self.sweeps.clear();
@@ -197,8 +218,14 @@ impl Authority {
         if requested_tick > self.sim.tick.saturating_add(FUTURE_WINDOW) {
             return Err("sweep too far in future");
         }
-        let tick = if requested_tick.saturating_add(LATE_WINDOW) < self.sim.tick {
-            self.sim.tick
+        // A past brush may not retroactively move the clock's tee crossing.
+        let protected_clock = self
+            .flight_clock
+            .as_ref()
+            .is_some_and(|clock| clock.stop_tick.is_none_or(|stop| requested_tick < stop));
+        let tick = if protected_clock || requested_tick.saturating_add(LATE_WINDOW) < self.sim.tick
+        {
+            requested_tick.max(self.sim.tick)
         } else {
             requested_tick.max(self.sim.release_tick)
         };
@@ -292,6 +319,10 @@ impl Authority {
         if self.sim.timed_out {
             return Err("physics time budget exhausted");
         }
+        self.advance_flight_clock();
+        if self.game.phase == Phase::GameComplete {
+            return Ok(());
+        }
         if self.sim.is_resting() {
             let resolution = self.game.settle(&self.sim.stones)?;
             if let Some(stones) = &resolution.replace_stones {
@@ -320,6 +351,9 @@ impl Authority {
         if self.game.phase != Phase::Calling {
             return Ok(());
         }
+        if self.in_hand.is_some() {
+            return self.advance_delivery(elapsed_ms);
+        }
         let total = elapsed_ms * 240 + self.idle_remainder;
         self.sim.advance_idle(total / 1000)?;
         self.idle_remainder = total % 1000;
@@ -333,6 +367,14 @@ impl Authority {
         h.bytes(&serde_json::to_vec(&self.game).expect("rules serialize"));
         h.u64(self.release_snapshot.as_ref().map_or(0, |sim| sim.hash()));
         h.bytes(&serde_json::to_vec(&self.accepted_sweeps()).expect("sweeps serialize"));
+        if let Some(delivery) = &self.in_hand {
+            h.bytes(b"in-hand-v1");
+            h.bytes(&serde_json::to_vec(delivery).expect("delivery serialize"));
+        }
+        if let Some(clock) = &self.flight_clock {
+            h.bytes(b"flight-clock-v1");
+            h.bytes(&serde_json::to_vec(clock).expect("clock serialize"));
+        }
         h.finish()
     }
     pub fn accepted_sweeps(&self) -> Vec<(u32, Sweep)> {

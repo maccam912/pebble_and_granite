@@ -362,6 +362,7 @@ impl CurlSession {
     fn delivery_pose(&self, us: i64) -> VarDictionary {
         let pose = self.stroke.pose(us.max(0) as u64);
         let mut d = VarDictionary::new();
+        d.set("target_mm_s", self.stroke.target_mm_s());
         d.set("y_um", pose.y_um);
         d.set("in_play", pose.in_play);
         d.set("hog_warning", pose.hog_warning);
@@ -382,6 +383,8 @@ impl CurlSession {
         });
         let mut d = VarDictionary::new();
         let r = delivery.stroke;
+        d.set("turn", delivery.turn);
+        d.set("trim_mm_s", delivery.trim_mm_s);
         d.set(
             "valid",
             delivery.outcome == curl_input::delivery::Outcome::Released,
@@ -500,7 +503,7 @@ pub(crate) fn input_release_at(
     if !(100_000..=6_000_000).contains(&speed_um_s)
         || !(curl_input::delivery::START_Y_UM..curl_input::delivery::HOG_CENTER_UM).contains(&y_um)
         || !(-2200..=2200).contains(&broom_mm)
-        || ![-1, 1].contains(&turn)
+        || !(-1..=1).contains(&turn)
     {
         return Err("Invalid delivery");
     }
