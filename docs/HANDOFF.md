@@ -675,3 +675,9 @@ Other fingers cannot cancel the active delivery. Local practice/match and online
 fixtures cover this path; online cancellation journals suspension. Room-panel exit
 shares the same interruption path. Held resume, online UI, input routing and
 delivery slide gates passed. Installed Android rerun follows the clean build.
+
+Installed clean f2444cd passed expanded Android direct touch, Home/background,
+frozen held-journal resume, regrip/flick and exact-once hog checks. Evidence is in
+build/probes/touch-2d6a3f3403244848948ef4f26ef90c4f/. The e5b1e33 cancellation fix
+needs the subsequent installed rerun. Added the editor-generated held_resume UID
+so future clean local packages do not report that test resource as untracked.

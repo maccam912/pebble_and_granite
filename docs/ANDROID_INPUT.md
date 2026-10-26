@@ -60,3 +60,16 @@ GODOT_BIN=/Applications/Godot.app/Contents/MacOS/Godot python3 tools/network_pro
 This probe uses a controlled release and validates transport/replay across the
 installed ARM64 app and desktop; the direct gesture routing is covered separately
 by the touchscreen probe above. It does not yet validate an in-hand reconnect.
+
+## Held-state Android checkpoint
+
+Clean `f2444cd` (model 3 / protocol 9 / rules 3 / input 4 / practice schema 3)
+passed the expanded installed touch probe, including Home/background with a held
+contact, unchanged pending journal on resume, regrip and a left finishing flick.
+Both normal curl directions and the exact-once held hog fault also passed.
+APK SHA-256: `f42820b2f3df24b1b3a9f0524a3373d66495f4b01ad8cc6e9c80fdfd86726016`.
+Evidence: `build/probes/touch-2d6a3f3403244848948ef4f26ef90c4f/`.
+
+A subsequent explicit Godot cancelled-touch test found an input path that could
+release before a focus notification. Commit `e5b1e33` fixes that path and passes
+local/online regression tests. Its final installed package validation follows.
