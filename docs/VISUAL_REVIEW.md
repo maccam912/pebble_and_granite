@@ -689,3 +689,32 @@ All ten ordinary captures and the close-up run have clean logs. Before sources,
 normal crops and close-up evidence are in `build/stone-polish-review/`.
 No new image assets or shader texture fetches were added. Installed Android
 validation follows the source commit. Weekly quota remaining is 89 percent.
+
+
+## Installed material checkpoint: build 66
+
+Clean Android build 66 (`755ed3e`, `source_dirty: false`, SHA-256
+`3584a9ce7b3991cd4a60d12fe728d8f1a6f125485327ef2f3f970a10fe2fc56d`)
+passed the installed Delivery/four-camera review. The finer mineral scale and
+polished plastic render correctly; the forward-facing handle remains intact.
+Captured Godot runtime log is clean. Evidence is in
+`build/evidence/polish/android-66/` and `build/android-66-review.log`.
+All four original saves/backups were restored byte for byte and the app stopped.
+
+## Setup overlay depth and choosing-team hierarchy
+
+Critique: the setup panel sat directly against the bright ice with no elevation,
+while the room dialog already had a shadow. Added a restrained downward shadow
+only to the existing setup panel. Reduced its initial 0.30 opacity to 0.22 after
+reviewing it against white ice. The placement heading now uses the existing Gold
+or Cyan palette for the team already named in its text. No text, control layout,
+hit targets, game state or available actions changed.
+
+Reviewed all ten normal and ten mobile-font captures, plus separate Gold/Cyan
+mobile heading fixtures. The soft shadow separates the panel from the rink
+without covering the thinking clock, and the team color strengthens the existing
+heading hierarchy. Logs are clean; the isolated team fixture also confirmed that
+label rendering leaves the authoritative hash unchanged. Before source/screens
+and review evidence are in ignored `build/setup-depth-review/`.
+Installed Android menu review follows the source commit. No new asset or feature
+was added; the forward handle orientation remains in place.

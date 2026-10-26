@@ -285,6 +285,7 @@ func update_labels() -> void:
 			status.text = "Mixed doubles  /  Choose placement"
 			new_button.text = "Next stone"
 			setup_label.text = "%s chooses the placement" % team_name(frame.placement_team)
+			setup_label.add_theme_color_override("font_color", CurlPresentation.GOLD if frame.placement_team == 0 else CurlPresentation.CYAN)
 			house_button.text = "Take the house" if own_house else "Take the guard"
 			power_button.text = "Centre placement" if power_side == 0 else ("Left power play" if power_side < 0 else "Right power play")
 			power_button.disabled = not frame.power_available
@@ -352,7 +353,11 @@ func create_match_controls() -> void:
 	setup_panel = Panel.new()
 	setup_panel.position = Vector2(800, 110)
 	setup_panel.size = Vector2(440, 380)
-	setup_panel.add_theme_stylebox_override("panel", panel(Color("122832")))
+	var setup_background := panel(Color("122832"))
+	setup_background.shadow_color = Color(0, 0, 0, .22)
+	setup_background.shadow_size = 12
+	setup_background.shadow_offset = Vector2(0, 8)
+	setup_panel.add_theme_stylebox_override("panel", setup_background)
 	add_child(setup_panel)
 	setup_label = Label.new()
 	setup_label.position = Vector2(20, 18)
