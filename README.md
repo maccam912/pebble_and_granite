@@ -28,6 +28,9 @@ sliding. Before the slide, sideways movement moves the stone and the direction o
 your push adjusts the delivery line around the broom. Once sliding, a small
 left/right finish adds curl; the live label shows the recognized direction. A
 small forward/back finish adjusts weight. A quiet lift gives neutral rotation. One-push skips the initial pullback.
+Settings adjusts field of view (40–85°). Zoom or Z inspects the house closely;
+gripping the handle returns to the normal delivery view. The skip stands behind
+the broom and the sweeper follows beside the moving stone.
 Cycle Camera for delivery, sweeper, skip or overhead house views; drag the broom in House view to aim. The separate `scenes/lab.tscn` scene retains the diagnostic 2D view. Scrub back and forth on the ice just ahead of the moving stone; motion sets effort
 and brush position matters. Tap another eligible moving stone to select it. A gold
 disc marks the selection, and the Sweeper camera follows it. The **Hold to sweep**

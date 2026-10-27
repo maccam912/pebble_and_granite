@@ -30,6 +30,9 @@ var sliding := false
 var shown_camera_x := 0.0
 var mode := 0
 var current_camera := "Delivery"
+var field_of_view := 52.0
+var zoomed := false
+var role_camera := ""
 var last_tick := -1
 var last_end := -1
 var was_running := false
@@ -404,7 +407,7 @@ func render_frame(frame: Dictionary, running: bool, sweep: bool, broom_mm: int, 
 	brush.position = followed + Vector3(offset.x, 0, -offset.y)
 	brush.rotation.y = atan2(direction.x, direction.y)
 	var selected: String = MODES[mode]
-	if selected == "Auto": selected = "Sweeper" if running and has_followed else ("Delivery" if aiming else "House")
+	if selected == "Auto": selected = role_camera if not role_camera.is_empty() else ("Sweeper" if running and has_followed else ("Delivery" if aiming else "House"))
 	if selected == "Sweeper" and not has_followed: selected = "Delivery"
 	set_camera(selected, followed)
 func delivery_heading() -> Vector3:
@@ -415,22 +418,24 @@ func set_camera(selected: String, followed: Vector3) -> void:
 	# The roof stays in the static reflection even when the overhead camera
 	# looks through it. Global visibility would also hide it from the probe.
 	camera.set_cull_mask_value(3, selected != "House")
+	camera.fov = clampf(field_of_view / (2.8 if zoomed else 1.0), 14.0, 85.0)
 	camera.projection = Camera3D.PROJECTION_ORTHOGONAL if selected == "House" else Camera3D.PROJECTION_PERSPECTIVE
 	if selected == "House":
-		camera.size = 6.5
+		camera.size = 2.4 if zoomed else 6.5
 		camera.position = Vector3(0, 9, 0)
 		camera.look_at(Vector3.ZERO, Vector3.FORWARD)
 	elif selected == "Skip":
-		camera.position = Vector3(1.2, 1.65, -3.8)
-		camera.look_at(Vector3(0, .1, 5))
+		camera.position = broom.position + Vector3(0, 1.62, -1.05)
+		# Stand immediately behind the called broom, looking toward the thrower.
+		camera.look_at(followed + Vector3(0, .12, 0) if was_running else Vector3(0, .15, 12))
 	elif selected == "Sweeper":
-		camera.position = followed + Vector3(.55, 1.6, 2.6)
-		camera.look_at(followed + Vector3(0, .08, -.8))
+		camera.position = followed + Vector3(.42, 1.50, 1.1)
+		camera.look_at(followed + Vector3(0, .04, -.7))
 	else:
 		var origin := Vector3(shown_camera_x, 0, -delivery_y)
 		var heading := (broom.position - origin).normalized()
-		camera.position = origin - heading * 1.1 + Vector3(0, .9, 0)
-		camera.look_at(origin + heading * 1.4 + Vector3(0, .18, 0))
+		camera.position = origin - heading * .85 + Vector3(0, .64, 0)
+		camera.look_at(broom.position + Vector3(0, .05, 0) if zoomed else origin + heading * 1.7 + Vector3(0, .12, 0))
 func sync_render_size() -> void:
 	if view == null: return
 	# Match the displayed pixels instead of enlarging a fixed 1200-pixel image.

@@ -67,6 +67,10 @@ var scoreboard: Panel
 var gold_score: Label
 var cyan_score: Label
 var end_score: Label
+var play_settings: CurlPlaySettings
+var settings_button: Button
+var zoom_button: Button
+
 var mobile_ui := OS.get_name() == "Android"
 
 func _ready() -> void:
@@ -144,11 +148,39 @@ func _ready() -> void:
 	reset(false)
 	restore_practice()
 	if spatial_view: create_spatial_view()
+	create_play_settings()
 	if allow_online:
 		button("Online rooms", Vector2(840, 30), open_online)
 		room_panel = CurlRoomPanel.new()
 		add_child(room_panel)
 		room_panel.hide()
+
+func create_play_settings() -> void:
+	settings_button = button("Settings", Vector2(1070, 77), func():
+		if pointer != -99: return
+		play_settings.visible = not play_settings.visible)
+	settings_button.custom_minimum_size = Vector2(170, 38)
+	settings_button.size = settings_button.custom_minimum_size
+	play_settings = CurlPlaySettings.new()
+	play_settings.persistence_enabled = persistence_enabled
+	add_child(play_settings)
+	play_settings.changed.connect(apply_play_settings)
+	if rink != null:
+		zoom_button = button("Zoom · Z", Vector2(270, 134), toggle_zoom)
+		zoom_button.custom_minimum_size = Vector2(155, 40)
+		zoom_button.size = zoom_button.custom_minimum_size
+		move_child(play_settings, -1)
+	apply_play_settings()
+
+func apply_play_settings() -> void:
+	if rink != null: rink.field_of_view = play_settings.fov
+	update_spatial(0)
+
+func toggle_zoom() -> void:
+	if rink == null or pointer != -99: return
+	rink.zoomed = not rink.zoomed
+	zoom_button.text = "Zoom out · Z" if rink.zoomed else "Zoom · Z"
+	update_spatial(0)
 
 func create_spatial_view() -> void:
 	rink = CurlRinkView.new()
@@ -544,6 +576,10 @@ func _notification(what: int) -> void:
 func _input(event: InputEvent) -> void:
 	if room_panel != null and room_panel.visible: return
 	if session == null: return
+	if play_settings != null and play_settings.visible: return
+	if event is InputEventKey and event.pressed and not event.echo and event.keycode == KEY_Z:
+		toggle_zoom()
+		return
 	if event is InputEventScreenTouch:
 		if event.canceled:
 			if pointer == event.index: cancel_pointer()
@@ -562,7 +598,8 @@ func units(p: Vector2) -> Vector2i:
 	return Vector2i(p * (1000000.0 / 800.0))
 
 func begin_pointer(id: int, p: Vector2) -> void:
-	for control in [camera_button, view_button]:
+	if play_settings != null and play_settings.visible: return
+	for control in [camera_button, view_button, settings_button, zoom_button]:
 		if control != null and control.is_visible_in_tree() and control.get_global_rect().has_point(p): return
 	if match_mode and not run_active and frame.get("match_phase", "") != "Calling": return
 	if pointer != -99 or p.y > 710: return
@@ -589,7 +626,10 @@ func begin_pointer(id: int, p: Vector2) -> void:
 			held_remainder_us = 0
 		else: session.grip(input_clock.call(), q.x, q.y, one_push)
 		stroke_trace = PackedVector2Array([p])
-		if spatial_view and rink != null: rink.mode = 0
+		if spatial_view and rink != null:
+			rink.mode = 0
+			rink.zoomed = false
+			if zoom_button != null: zoom_button.text = "Zoom · Z"
 		phase = "Grip"
 		update_labels()
 

@@ -49,6 +49,29 @@ func run() -> void:
 		check(absf(scene.broom_screen_point().x - scene.handle_point().x) < 1, "Selected broom is off the delivery sightline")
 		var grip: Node3D = scene.rink.preview.get_node("HandleGrip")
 		check(grip.global_basis.x.normalized().dot(scene.rink.delivery_heading()) > .99999, "Ready handle support must face down-sheet, with its free end toward the player")
+	# A broom on either side must produce a native release on that same side.
+	for aim in [-1600, 1600]:
+		scene.session.reset(42)
+		check(scene.session.deliver(2050, aim, 1).is_empty(), "Aim release rejected")
+		var shot: Dictionary = scene.session.frame().stones[0]
+		check(signf(shot.velocity.x) == signf(float(aim)), "Native release points away from the broom")
+		scene.reset(false)
+	var before_camera: String = scene.session.state_hash()
+	for fov in [40, 52, 85]:
+		scene.play_settings.fov = fov
+		scene.apply_play_settings()
+		check(is_equal_approx(scene.rink.camera.fov, float(fov)), "FOV setting did not reach the camera")
+		scene.toggle_zoom()
+		check(scene.rink.camera.fov < fov / 2.0, "Inspection zoom did not narrow the view")
+		scene.toggle_zoom()
+	check(scene.session.state_hash() == before_camera, "FOV/zoom changed simulation")
+	scene.play_settings.fov = 52
+	scene.apply_play_settings()
+	scene.rink.mode = 3
+	scene.update_spatial(0)
+	check(absf(scene.rink.camera.position.x - scene.rink.broom.position.x) < .001, "Skip is not standing behind the broom")
+	check(scene.rink.camera.position.z < scene.rink.broom.position.z, "Skip is facing away from the delivery end")
+	scene.rink.mode = 0
 	for curl in [-1, 0, 1]:
 		scene.turn = curl
 		scene.update_spatial(0)
