@@ -98,7 +98,10 @@ tests; physical-device feel is the third item and needs user participation.
    96 deliveries, replay/reviews and rematch (existing two-object cleanup warning).
    Save/restore, accessibility, spatial sweeping, rink, online UI, replica and rules
    regressions pass. A final target-selection test verifies separate contact-stone
-   and delivered-stone brush positions. Installed Android verification follows.
+   and delivered-stone brush positions. Clean installed Android 84 passes solo and
+   drill touch flows with exact desktop journal replay and unchanged normal saves.
+   Its journal includes separate Gold/Cyan sweepers; call panel capture inspected.
+   Emulator stopped; exact provenance is in ANDROID_INPUT.md.
 9. Next: online scope and recovery. Physical feel (3) and coefficient fitting (7)
    remain pending the requested human feedback and measured data.
 

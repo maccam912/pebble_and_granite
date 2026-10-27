@@ -1,5 +1,26 @@
 # Installed Android input validation
 
+## Independent team sweepers checkpoint — 27 October 2026
+
+Clean source `10345a56f366a90f4d4f22b6d3eebc551ad5dfa5`, local Android 84,
+installed templates, model 4 / protocol 12, APK SHA256
+`1522a18c4cc9f36cf8c1d4d380597a86997c464f0ffd8712127bb16b05f68b35`.
+Installed actual-touch solo calls/HARD/OFF/steady camera/ice-board pause/fast
+opponent travel/second Gold approval pass. The accepted 635-record journal
+replays on desktop; it contains 43 brush spans for each Gold sweeper and 167 for
+each Cyan sweeper. The rendered HARD panel names Second and Vice separately.
+Installed takeout earned three stars; the 5.85 s timing shot correctly earned zero
+against its 14 s goal. Practice journals also replay exactly. Both probes confirm
+normal saves/preferences unchanged. The dedicated emulator was stopped afterward.
+
+Evidence: `build/probes/solo-ui-aecd6a457ebd4798a6af6e9a3f33996f/` and
+`build/probes/drills-ui-a925f648499e437588cac0866f2a4b76/`; logs
+`build/team-brush-android-84-{solo,drills}.log`.
+This verifies packaged mode integration and separate accepted brush identities.
+Independent fatigue, contact-stone selection and legacy continuation have native
+coverage; no physical Android feel, audible mix or complete Android match claim.
+
+
 ## Strategic AI and observed ice checkpoint — 27 October 2026
 
 Clean source `648419c7ba2d7e83420ee5b7aea78783015cfe6c`, local Android 83,

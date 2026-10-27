@@ -315,5 +315,7 @@ and role rotation. Native team/legacy continuation, contact-target presentation,
 save/restore, accessibility, sweeping, rink, online UI, replica and rules pass.
 A complete 96-delivery solo game passed replay/reviews and rematch; its existing
 two-object cleanup warning remains. Rendered mobile-layout brushes and tiring
-feedback inspected. Installed Android verification follows the source commit;
-physical-device feel, measured fatigue calibration and audible quality remain open.
+feedback inspected. Clean installed Android 84 passes solo and drill touch flows,
+exact desktop journal replay and normal-save preservation. Accepted spans include
+both sweepers from each team. Exact provenance is in ANDROID_INPUT.md; the emulator
+was stopped. Physical-device feel, measured fatigue and audible quality remain open.
