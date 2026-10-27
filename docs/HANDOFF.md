@@ -70,7 +70,9 @@ tests; physical-device feel is the third item and needs user participation.
    restore and review pause pass; rendered ice-read card inspected. Full match
    passed 96 deliveries, replay/reviews and rematch (existing cleanup warning).
    Richer uncertainty modelling remains beyond this heuristic. Installed Android
-   verification follows the source commit.
+   verification passed on clean APK 83: actual-touch solo and drill flows,
+   journal replay, unchanged normal saves/preferences. Emulator stopped; exact
+   provenance in ANDROID_INPUT.md.
 7. Next: measured physics calibration; first establish reproducible measurement
    inputs and compare the current model without inventing empirical coefficients.
 

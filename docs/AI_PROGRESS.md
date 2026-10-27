@@ -289,4 +289,7 @@ estimates after clean/swept journal replay. Core/every-tick goldens and Clippy p
 Native rated plans and post-replay calls agree; manual calls, all held-call names,
 restore and review pause pass. Mobile-layout call card with the ice-read line
 rendered and inspected. A complete 96-delivery match passed replay/review
-reconstruction and rematch. Installed Android follows the clean source commit. This remains a heuristic rather than a full uncertainty model.
+reconstruction and rematch. Clean Android 83 from `648419c` passed actual-touch
+solo and takeout/timing drill flows with desktop journal replay and unchanged
+normal saves/preferences. Exact provenance is in ANDROID_INPUT.md; the dedicated
+emulator is stopped. This does not certify every catalogue shot on Android. This remains a heuristic rather than a full uncertainty model.

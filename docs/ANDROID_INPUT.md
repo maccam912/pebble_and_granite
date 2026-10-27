@@ -1,5 +1,22 @@
 # Installed Android input validation
 
+## Strategic AI and observed ice checkpoint — 27 October 2026
+
+Clean source `648419c7ba2d7e83420ee5b7aea78783015cfe6c`, local Android 83,
+installed templates, APK SHA256
+`c00a2e3b26d4c0346422b17879cde6a88b67a1ca9acb775345ff372a11df8f14`.
+Installed actual-touch solo flow passes manual guard/turn/broom calls, AI delivery,
+HARD/OFF, steady camera, ice-board pause, opponent fast travel and a second Gold
+approval. Its accepted journal replays on desktop. Installed takeout/timing drill
+flow also passes. Both probes confirm normal saves/preferences unchanged. The
+second-call screenshot was inspected. This tests the current AI integration,
+not every shot type or a complete Android match.
+
+Evidence: `build/probes/solo-ui-14646e1b72594244956390f013583865/` and
+`build/probes/drills-ui-c982620ee0a04ed4918e8080ef8ec95e/`.
+The dedicated emulator was stopped. Physical-device timing, feel and audible
+approval remain open; no new coefficients or input gains were fitted.
+
 ## Menu and lessons source checkpoint — 27 October 2026
 
 Clean source `c338969c0261d598a72de94c7dea3bdc71bf5a7d`, local Android 82,
