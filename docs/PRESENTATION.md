@@ -122,3 +122,12 @@ delivery controls hide while this result card is shown. `tests/match_readout.gd`
 checks scoring, inventory, native replay, blank ends, clock expiry and next-end
 reset; captures live in build/evidence/match-readout. No authority or journal
 schema changed; these are derived presentation fields.
+
+
+Settings now scroll internally while Done and Call shortcuts remain fixed.
+Keyboard focus follows the scrolled control. The separate Ice volume slider
+changes all three effect layers and persists independently of the mute toggle.
+Solo defaults to waiting after Gold's settled shots; Continue advances without
+charging the opponent's thinking clock during review. The optional setting
+restores two-second auto continuation. `tests/shot_review_pause.gd` checks the
+pause, saved-result restoration, opponent continuation and scrolled volume access.

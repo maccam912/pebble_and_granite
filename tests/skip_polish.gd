@@ -47,6 +47,10 @@ func run() -> void:
 	audio._process(.02)
 	check(audio.brushing.playing, "Held brush effort did not sound")
 	game.hold_sweep = false
+	game.play_settings.effects_volume = 0.0
+	audio._process(.02)
+	check(not audio.rumble.playing and not audio.brushing.playing, "Zero volume left sound playing")
+	game.play_settings.effects_volume = .5
 	game.frame.contacts = 1
 	game.frame.global_tick = 2
 	audio._process(.02)
@@ -73,11 +77,14 @@ func run() -> void:
 	settings.config_path = "user://test-ice-sounds.cfg"
 	settings.persistence_enabled = true
 	settings.ice_sounds = false
+	settings.effects_volume = .35
+	settings.review_shots = false
 	game.frame = game.session.frame()
 	settings.update_preferences()
 	var restored := CurlPlaySettings.new()
 	restored.config_path = settings.config_path
 	root.add_child(restored)
+	check(is_equal_approx(restored.effects_volume, .35) and not restored.review_shots, "Volume/review preferences did not persist")
 	check(not restored.ice_sounds and not restored.sound_toggle.button_pressed, "Ice sound preference did not persist")
 	DirAccess.remove_absolute(ProjectSettings.globalize_path(settings.config_path))
 	restored.queue_free()

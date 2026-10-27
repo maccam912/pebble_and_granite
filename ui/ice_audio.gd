@@ -64,7 +64,7 @@ func _process(delta: float) -> void:
 	var speed := 0.0
 	for stone in frame.get("stones", []):
 		if stone.active: speed = maxf(speed, float(stone.get("speed", 0)))
-	var muted: bool = paused or not game.is_visible_in_tree() or not game.play_settings.ice_sounds or game.suspended or game.local_menu_open() or (game.room_panel != null and game.room_panel.visible)
+	var muted: bool = paused or game.play_settings.effects_volume <= 0.0 or not game.is_visible_in_tree() or not game.play_settings.ice_sounds or game.suspended or game.local_menu_open() or (game.room_panel != null and game.room_panel.visible)
 	if muted: hush()
 	else:
 		playing_level = move_toward(playing_level, clampf(speed / 3.0, 0, 1) if game.run_active else 0.0, delta * 4)
@@ -77,7 +77,7 @@ func _process(delta: float) -> void:
 		if not fresh and contacts > last_contacts:
 			# Contact count comes from the fixed-tick sim. Pre-contact speed is
 			# a bounded loudness proxy until contact impulses reach presentation.
-			impact.volume_db = lerpf(-30, -8, clampf(previous_speed / 3.0, 0, 1))
+			impact.volume_db = lerpf(-30, -8, clampf(previous_speed / 3.0, 0, 1)) + linear_to_db(game.play_settings.effects_volume)
 			impact.play()
 	last_contacts = contacts
 	last_tick = tick
@@ -89,7 +89,7 @@ func loop_level(player: AudioStreamPlayer, level: float, peak: float) -> void:
 	if level <= .005:
 		player.stop()
 		return
-	player.volume_db = peak + linear_to_db(level)
+	player.volume_db = peak + linear_to_db(level * game.play_settings.effects_volume)
 	if not player.playing: player.play()
 
 func _exit_tree() -> void:

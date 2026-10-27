@@ -157,6 +157,7 @@ func advance(delta: float) -> void:
 		return
 	if state != "Calling": return
 	if game.phase == "Stone at rest":
+		if review_waiting(): return
 		delay += delta
 		if delay >= 2.0: game.next_throw(); reset_turn()
 		return
@@ -195,6 +196,11 @@ func advance(delta: float) -> void:
 	if not planned.is_empty() and not human_skips() and not human_throws():
 		delay += delta
 		if delay >= 1.3: send_shot()
+
+func review_waiting() -> bool:
+	# After settlement, frame.team is the NEXT team. Deriving the previous
+	# team here also works after a saved settled shot is loaded.
+	return enabled and game.play_settings.review_shots and game.phase == "Stone at rest" and game.frame.get("match_phase", "") == "Calling" and game.frame.get("team", -1) == 1
 
 func choose_remedy(restore: bool) -> void:
 	if not enabled or game.frame.get("match_phase", "") != "Choice" or game.frame.get("choice_team", -1) != 0: return
@@ -395,6 +401,11 @@ func refresh_controls() -> void:
 		game.report_label.text = "A protected centre guard moved off the centre line or into the house. %s chooses whether to accept this result or restore the original stones and remove the delivered stone." % game.team_name(game.frame.get("choice_team", -1))
 	elif state == "EndComplete": game.status.text = "4 vs 4  /  End complete"
 	elif state == "GameComplete": game.status.text = "4 vs 4  /  %s wins" % game.team_name(game.frame.winner)
+	if review_waiting():
+		game.new_button.text = "Continue"
+		game.new_button.disabled = false
+		game.status.text = "4 vs 4  /  Review Gold’s shot"
+		game.hint.text += " · Continue when ready"
 	if game.run_active: game.new_button.text = "Stone in play"
 	game.mode_button.text = "Practice"
 	game.turn_button.hide()

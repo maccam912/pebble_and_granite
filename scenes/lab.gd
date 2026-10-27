@@ -558,6 +558,10 @@ func _process(delta: float) -> void:
 		drills.advance()
 	if solo != null and solo.enabled:
 		solo.advance(delta)
+		if solo.review_waiting():
+			update_labels()
+			update_spatial(delta)
+			return
 	if match_mode and not run_active and frame.get("match_phase", "") == "Calling" and frame.get("in_hand", {}).is_empty():
 		clock_remainder += delta * 1000.0
 		var elapsed := mini(int(clock_remainder), 60000)

@@ -167,6 +167,8 @@ def run_solo():
     capture('06-ice-board')
     tap('board_close')
     wait_for(lambda s: not s['board_visible'], 'ice board closed')
+    if read_state().get('review_waiting', False):
+        tap('next')
     wait_for(lambda s: s['team'] == 1 and s['run_active'] and s['fast_active'],
              'opponent fast travel', timeout=120)
     capture('07-opponent-fast')

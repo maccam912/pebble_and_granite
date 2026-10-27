@@ -256,3 +256,21 @@ Evidence: `build/probes/solo-ui-53e00f6fa7824538abb06fcae6665498/` and
 `build/steady-camera-android-{runtime,solo,drills}.log`. The dedicated hidden
 emulator was stopped after testing. Physical-device feel, latency/thermal behavior,
 audible quality and real-ice coefficients remain unverified.
+
+
+## Skip polish installed checkpoint — 27 October 2026
+
+Clean source `0985aa0bd0c9d92c129f4a736cbf2e876a47cb77`, local Android 79,
+installed templates, SHA256
+`cd5493cb725080719e22e5b7881ca9b9dfc34fa63d1b8085837f589c3587521a`.
+Dedicated `pebble_granite_lab` emulator-5580 passed the actual-touch solo and
+both takeout/timing drill probes. Solo now verifies in/out-turn without moving
+the broom, a real drag that changes the line, absence of target rings, retained
+House view, HARD/OFF, Settings and ice-board pauses, and opponent fast travel.
+The accepted journals replayed and normal player saves/preferences stayed intact.
+Evidence: `build/probes/solo-ui-a8f05d70a16a4e69a8a73eb7ac8f989c/` and
+`build/probes/drills-ui-a3d11a6125f24ba18bd68e129f581786/`.
+The later scrolling Settings/shot-review pacing work is not in this APK.
+A separate desktop full-match check completed 112 deliveries through an extra
+end and passed journal reconstruction/rematch. Physical feel and audible mix
+remain unvalidated on real devices.

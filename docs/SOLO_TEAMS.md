@@ -40,6 +40,12 @@ The result includes whatever sweeping happened. Any contact during that delivery
 suppresses its reference; a later moved/removed stone, new end, new match or
 reload clears it. These are session-only observation aids, not forecast markers.
 
+After a Gold shot, the result waits for **Continue**, with the thinking clocks
+paused so you can inspect the house or open the ice board. **Settings → Wait
+after your team's shots** restores the old two-second automatic continuation
+when switched off. Cyan's shots still continue automatically. This also works
+when a settled shot is restored from a save. End cards wait for Next end/Rematch.
+
 During travel **HARD**, **CLEAN**, and **OFF** control AI brushing. Default keys
 are H / C / O; **Settings → Call shortcuts** remaps them. Key repeats are ignored.
 A manual call speaks immediately when device speech is enabled; turning speech

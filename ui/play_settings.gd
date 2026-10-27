@@ -10,6 +10,12 @@ var fast_opponents := false
 var spoken_calls := true
 var ice_sounds := true
 var sound_toggle: CheckButton
+var effects_volume := 1.0
+var volume_label: Label
+var volume_slider: HSlider
+var review_shots := true
+var review_toggle: CheckButton
+var content_scroll: ScrollContainer
 var difficulty := 1
 var human_position := 0
 var call_keys := PackedInt32Array([KEY_H, KEY_C, KEY_O])
@@ -37,6 +43,8 @@ func _ready() -> void:
 	if persistence_enabled and config.load(config_path) == OK:
 		fov = clampf(float(config.get_value("view", "fov", 52.0)), 40, 85)
 		steady_camera = bool(config.get_value("view", "steady_camera", false))
+		effects_volume = clampf(float(config.get_value("audio", "effects_volume", 1.0)), 0.0, 1.0)
+		review_shots = bool(config.get_value("solo", "review_shots", true))
 		ice_sounds = bool(config.get_value("audio", "ice_sounds", true))
 		spoken_calls = bool(config.get_value("audio", "spoken_calls", true))
 		fast_opponents = bool(config.get_value("solo", "fast_opponents", false))
@@ -99,6 +107,25 @@ func _ready() -> void:
 	sound_toggle.button_pressed = ice_sounds
 	sound_toggle.toggled.connect(func(value): ice_sounds = value; update_preferences())
 	add_child(sound_toggle)
+	volume_label = label("", Vector2(24, 526))
+	volume_slider = HSlider.new()
+	volume_slider.position = Vector2(24, 566)
+	volume_slider.size = Vector2(512, 36)
+	volume_slider.min_value = 0
+	volume_slider.max_value = 100
+	volume_slider.step = 5
+	volume_slider.value = effects_volume * 100
+	volume_slider.value_changed.connect(func(value): effects_volume = value / 100.0; update_preferences())
+	add_child(volume_slider)
+	review_toggle = CheckButton.new()
+	review_toggle.text = "Wait after your team's shots"
+	review_toggle.position = Vector2(18, 626)
+	review_toggle.size = Vector2(524, 48)
+	review_toggle.button_pressed = review_shots
+	review_toggle.toggled.connect(func(value): review_shots = value; update_preferences())
+	add_child(review_toggle)
+	var review_help := label("Inspect Gold's result, then Continue when ready.\nOff: automatically continue after two seconds.", Vector2(24, 682))
+	review_help.add_theme_font_size_override("font_size", 16)
 	var done := Button.new()
 	done.text = "Done"
 	done.position = Vector2(364, 538)
@@ -111,6 +138,22 @@ func _ready() -> void:
 	bindings.size = Vector2(300, 48)
 	bindings.pressed.connect(func(): binding_panel.show())
 	add_child(bindings)
+	# Body scrolls independently; close/back actions stay reachable on phones.
+	content_scroll = ScrollContainer.new()
+	content_scroll.position = Vector2(12, 66)
+	content_scroll.size = Vector2(536, 450)
+	content_scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	content_scroll.follow_focus = true
+	var content := Control.new()
+	content.custom_minimum_size = Vector2(512, 676)
+	content_scroll.add_child(content)
+	for child in get_children():
+		if child in [title, done, bindings]: continue
+		if child is Control:
+			var original: Vector2 = child.position
+			child.reparent(content)
+			child.position = original - Vector2(12, 66)
+	add_child(content_scroll)
 	create_bindings()
 	visibility_changed.connect(func():
 		if not visible:
@@ -128,6 +171,7 @@ func label(text: String, at: Vector2) -> Label:
 
 func refresh_label() -> void:
 	fov_label.text = "Field of view: %d°" % roundi(fov)
+	if volume_label != null: volume_label.text = "Ice volume: %d%%" % roundi(effects_volume * 100)
 
 func update_preferences() -> void:
 	refresh_label()
@@ -137,6 +181,8 @@ func update_preferences() -> void:
 		config.set_value("view", "steady_camera", steady_camera)
 		config.set_value("audio", "spoken_calls", spoken_calls)
 		config.set_value("audio", "ice_sounds", ice_sounds)
+		config.set_value("audio", "effects_volume", effects_volume)
+		config.set_value("solo", "review_shots", review_shots)
 		config.set_value("solo", "fast_opponents", fast_opponents)
 		config.set_value("solo", "difficulty", difficulty)
 		config.set_value("solo", "position", human_position)

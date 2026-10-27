@@ -14,7 +14,13 @@ var journal_hash := ""
 
 func point(control: Control) -> Dictionary:
 	if control == null or not control.is_visible_in_tree(): return {}
-	var pixel := control.get_viewport_transform() * control.get_global_rect().get_center()
+	var rect := control.get_global_rect()
+	var ancestor := control.get_parent()
+	while ancestor is Control:
+		if ancestor.clip_contents: rect = rect.intersection(ancestor.get_global_rect())
+		ancestor = ancestor.get_parent()
+	if rect.size.x < 20 or rect.size.y < 20: return {}
+	var pixel := control.get_viewport_transform() * rect.get_center()
 	return {"x": roundi(pixel.x), "y": roundi(pixel.y), "disabled": control.disabled if control is BaseButton else false}
 
 func find_button(parent: Node, text: String) -> Control:
@@ -48,7 +54,7 @@ func write_state() -> void:
 		"solo": point(game.solo.solo_button), "settings": point(game.settings_button), "camera": point(game.camera_button),
 		"drills": point(game.drills.menu_button), "drill_kind": point(game.drills.choice), "next": point(game.new_button), "restart": point(game.fresh_button),
 		"restart_confirm": point(game.restart_prompt.confirm_button), "restart_cancel": point(game.restart_prompt.cancel_button),
-		"ice_sounds": point(settings.sound_toggle), "continue": point(game.match_readout.continue_button),
+		"review_shots": point(settings.review_toggle), "ice_sounds": point(settings.sound_toggle), "continue": point(game.match_readout.continue_button),
 		"zoom": point(game.zoom_button), "ice_board": point(game.ice_board.menu_button),
 		"send": point(game.solo.send_button), "shot_kind": point(game.solo.shot_choice), "in_turn": point(game.solo.turn_buttons[0]), "out_turn": point(game.solo.turn_buttons[1]),
 		"hard": point(game.solo.call_buttons[0]), "clean": point(game.solo.call_buttons[1]), "off": point(game.solo.call_buttons[2]),
@@ -61,7 +67,7 @@ func write_state() -> void:
 		"mode": "solo" if game.solo.enabled else ("match" if game.match_mode else "drills" if game.drills.enabled else "practice"), "phase": game.phase,
 		"choice_team": frame.get("choice_team", -1), "violation": frame.get("violation", ""), "remedy_restored": frame.get("remedy_restored", false), "match_phase": frame.get("match_phase", ""), "team": frame.get("team", -1), "thrower": frame.get("thrower", -1),
 		"broom": {"x": roundi(broom.x), "y": roundi(broom.y)}, "broom_mm": game.broom_mm, "turn": game.turn,
-		"target_visible": game.rink.target_rings.visible, "restart_visible": game.restart_prompt.visible, "ice_sounds": settings.ice_sounds,
+		"review_waiting": game.solo.review_waiting(), "target_visible": game.rink.target_rings.visible, "restart_visible": game.restart_prompt.visible, "ice_sounds": settings.ice_sounds,
 		"handle": {"x": roundi(handle.x), "y": roundi(handle.y)}, "delivered": frame.get("delivered", -1),
 		"drill_kind": game.drills.kind, "drill_attempt": game.drills.attempt, "drill_results": game.drills.results, "drill_goal_ms": game.drills.split_target_ms(), "drill_target_text": game.drills.target_label.text, "report": game.report,
 		"delivered_count": count, "end": frame.get("end", -1), "run_active": game.run_active,
