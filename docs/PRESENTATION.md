@@ -67,3 +67,32 @@ neither stones nor the input effort calculation. Off-path input produces no brus
 it is not clamped back onto the stone's path. The brush displays the submitted
 position; accessible hold animates about the centered position. These are local
 intent cues, not confirmation that the host accepted a contribution.
+
+
+## Skip judgement and ice sound pass
+
+Solo callers get a short, fixed-size curl glyph anchored beside the broom. Its
+horizontal direction is projected through the current camera, not assumed to be
+screen-right. It is never scaled by the physics or drawn to a forecast endpoint.
+The caller's house camera includes the guard area. The thrower's existing call
+card and drills retain their intention/target displays.
+
+`ui/shot_reference.gd` records the actual broom, turn and settled stone per team.
+The authoritative per-shot contact count conservatively rejects every contacted
+shot. Later stone movement/removal and end changes invalidate old observations.
+No history marker enters match saves, the simulator or network commands.
+
+`ui/ice_audio.gd` generates original PCM textures with its own seeded RNG:
+speed-dependent stone rumble, effort-dependent brushing, and short granite
+contacts. Effects use frame speed, brush intent, and the native contact counter.
+Impact loudness currently uses pre-contact maximum speed as a bounded proxy,
+not individual contact impulse. Textures are synthesized once per scene; no
+per-tick audio buffers or external audio assets are loaded. Settings → Ice sounds
+persists separately from speech. Effects stop on mute, suspension and local
+settings/ice-board/online-room overlays. No venue ambience, spatial panning,
+pebble-wear modulation, fatigue breath or phone haptics in this pass.
+
+Validation: `tests/called_shots.gd` checks touch broom aiming, no skip endpoint,
+line preservation under weight/turn changes and clean-shot recording.
+`tests/skip_polish.gd` checks reference invalidation and sound lifecycle/settings.
+Rendered desktop/mobile-layout captures use `tools/solo_review.gd`.

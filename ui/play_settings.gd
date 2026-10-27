@@ -8,6 +8,8 @@ var steady_camera := false
 var steady_toggle: CheckButton
 var fast_opponents := false
 var spoken_calls := true
+var ice_sounds := true
+var sound_toggle: CheckButton
 var difficulty := 1
 var human_position := 0
 var call_keys := PackedInt32Array([KEY_H, KEY_C, KEY_O])
@@ -35,6 +37,7 @@ func _ready() -> void:
 	if persistence_enabled and config.load(config_path) == OK:
 		fov = clampf(float(config.get_value("view", "fov", 52.0)), 40, 85)
 		steady_camera = bool(config.get_value("view", "steady_camera", false))
+		ice_sounds = bool(config.get_value("audio", "ice_sounds", true))
 		spoken_calls = bool(config.get_value("audio", "spoken_calls", true))
 		fast_opponents = bool(config.get_value("solo", "fast_opponents", false))
 		difficulty = clampi(int(config.get_value("solo", "difficulty", 1)), 0, 2)
@@ -89,8 +92,13 @@ func _ready() -> void:
 	speech.button_pressed = spoken_calls
 	speech.toggled.connect(func(value): spoken_calls = value; update_preferences())
 	add_child(speech)
-	var note := label("Calls always show text and symbols.\nZ / Zoom inspects the house.\nZones: 1–3 guard · 4–6 front · 7 tee · 8–10 back.", Vector2(24, 466))
-	note.add_theme_font_size_override("font_size", 16)
+	sound_toggle = CheckButton.new()
+	sound_toggle.text = "Ice sounds · stones and brushing"
+	sound_toggle.position = Vector2(18, 462)
+	sound_toggle.size = Vector2(524, 48)
+	sound_toggle.button_pressed = ice_sounds
+	sound_toggle.toggled.connect(func(value): ice_sounds = value; update_preferences())
+	add_child(sound_toggle)
 	var done := Button.new()
 	done.text = "Done"
 	done.position = Vector2(364, 538)
@@ -128,6 +136,7 @@ func update_preferences() -> void:
 		config.set_value("view", "fov", fov)
 		config.set_value("view", "steady_camera", steady_camera)
 		config.set_value("audio", "spoken_calls", spoken_calls)
+		config.set_value("audio", "ice_sounds", ice_sounds)
 		config.set_value("solo", "fast_opponents", fast_opponents)
 		config.set_value("solo", "difficulty", difficulty)
 		config.set_value("solo", "position", human_position)

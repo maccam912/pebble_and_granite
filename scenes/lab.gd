@@ -76,6 +76,8 @@ var settings_focus := CurlModalFocus.new()
 var settings_shade: ColorRect
 var settings_button: Button
 var zoom_button: Button
+var shot_reference := CurlShotReference.new()
+var ice_audio: CurlIceAudio
 
 var mobile_ui := OS.get_name() == "Android"
 
@@ -158,6 +160,9 @@ func _ready() -> void:
 	restore_practice()
 	if spatial_view: create_spatial_view()
 	create_play_settings()
+	ice_audio = CurlIceAudio.new()
+	ice_audio.game = self
+	add_child(ice_audio)
 	if allow_online:
 		solo = CurlSoloGame.new(self)
 		solo.create_controls()
@@ -303,6 +308,7 @@ func button(text: String, pos: Vector2, action: Callable) -> Button:
 	return b
 
 func reset(persist := true) -> void:
+	shot_reference.clear()
 	if session == null: return
 	if ice_board != null: ice_board.new_session(persist)
 	if match_mode:
@@ -414,7 +420,6 @@ func clock_text(ms: int) -> String:
 
 func change_turn() -> void:
 	turn *= -1
-	if solo != null and solo.enabled and solo.human_skips(): solo.reverse_turn()
 	update_labels()
 
 func team_name(team: int) -> String:
@@ -571,6 +576,7 @@ func _process(delta: float) -> void:
 				update_labels()
 			if not run_active or frame.global_tick - last_save_tick >= 240:
 				save_practice()
+	shot_reference.observe(frame, run_active)
 	update_delivery()
 	if run_active: update_labels()
 	update_spatial(delta)
@@ -613,7 +619,7 @@ func update_delivery() -> void:
 	if held.is_empty(): return
 	phase = "Slide"
 	var weight := "Soft" if held.target_mm_s < 1950 else ("Draw" if held.target_mm_s < 2300 else "Firm")
-	report = delivery_feedback(weight, held.hog_warning)
+	report = delivery_feedback(weight, held.hog_warning, int(held.target_mm_s))
 	if frame.global_tick - last_save_tick >= 240: save_practice()
 	update_labels()
 
@@ -625,13 +631,17 @@ func update_legacy_delivery() -> void:
 	elif pose.slide_tick > 0:
 		phase = "Slide"
 		var weight := "Soft" if pose.target_mm_s < 1950 else ("Draw" if pose.target_mm_s < 2300 else "Firm")
-		report = delivery_feedback(weight, pose.hog_warning)
+		report = delivery_feedback(weight, pose.hog_warning, int(pose.target_mm_s))
 		update_labels()
 
-func delivery_feedback(weight: String, hog_warning: bool) -> String:
+func delivery_feedback(weight: String, hog_warning: bool, push_mm_s := 0) -> String:
 	if spatial_view: turn = int(session.delivery_pose(input_clock.call()).get("turn", 0))
 	var curl := "Curl left ←" if turn < 0 else ("Curl right →" if turn > 0 else "No curl · nudge left/right to turn")
-	return ("Release now — hog line." if hog_warning else weight + " weight") + "\n" + curl
+	var weight_feedback := weight + " weight"
+	if solo != null and solo.enabled and solo.human_throws() and not solo.planned.is_empty() and push_mm_s > 0:
+		var difference: int = push_mm_s - int(solo.planned.speed_mm_s)
+		weight_feedback = "Push: " + ("light for call" if difference < -60 else ("heavy for call" if difference > 60 else "close to called weight"))
+	return ("Release now — hog line." if hog_warning else weight_feedback) + "\n" + curl
 
 func cancel_pointer() -> void:
 	# An OS-cancelled contact is an interruption, not a voluntary finger lift.
@@ -690,15 +700,13 @@ func begin_pointer(id: int, p: Vector2) -> void:
 	if ice_board != null and ice_board.visible: return
 	if play_settings != null and play_settings.visible: return
 	if solo != null and solo.enabled and not run_active and (solo.planning or (not solo.human_throws() and not solo.human_skips())): return
+	if solo != null and solo.enabled and solo.human_throws() and not run_active and solo.planned.is_empty() and frame.get("in_hand", {}).is_empty(): return
 	var controls := [camera_button, view_button, settings_button, zoom_button]
-	if solo != null: controls.append_array([solo.solo_button, solo.send_button, solo.shot_choice, solo.target_button, solo.auto_button, solo.accept_button, solo.restore_button] + solo.call_buttons)
+	if solo != null: controls.append_array([solo.solo_button, solo.send_button, solo.shot_choice, solo.auto_button, solo.accept_button, solo.restore_button, solo.shot_card] + solo.call_buttons + solo.turn_buttons)
 	if ice_board != null: controls.append(ice_board.menu_button)
 	if drills != null: controls.append_array([drills.menu_button, drills.start_button, drills.choice])
 	for control in controls:
 		if control != null and control.is_visible_in_tree() and control.get_global_rect().has_point(p): return
-	if solo != null and solo.enabled and solo.placing_target:
-		solo.place_target(p)
-		return
 	if drills != null and drills.enabled and drills.kind == 3 and not run_active: return
 	if match_mode and not run_active and frame.get("match_phase", "") != "Calling": return
 	if pointer != -99 or p.y > 710: return
@@ -740,6 +748,8 @@ func move_pointer(p: Vector2) -> void:
 		return
 	if dragging_broom:
 		broom_mm = int(rink.aim_x(p) * 1000.0) if spatial_view and rink != null else clampi(int((p.x - 555) / 94.0 * 1000), -2200, 2200)
+		update_spatial(0)
+		if solo != null: solo.skip_aid.queue_redraw()
 	elif not run_active:
 		var q := units(p)
 		session.motion(input_clock.call(), q.x, q.y)
@@ -756,7 +766,7 @@ func end_pointer(p: Vector2) -> void:
 	if dragging_broom:
 		dragging_broom = false
 		if spatial_view and rink != null:
-			rink.mode = 0
+			if solo == null or not solo.enabled or not solo.human_skips(): rink.mode = 0
 			update_spatial(0)
 		return
 	if sweeping or run_active:
@@ -789,6 +799,10 @@ func end_pointer(p: Vector2) -> void:
 			report = "Scrub the ice ahead of the stone, or hold the sweep button. Tap a moving stone to select it."
 			frame = session.frame()
 			if solo != null and solo.enabled:
+				if not solo.planned.is_empty():
+					session.set_solo_target(int(solo.planned.target_x_mm), int(solo.planned.target_y_mm))
+					frame = session.frame()
+				shot_reference.begin(frame, broom_mm, turn, "Human delivery")
 				solo.shot_team = int(frame.team)
 				solo.advice_time = 0.0
 			release_report.speed_mm_s = int(frame.release_speed * 1000.0)

@@ -42,6 +42,7 @@ func refresh_online() -> void:
 		stop_scrub()
 		hold_sweep = false
 	was_paused = paused
+	if ice_audio != null: ice_audio.paused = paused
 	var next := online.frame()
 	if next.is_empty(): return
 	var old_phase: String = frame.get("match_phase", "")

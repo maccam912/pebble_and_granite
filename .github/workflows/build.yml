@@ -118,6 +118,8 @@ jobs:
           python tools/godot.py --headless --path . --script tests/ice_board.gd
           python tools/godot.py --headless --path . --script tests/team_rules.gd
           python tools/godot.py --headless --path . --script tests/called_shots.gd
+          python tools/godot.py --headless --path . --script tests/skip_polish.gd
+          python tools/godot.py --headless --path . --script tests/throwing_call.gd
           python tools/godot.py --headless --path . --script tests/drills.gd
           python tools/godot.py --headless --path . --script tests/solo_restore.gd
           python tools/godot.py --headless --path . --script tests/solo_teams.gd

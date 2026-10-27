@@ -1153,3 +1153,31 @@ Final native regression suite passed eleven UI gates; core/golden and Clippy
 passed the final native source. See AI_PROGRESS.md for scope and current CI status,
 and ANDROID_INPUT.md for exact package hash/probe directories. The dedicated
 emulator is stopped. Physical hardware/audio/calibration remain separate checks.
+
+
+## 27 October 2026 — skip judgement and sound polish (local)
+
+Reviewed the design bible's direct broom control, skill feedback and sim-driven
+sound goals. Replaced the solo caller's target-placement workflow with manual
+broom aiming, explicit right-handed in/out-turn buttons and a direction-only
+glyph. Weight and turn changes preserve the player's line; optional AI suggestion
+remains. The house view includes guards. A per-team ghost broom and actual-stone
+ring are retained only for a contact-free, still-unmoved result in this end.
+These observations are session-only and clear on reload. The pre-existing,
+uncommitted human thrower call-card work was retained.
+
+Added original synthesized rumble, brush and contact textures with a persistent
+ice-sounds toggle independent of speech. Muting, local overlays, hidden views,
+suspension and online pause silence effects. Impact volume uses speed as a proxy;
+individual collision impulses, venue sound and physical-device mix tuning remain
+open. No physics, authority, replay or compatibility-version changes.
+
+Fourteen focused Godot scripts passed: called_shots, skip_polish, throwing_call,
+solo_teams, solo_restore, accessibility, input_routes, delivery_slide, sweeping,
+rink_view, drills, lab_smoke, held_resume and online_ui. The new audio lifecycle
+test also passed with the desktop renderer. Desktop/mobile-layout review captures
+are under build/evidence/solo and solo-mobile; the actual previous-shot reference
+capture is build/evidence/skip-polish/previous-shot.png. git diff --check passed.
+This pass did not run physical Android, export packages, full-match soak or remote
+CI, and did not commit/push the working tree. Prior release status is unchanged
+by this local work.

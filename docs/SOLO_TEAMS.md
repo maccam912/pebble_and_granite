@@ -10,12 +10,36 @@ apply. After a no-tick violation, Gold can accept the current positions or resto
 the original stones and remove the delivered stone. Cyan chooses its own remedy
 automatically. Pending choices survive saves without losing the delivery. Human deliveries keep the direct pull/push/slide/flick input.
 
-When you are the skip (vice while the skip delivers), review the proposed shot.
-Choose **Draw**, **Guard**, or **Hit**. **Place target** lets you tap the intended
-landing point, or a stone for a hit. A small gold ring marks that intention; the
-AI solves release weight and broom line on the current ice. Changing turn solves
-the line again. You can still drag the broom to make your own correction.
-**Ask AI skip** requests another strategy suggestion; **Send called shot** delivers.
+Before your delivery, the AI skip now calls a shot for you too. The **SKIP'S CALL**
+card stays visible through the slide and shows the shot type, named weight,
+target distance left/right and short of/behind the tee, and requested curl.
+Its overhead map marks the intended target with a gold cross and the broom with
+a dark bar; these can differ because the stone curls. Left/right is viewed from
+your delivery end. The card includes the solved near-hog pace; slide feedback
+compares your push with it as light, close (within 0.06 m/s), or heavy. This is
+push feedback; release timing and the finishing gesture still affect the shot.
+A gold ring also marks the target on the rink. Wait for the
+call, then throw with the usual gesture; the call never releases your stone.
+The call and target survive an interrupted held delivery. After release, the
+skip's sweeping calls take over and use that intended target.
+
+When you are the skip (vice while the skip delivers), **drag the broom** to
+choose the line. Call **Draw weight**, **Guard weight**, or **Takeout weight** and
+select **In-turn · curl right** or **Out-turn · curl left** (right-handed delivery,
+directions viewed from the delivery end). A short arrow beside the broom shows
+curl direction only: there is no predicted path or landing marker. Changing turn
+or weight preserves your broom placement. The standard weight calls use the
+existing solver for tee draw, centre guard depth, or takeout pace; judging the
+line remains your job. The wider house view includes the guard area.
+**Suggest a shot** optionally asks the AI to place a broom and choose weight/turn;
+you can adjust that suggestion. **Send called shot** delivers.
+
+A faint ghost broom and dashed ring recall your team's most recent clean shot's
+actual broom and resting stone, with weight and curl direction in the caption.
+The result includes whatever sweeping happened. Any contact during that delivery
+suppresses its reference; a later moved/removed stone, new end, new match or
+reload clears it. These are session-only observation aids, not forecast markers.
+
 During travel **HARD**, **CLEAN**, and **OFF** control AI brushing. Default keys
 are H / C / O; **Settings → Call shortcuts** remaps them. Key repeats are ignored.
 A manual call speaks immediately when device speech is enabled; turning speech

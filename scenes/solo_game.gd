@@ -18,15 +18,20 @@ var solo_button: Button
 var send_button: Button
 var call_buttons: Array[Button] = []
 var shot_choice: OptionButton
-var target_button: Button
 var auto_button: Button
-var placing_target := false
 var choice_waiting := false
 var accept_button: Button
 var restore_button: Button
 var called_target := Vector2.ZERO
 var call_label: Label
 var call_background: Panel
+var shot_card: CurlShotCall
+var restored_call: Dictionary = {}
+var turn_buttons: Array[Button] = []
+var skip_aid: CurlSkipAid
+var keep_broom := false
+var caller_broom := -900
+var caller_turn := 1
 var save_path := "user://solo-teams.json"
 
 func _init(owner_game) -> void:
@@ -46,21 +51,23 @@ func create_controls() -> void:
 		item.size = item.custom_minimum_size
 	restore_button.theme_type_variation = "PrimaryButton"
 	shot_choice = OptionButton.new()
-	shot_choice.position = Vector2(960, 425)
+	shot_choice.position = Vector2(960, 490)
 	shot_choice.size = Vector2(260, 52)
-	for kind in ["Draw", "Guard", "Hit"]: shot_choice.add_item(kind)
+	for kind in ["Draw weight", "Guard weight", "Takeout weight"]: shot_choice.add_item(kind)
 	shot_choice.item_selected.connect(revise_kind)
 	game.add_child(shot_choice)
-	target_button = game.button("Place target", Vector2(960, 360), func():
-		placing_target = true
-		game.rink.mode = 4
-		game.rink.zoomed = false
-		game.report = "Tap the intended landing point (or a stone for a hit). The AI solves weight and broom line."
-		game.update_labels()
-		game.update_spatial(0))
-	target_button.custom_minimum_size = Vector2(260, 52)
-	auto_button = game.button("Ask AI skip", Vector2(960, 295), suggest_again)
+	# Weight is a call; the player owns the line and curl judgement.
+	auto_button = game.button("Suggest a shot", Vector2(960, 295), suggest_again)
 	auto_button.custom_minimum_size = Vector2(260, 52)
+	for direction in [1, -1]:
+		var b: Button = game.button("In-turn · curl right" if direction == 1 else "Out-turn · curl left", Vector2(960, 360 if direction == 1 else 425), func(): select_turn(direction))
+		b.custom_minimum_size = Vector2(260, 52)
+		b.size = b.custom_minimum_size
+		b.toggle_mode = true
+		turn_buttons.append(b)
+	skip_aid = CurlSkipAid.new()
+	game.add_child(skip_aid)
+	skip_aid.game = game
 	for i in range(3):
 		var effort: int = [255, 80, 0][i]
 		var b: Button = game.button(["↑ HARD", "≈ CLEAN", "■ OFF"][i], Vector2(750 + i * 160, 622), func(): set_call(effort))
@@ -78,6 +85,9 @@ func create_controls() -> void:
 	call_label.position = Vector2(12, 8)
 	call_label.add_theme_font_size_override("font_size", 21)
 	call_background.add_child(call_label)
+	shot_card = CurlShotCall.new()
+	game.add_child(shot_card)
+	shot_card.setup(game)
 	refresh_controls()
 
 func human_position() -> int:
@@ -104,9 +114,17 @@ func start() -> void:
 	game.update_spatial(0)
 
 func reset_turn() -> void:
+	keep_broom = false
+	if human_skips() and not human_throws():
+		game.broom_mm = caller_broom
+		game.turn = caller_turn
 	planning = false
 	planned.clear()
-	placing_target = false
+	if not game.frame.get("in_hand", {}).is_empty() and not restored_call.is_empty():
+		planned = restored_call.duplicate()
+		called_target = Vector2(float(planned.target_x_mm), float(planned.target_y_mm)) / 1000.0
+		game.broom_mm = int(game.frame.in_hand.get("broom_mm", planned.broom_mm))
+	else: restored_call.clear()
 	choice_waiting = false
 	last_spoken = ""
 	delay = 0.0
@@ -143,8 +161,14 @@ func advance(delta: float) -> void:
 		if delay >= 2.0: game.next_throw(); reset_turn()
 		return
 	if int(game.frame.get("delivered_count", -1)) != last_count: reset_turn()
-	if human_throws(): return
+	# The human needs the same skip's intention as the AI throwers. Never try
+	# to plan against an interrupted held delivery; its saved call stays visible.
+	if not game.frame.get("in_hand", {}).is_empty(): return
 	if not planning and planned.is_empty():
+		if human_skips() and not human_throws():
+			if game.turn == 0: game.turn = 1
+			request_call(0, Vector2.ZERO)
+			return
 		var error: String = game.session.request_ai_plan()
 		if not error.is_empty(): game.report = error; return
 		planning = true
@@ -159,11 +183,16 @@ func advance(delta: float) -> void:
 		planned = result
 		called_target = Vector2(float(result.target_x_mm) / 1000.0, float(result.target_y_mm) / 1000.0)
 		shot_choice.select(["Draw", "Guard", "Hit"].find(result.kind))
-		game.broom_mm = int(result.broom_mm)
-		game.turn = int(result.turn)
-		game.report = "%s calls %s • %s turn.\n%s" % ["Your team" if game.frame.team == 0 else "Cyan skip", result.kind.to_lower(), "right" if game.turn > 0 else "left", "Choose a shot and target, adjust the broom if needed, then Send called shot." if human_skips() else "The AI thrower will deliver; follow the skip's visible calls."]
+		if not keep_broom:
+			game.broom_mm = int(result.broom_mm)
+			game.turn = int(result.turn)
+		keep_broom = false
+		game.session.set_solo_target(int(result.target_x_mm), int(result.target_y_mm))
+		game.frame = game.session.frame()
+		var instruction := "Grip the handle, pull back, push and finish with the called curl." if human_throws() else ("Drag the broom, call weight and choose a turn. The arrow shows curl direction only." if human_skips() else "The AI thrower will deliver; follow the skip's visible calls.")
+		game.report = "%s calls %s • %s turn.\n%s" % ["Your skip" if human_throws() else ("Your team" if game.frame.team == 0 else "Cyan skip"), result.kind.to_lower(), "right" if game.turn > 0 else "left", instruction]
 		delay = 0.0
-	if not planned.is_empty() and not human_skips():
+	if not planned.is_empty() and not human_skips() and not human_throws():
 		delay += delta
 		if delay >= 1.3: send_shot()
 
@@ -187,9 +216,13 @@ func apply_remedy(restore: bool) -> void:
 
 func suggest_again() -> void:
 	if not enabled or planning or game.run_active: return
+	var error: String = game.session.request_ai_plan()
+	if not error.is_empty(): game.report = error; return
+	planning = true
+	keep_broom = false
 	planned.clear()
-	placing_target = false
 	delay = 0.0
+	game.report = "AI skip is suggesting weight and broom placement…"
 	game.update_labels()
 
 func request_call(kind: int, target: Vector2) -> void:
@@ -200,52 +233,33 @@ func request_call(kind: int, target: Vector2) -> void:
 	var error: String = game.session.request_called_shot(kind, roundi(target.x * 1000.0), roundi(target.y * 1000.0), game.turn)
 	if not error.is_empty(): game.report = error; return
 	planning = true
-	placing_target = false
+	keep_broom = true
 	called_target = target
 	planned.clear()
-	game.report = "Solving the called shot on this ice…"
+	game.report = "Calling weight… Your broom sets the line."
 	game.update_labels()
 
 func revise_kind(kind: int) -> void:
-	var target := called_target
-	if kind == 1: target.y = -3.0
-	elif kind == 0: target.y = 0.0
-	else:
-		var nearest := INF
-		for stone in game.frame.get("stones", []):
-			if not stone.active: continue
-			var distance: float = stone.position.length()
-			if distance < nearest: target = stone.position; nearest = distance
-		if not is_finite(nearest): return
-	request_call(kind, target)
+	request_call(kind, Vector2(0, -3.0 if kind == 1 else 0.0))
 
-func place_target(screen: Vector2) -> void:
-	if not placing_target or game.rink == null: return
-	var at = game.rink.ice_point(screen)
-	if at == null: return
-	if shot_choice.selected == 2:
-		var nearest := .5
-		var found := false
-		for stone in game.frame.get("stones", []):
-			if stone.active and stone.position.distance_to(at) < nearest:
-				nearest = stone.position.distance_to(at)
-				called_target = stone.position
-				found = true
-		if not found: return
-		at = called_target
-	request_call(shot_choice.selected, at)
-
-func reverse_turn() -> void:
-	if not planned.is_empty(): request_call(shot_choice.selected, called_target)
+func select_turn(direction: int) -> void:
+	if not enabled or not human_skips() or game.run_active or planning or game.pointer != -99: return
+	game.turn = direction
+	game.report = "Curl %s. Your broom stays where you placed it.\nChoose weight, then send the shot." % ("right" if direction > 0 else "left")
+	game.update_labels()
+	game.update_spatial(0)
 
 func send_shot() -> void:
-	if not enabled or planned.is_empty() or game.run_active or game.pointer != -99: return
+	if not enabled or human_throws() or planned.is_empty() or game.run_active or game.pointer != -99: return
+	if human_skips():
+		caller_broom = game.broom_mm
+		caller_turn = game.turn
 	var error: String = game.session.execute_ai_plan(game.broom_mm, game.turn, game.play_settings.difficulty)
 	if not error.is_empty(): game.report = error; return
 	planned.clear()
 	planning = false
-	placing_target = false
 	game.frame = game.session.frame()
+	game.shot_reference.begin(game.frame, game.broom_mm, game.turn, shot_choice.get_item_text(shot_choice.selected))
 	game.previous = game.frame
 	game.run_active = not game.frame.resting
 	game.phase = "Travel"
@@ -276,15 +290,25 @@ func speak_call(force := false) -> void:
 
 func save_envelope(match_json: String) -> String:
 	return JSON.stringify({"schema": 1, "match": match_json, "position": human_position(), "difficulty": game.play_settings.difficulty,
-		"target_x_mm": game.frame.get("solo_target_x_mm", 0), "target_y_mm": game.frame.get("solo_target_y_mm", 0)})
+		"target_x_mm": game.frame.get("solo_target_x_mm", 0), "target_y_mm": game.frame.get("solo_target_y_mm", 0),
+		"call": planned if human_throws() else {}})
 
 func valid_envelope(data: Variant) -> bool:
 	if not data is Dictionary or data.get("schema") != 1 or not data.get("match") is String: return false
 	for key in ["position", "difficulty", "target_x_mm", "target_y_mm"]:
 		if not (data.get(key) is float or data.get(key) is int) or not is_finite(float(data[key])) or float(data[key]) != floorf(float(data[key])): return false
+	var call = data.get("call", {})
+	if not call is Dictionary: return false
+	if not call.is_empty():
+		if call.get("kind") not in ["Draw", "Guard", "Hit"]: return false
+		for key in ["target_x_mm", "target_y_mm", "broom_mm", "speed_mm_s", "turn"]:
+			if not (call.get(key) is float or call.get(key) is int) or not is_finite(float(call[key])) or float(call[key]) != floorf(float(call[key])): return false
+		if absf(call.target_x_mm) > 2200 or call.target_y_mm < -5000 or call.target_y_mm > 2000 or absf(call.broom_mm) > 2200 or call.speed_mm_s < 1400 or call.speed_mm_s > 5000 or int(call.turn) not in [-1, 1]: return false
 	return data.position >= 0 and data.position <= 5 and data.difficulty >= 0 and data.difficulty <= 2 and absi(int(data.target_x_mm)) <= 2200 and data.target_y_mm >= -5000 and data.target_y_mm <= 2000
 
 func restore_metadata(data: Dictionary) -> void:
+	game.shot_reference.clear()
+	restored_call = data.get("call", {}).duplicate()
 	game.play_settings.human_position = int(data.position)
 	game.play_settings.position_choice.select(int(data.position))
 	game.play_settings.difficulty = int(data.difficulty)
@@ -313,7 +337,8 @@ func fast_step_limit(steps: int) -> int:
 func update_camera() -> void:
 	if game.rink == null: return
 	game.rink.role_camera = ""
-	game.rink.called_target = called_target if enabled and human_skips() and not game.run_active and (planning or not planned.is_empty()) else Vector2.INF
+	game.rink.calling_view = enabled and human_skips() and not human_throws() and not game.run_active
+	game.rink.called_target = called_target if enabled and human_throws() and not game.run_active and not planned.is_empty() else Vector2.INF
 	if not enabled: return
 	if game.frame.get("match_phase", "") == "Choice":
 		game.rink.role_camera = "House"
@@ -331,17 +356,25 @@ func refresh_controls() -> void:
 	accept_button.visible = human_choice
 	restore_button.visible = human_choice
 	var owns_call := enabled and human_skips()
-	var show_card: bool = owns_call and not game.run_active and (planning or not planned.is_empty())
-	for control in [shot_choice, target_button, auto_button]:
+	var throwing: bool = enabled and human_throws() and not game.run_active and game.phase != "Stone at rest" and game.frame.get("match_phase", "") == "Calling"
+	shot_card.visible = throwing
+	shot_card.position.x = 878 if game.spatial_view else 48
+	if throwing: shot_card.show_call(planned, planning)
+	var show_card: bool = owns_call and not human_throws() and not game.run_active and (planning or not planned.is_empty())
+	skip_aid.visible = show_card
+	skip_aid.queue_redraw()
+	for control in [shot_choice, auto_button] + turn_buttons:
 		control.visible = show_card
 		control.disabled = planning
-	target_button.text = "Tap target on ice…" if placing_target else "Place target"
-	shot_choice.set_item_disabled(2, not game.frame.get("stones", []).any(func(stone): return stone.active))
+	for index in range(turn_buttons.size()):
+		var selected: bool = game.turn == (1 if index == 0 else -1)
+		turn_buttons[index].set_pressed_no_signal(selected)
+		turn_buttons[index].theme_type_variation = "PrimaryButton" if selected else "Button"
 	for index in range(call_buttons.size()):
 		var b := call_buttons[index]
 		b.text = "%s\n%s" % [["↑ HARD", "≈ CLEAN", "■ OFF"][index], OS.get_keycode_string(game.play_settings.call_keys[index])]
 		b.visible = owns_call and game.run_active
-	send_button.visible = owns_call and not game.run_active and not planned.is_empty()
+	send_button.visible = owns_call and not human_throws() and not game.run_active and not planned.is_empty()
 	call_background.visible = enabled and game.run_active
 	if not enabled: return
 	var effort := maxi(0, call_override) if human_position() == 4 and shot_team == 0 else (call_override if owns_call and call_override >= 0 else ai_effort)
@@ -364,8 +397,6 @@ func refresh_controls() -> void:
 	elif state == "GameComplete": game.status.text = "4 vs 4  /  %s wins" % game.team_name(game.frame.winner)
 	if game.run_active: game.new_button.text = "Stone in play"
 	game.mode_button.text = "Practice"
-	game.turn_button.visible = owns_call and not game.run_active and not planned.is_empty()
-	if game.spatial_view and game.turn_button.visible:
-		game.turn_button.position = Vector2(960, 490)
+	game.turn_button.hide()
 	game.clock_label.text = "Gold %s  •  Cyan %s" % [game.clock_text(game.frame.clock_gold), game.clock_text(game.frame.clock_cyan)]
 	game.clock_label.size.x = 300

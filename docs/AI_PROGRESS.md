@@ -74,16 +74,17 @@ completed-journal replay hash equality and a working solo rematch. This full-gam
 gate now joins desktop CI. The camera checkpoint's complete pipeline succeeded
 (run 40447872379); solo checkpoint c93cead's pipeline is still running.
 
-### Skip shot card
+### Skip judgement controls (27 October 2026)
 
-Human skip/vice can select draw, guard or hit; tap a target/stone in House view;
-and change turn. A worker inverse-solves the selected call on the shared ice.
-A small gold ring shows the intended target while the broom remains separately
-adjustable. Reversing turn re-solves the broom line instead of reusing the old
-line with opposite curl. Ask AI skip restores automatic strategy suggestions.
-Core guard/hit inverse tests cover both sides/turns; native target picking,
-turn reversal, guard release, retained sweep target and rejected-call atomicity
-pass. The positive target save bound also now includes legal back-house stones.
+The human caller now places the broom directly and calls draw/guard/takeout
+weight. In-turn/out-turn buttons show curl direction for a right-handed delivery;
+changing turn or weight preserves the placed line. The short arrow has no
+predicted endpoint. Suggest a shot remains optional. Standard weight calls retain
+the existing worker solver; AI opponents retain automatic strategy planning.
+A per-team ghost broom and ring show a previous contact-free actual result and
+are invalidated by contact, later movement/removal, new ends or reloads.
+The thrower's existing AI call card still shows the skip's intended target.
+See SOLO_TEAMS.md and PRESENTATION.md for controls and sound details.
 
 ### Observed ice board and true splits
 

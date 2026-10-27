@@ -40,7 +40,12 @@ Practice saves automatically, including held slides and interrupted shots, with 
 selects your position (or Full team / Calling only), three AI accuracy tiers,
 remappable H/C/O call keys, spoken calls and optional 4×
 opponent travel between the hog lines. Skip/vice can send called shots and call
-HARD/CLEAN/OFF; text and symbols support silent play. Solo matches save separately.
+HARD/CLEAN/OFF; text and symbols support silent play. Your deliveries show the skip's
+requested weight, target, broom and curl in a persistent call card with an overhead map.
+As skip, drag the broom and select in-turn/out-turn; the arrow shows curl direction
+without revealing a landing spot. A ghost broom and highlighted stone recall your
+last contact-free result. Settings can mute the new stone/brush sounds separately
+from spoken calls. Solo matches save separately.
 See [solo teams](docs/SOLO_TEAMS.md) for controls and current AI scope.
 **Drills** offers five-shot rounds for tee weight, front guards, alternating line
 and sweeping, plus takeouts and hog-to-hog timing. Gold target rings mark
