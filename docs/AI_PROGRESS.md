@@ -129,3 +129,14 @@ keys, swaps, Esc, remapped calls, settings isolation, calling-only save metadata
 and a full 16-stone Full team end. An unswept reference hash checks Full team
 never adds automatic brushing. Position changes remain disabled during held/live
 stones. AI accuracy tiers and the normal position default remain available.
+
+### Installed Android UI probe preparation
+
+Added a one-use development observer (schema-3 diagnostics request) that exports
+real control geometry and state, with normal save/settings persistence disabled
+before scene setup. It accepts no game commands. The adb driver uses actual menu
+selections/taps for Calling only, Elite, fast watching, guard selection/zoom,
+Send, HARD/OFF, and ice-board pause. It retrieves the accepted match journal for
+shared-core verification and compares all normal save/preference files before/
+after. Desktop bootstrap/consumption/no-persistence tests pass. Installed evidence
+will be recorded only after a clean APK run.

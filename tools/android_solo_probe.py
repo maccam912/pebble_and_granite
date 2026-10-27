@@ -1,0 +1,189 @@
+#!/usr/bin/env python3
+"""Drive installed solo menus/calls with adb taps on the dedicated test emulator.
+
+The one-use development observer exports actual control geometry and state while
+normal save/preference persistence is disabled. It never injects game commands.
+"""
+import argparse
+import hashlib
+import json
+import pathlib
+import subprocess
+import time
+import uuid
+
+ROOT = pathlib.Path(__file__).resolve().parents[1]
+PACKAGE = 'dev.maccam912.pebblegranite'
+p = argparse.ArgumentParser(description=__doc__)
+p.add_argument('apk', type=pathlib.Path)
+p.add_argument('--serial', required=True)
+p.add_argument('--adb', default=str(pathlib.Path.home() / 'Library/Android/sdk/platform-tools/adb'))
+a = p.parse_args()
+nonce = uuid.uuid4().hex
+out = ROOT / 'build/probes' / ('solo-ui-' + nonce)
+out.mkdir(parents=True)
+events = []
+last_state = {}
+
+
+def adb(*args, check=True, input=None):
+    return subprocess.run([a.adb, '-s', a.serial, *map(str, args)], input=input,
+                          capture_output=True, check=check, timeout=120).stdout
+
+
+def read_file(path):
+    return adb('exec-out', 'run-as', PACKAGE, 'cat', 'files/' + path, check=False)
+
+
+def read_state():
+    global last_state
+    try:
+        state = json.loads(read_file('diagnostics/ui-state-' + nonce + '.json'))
+        if state.get('nonce') == nonce:
+            last_state = state
+            return state
+    except (ValueError, UnicodeDecodeError):
+        pass
+    return None
+
+
+def wait_for(predicate, description, timeout=90):
+    deadline = time.monotonic() + timeout
+    while time.monotonic() < deadline:
+        state = read_state()
+        if state and state.get('expired'):
+            raise RuntimeError('Installed observer expired during ' + description)
+        if state and predicate(state):
+            (out / 'last-state.json').write_text(json.dumps(state, indent=2) + '\n')
+            print('SOLO_UI ' + description, flush=True)
+            return state
+        time.sleep(.2)
+    raise RuntimeError('Timed out: ' + description + '\n' + json.dumps(last_state))
+
+
+def capture(name):
+    data = adb('exec-out', 'screencap', '-p')
+    if data[:8] != b'\x89PNG\r\n\x1a\n':
+        raise RuntimeError('Expected an Android screenshot')
+    (out / (name + '.png')).write_bytes(data)
+
+
+def tap(name):
+    state = wait_for(lambda s: bool(s['controls'].get(name))
+                     and not s['controls'][name].get('disabled', False), name + ' available')
+    point = state['controls'][name]
+    adb('shell', 'input', 'tap', point['x'], point['y'])
+    events.append({'tap': name, 'x': point['x'], 'y': point['y'], 'time': time.monotonic()})
+    time.sleep(.3)
+
+
+def choose(name, current, desired, count):
+    tap(name)
+    for _ in range((desired - current) % count):
+        adb('shell', 'input', 'keyevent', 'KEYCODE_DPAD_DOWN')
+        time.sleep(.08)
+    adb('shell', 'input', 'keyevent', 'KEYCODE_ENTER')
+    time.sleep(.4)
+
+
+def saves():
+    names = ['practice-session.json', 'match-session.json', 'solo-teams.json',
+             'target-drills.json', 'play-settings.cfg']
+    names += ['ice-notes-' + mode + '.json' for mode in ['practice', 'mixed', 'solo', 'drills']]
+    return {name + suffix: hashlib.sha256(read_file(name + suffix)).hexdigest()
+            for name in names for suffix in ['', '.bak']}
+
+
+if adb('shell', 'getprop', 'ro.boot.qemu.avd_name').decode().strip() != 'pebble_granite_lab':
+    raise RuntimeError('This fixture requires the dedicated pebble_granite_lab emulator')
+adb('install', '-r', '-t', str(a.apk.resolve()))
+adb('shell', 'am', 'force-stop', PACKAGE)
+before_saves = saves()
+request = 'files/diagnostics/self-test-request.json'
+adb('exec-out', 'run-as', PACKAGE, 'mkdir', '-p', 'files/diagnostics')
+payload = json.dumps({'schema': 3, 'nonce': nonce}).encode()
+adb('exec-in', 'run-as', PACKAGE, 'dd', 'of=' + request, 'bs=1', 'count=' + str(len(payload)), input=payload)
+activity = adb('shell', 'cmd', 'package', 'resolve-activity', '--brief', PACKAGE).decode().strip().splitlines()[-1]
+if not activity.startswith(PACKAGE + '/'):
+    raise RuntimeError('APK did not resolve the expected application')
+try:
+    adb('shell', 'am', 'start', '-W', '-n', activity)
+    wait_for(lambda s: s['mode'] == 'practice' and s['sequence'] > 2, 'initial scene', timeout=90)
+    capture('01-initial')
+    tap('settings')
+    state = wait_for(lambda s: s['settings_visible'], 'settings open')
+    choose('role', state['human_position'], 5, 6)
+    state = wait_for(lambda s: s['human_position'] == 5, 'calling-only selected')
+    choose('difficulty', state['difficulty'], 2, 3)
+    state = wait_for(lambda s: s['difficulty'] == 2, 'elite selected')
+    if not state['fast']:
+        tap('fast')
+    wait_for(lambda s: s['fast'], 'fast watching enabled')
+    capture('02-settings')
+    tap('done')
+    wait_for(lambda s: not s['settings_visible'], 'settings closed')
+    tap('solo')
+    wait_for(lambda s: s['mode'] == 'solo' and s['planned'] and s['team'] == 0,
+             'Gold AI call ready', timeout=90)
+    # The empty-board suggestion is a draw; choose a guard through the real menu.
+    choose('shot_kind', 0, 1, 3)
+    wait_for(lambda s: s['planned'] and s['kind'] == 'Guard', 'guard solved')
+    tap('zoom')
+    wait_for(lambda s: s['zoomed'] and s['camera'] == 'House' and s['camera_size'] < 3, 'guard zoom')
+    capture('03-called-guard-zoom')
+    tap('zoom')
+    tap('send')
+    wait_for(lambda s: s['run_active'] and s['team'] == 0, 'AI Gold delivery')
+    tap('hard')
+    wait_for(lambda s: s['call_override'] == 255, 'HARD obeyed')
+    capture('04-hard-call')
+    tap('off')
+    wait_for(lambda s: s['call_override'] == 0, 'OFF obeyed')
+    capture('05-off-call')
+    wait_for(lambda s: s['delivered_count'] >= 1 and s['review_count'] >= 1, 'first shot settled', timeout=120)
+    tap('ice_board')
+    paused = wait_for(lambda s: s['board_visible'], 'ice board open')
+    pause_hash = paused['hash']
+    time.sleep(1.3)
+    check_pause = wait_for(lambda s: s['board_visible'], 'board remains open')
+    if not check_pause['board_visible'] or check_pause['hash'] != pause_hash:
+        raise RuntimeError('Ice board did not pause the installed game')
+    capture('06-ice-board')
+    tap('board_close')
+    wait_for(lambda s: not s['board_visible'], 'ice board closed')
+    wait_for(lambda s: s['team'] == 1 and s['run_active'] and s['fast_active'],
+             'opponent fast travel', timeout=120)
+    capture('07-opponent-fast')
+    final = wait_for(lambda s: s['delivered_count'] == 2 and s['team'] == 0 and s['planned'],
+                     'second Gold approval', timeout=120)
+    if final['review_count'] != 2 or final['human_position'] != 5 or final['difficulty'] != 2:
+        raise RuntimeError('Installed solo state lost role/accuracy/observations')
+    capture('08-second-gold-call')
+    raw = read_file('diagnostics/ui-match-' + nonce + '.json')
+    journal = json.loads(raw)
+    if format(journal['hash'], '016x') != final['journal_hash']:
+        raise RuntimeError('Installed journal does not match the observer snapshot')
+    journal_path = out / 'match-session.json'
+    journal_path.write_bytes(raw)
+    verified = subprocess.run(['cargo', 'run', '--locked', '--release', '-p', 'curl-server', '--',
+                               'verify-match', str(journal_path)], cwd=ROOT, capture_output=True, text=True, check=True)
+    (out / 'verify-match.txt').write_text(verified.stdout)
+    if saves() != before_saves:
+        raise RuntimeError('Installed UI probe modified normal player saves/preferences')
+    result = {'ok': True, 'serial': a.serial, 'nonce': nonce,
+              'apk_sha256': hashlib.sha256(a.apk.read_bytes()).hexdigest(), 'final_state': final,
+              'events': events, 'normal_saves_unchanged': True,
+              'audio_boundary': 'Device voice availability only; no-audio emulator, no audible approval.'}
+    (out / 'result.json').write_text(json.dumps(result, indent=2) + '\n')
+    print('ANDROID_SOLO_UI_OK ' + str(out), flush=True)
+except Exception:
+    capture('failure')
+    (out / 'last-state.json').write_text(json.dumps(last_state, indent=2) + '\n')
+    raise
+finally:
+    adb('shell', 'am', 'force-stop', PACKAGE, check=False)
+    adb('exec-out', 'run-as', PACKAGE, 'rm', '-f', request,
+        'files/diagnostics/ui-state-' + nonce + '.json',
+        'files/diagnostics/ui-state-' + nonce + '.json.tmp',
+        'files/diagnostics/ui-match-' + nonce + '.json',
+        'files/diagnostics/ui-match-' + nonce + '.json.tmp', check=False)
