@@ -1,5 +1,22 @@
 # Installed Android input validation
 
+## Menu and lessons source checkpoint — 27 October 2026
+
+Clean source `c338969c0261d598a72de94c7dea3bdc71bf5a7d`, local Android 82,
+installed templates, APK SHA256
+`d894ee35e2c46bb0343c83624f84adbb1771b085f82b3d42cf8b8fa8394f401e`.
+Actual-touch solo and drill probes pass with Menu navigation, Settings, in/out
+turn, broom dragging, HARD/OFF, shot review, ice-board pause and fast opponent
+travel. Takeout earned three stars and the timing drill measured 6.333 s, correctly
+outside its 14 s goal. Journals replay exactly and normal saves/preferences are
+unchanged. Installed caller screenshot inspected; no clipped navigation controls.
+
+Evidence: `build/probes/solo-ui-8a90cd509fa44c2ab2c9907b0a6bafb5/` and
+`build/probes/drills-ui-79002831e19844b182762b5921e631ae/`.
+Tutorial progression has native rendered/input coverage; this installed probe
+does not certify its progression on Android. Direct-touch lifecycle probe follows.
+Physical-device feel and audible mix remain open.
+
 The direct-on-ice scene was tested on the Android 35 ARM64 emulator
 `emulator-5580`, at 2400×1080 landscape. The game fits its 1280×800 logical canvas
 at scale 1.35 with a 336-pixel horizontal offset. This is emulator evidence;
