@@ -9,9 +9,12 @@ bible only. Remote: `maccam912/pebble_and_granite`, main branch.
 
 Last verified downloadable checkpoint: `f573bdc` (rules 4 / protocol 11, model 3),
 [Build 95](https://github.com/maccam912/pebble_and_granite/releases/tag/v0.0.95-dev).
-Its complete cross-platform pipeline passed (40455218259). Follow-up team-rule
-choice/clock recovery passed clean local Android 76 and awaits its complete
-remote publish. New takeout/timing drills follow that installed checkpoint.
+Its complete cross-platform pipeline passed (40455218259). Gameplay source
+`da21863` additionally includes no-tick/clock recovery, takeout/timing drills and
+steady-camera accessibility. Clean local Android 78 passed runtime and actual
+solo/drill UI probes; exact hashes and evidence are in ANDROID_INPUT.md. Latest
+gameplay CI 40462360957 is running. The previous run passed all desktop/core gates
+but Android export hit Maven HTTP 429; Gradle caching is now enabled.
 Current source includes solo teams, rated AI, role cameras/calls and target drills;
 see docs/AI_PROGRESS.md and the final entries for current evidence.
 The main scene is a 3D curler's view with direct handle grip, pull/push/held slide,
@@ -1139,3 +1142,14 @@ CI 40460167625: core across four platforms and Linux/Windows packages passed;
 Android Gradle dependency downloads returned Maven HTTP 429. Added a Gradle cache
 for subsequent workflows. macOS remains in progress; Build 95 stays the last
 verified complete release until a newer complete publish is confirmed.
+
+## Final installed source checkpoint
+
+Clean local Android 78 / da21863 passed golden/JNI and both real UI probes,
+including enabling steady overhead during a solo AI throw, original call/zoom/
+board/fast controls, a retained takeout and actual timing feedback. Three exported
+journals replay exactly on desktop; normal saves/preferences/notes are unchanged.
+Final native regression suite passed eleven UI gates; core/golden and Clippy
+passed the final native source. See AI_PROGRESS.md for scope and current CI status,
+and ANDROID_INPUT.md for exact package hash/probe directories. The dedicated
+emulator is stopped. Physical hardware/audio/calibration remain separate checks.

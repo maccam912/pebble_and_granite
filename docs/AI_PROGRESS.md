@@ -233,3 +233,24 @@ flows: a 3-star retained takeout, a measured 6.191 s split correctly outside the
 replay exactly on desktop, and normal save/preference/note files are unchanged.
 Two light adb fixture attempts preceded the corrected single-forward-push driver;
 no gameplay change was required. See ANDROID_INPUT.md for exact provenance.
+
+### Validated source checkpoint
+
+Gameplay source `da21863` is committed and pushed. Clean local Android 78 passed
+installed golden/JNI, the combined solo/call/zoom/fast/steady-camera/board flow,
+and actual takeout/timing strokes; all three journals replay exactly on desktop.
+Normal saves/preferences/notes were unchanged. Final desktop regression gates
+passed: rink, accessibility, called shots, held resume, solo restore, ice board,
+online UI, match flow, team rules, drills and diagnostic bootstrap. Core/golden
+and all-target Clippy had already passed the final native drill changes; the
+subsequent camera preference is presentation-only. The seven-end/112-delivery
+solo game/review/replay/rematch proof remains the latest full solo run.
+
+Remote 40460167625 completed: all core and desktop packages passed, Android alone
+failed on Maven HTTP 429, so publish was skipped. Latest gameplay pipeline
+40462360957 is running with Gradle caching; the intermediate queued drill run was
+superseded. Build 95 is still the last verified complete downloadable release at
+this checkpoint. Current clean local Android APK is build 78. Physical Android,
+audible quality, advanced strategy/ice learning, independent team brushes, online
+boards/calls, career and calibrated ice remain open. Weekly usage remains
+23% used / 77% remaining; the below-50% remaining cutoff was not triggered.

@@ -232,3 +232,27 @@ forward push. Gameplay/input mapping did not change. The early takeout screensho
 preceded the next rendered UI frame; a presentation wait was added to future
 captures. The report/state/journal all contain the validated 3-star grade.
 The new steady-camera setting follows this APK and has separate native evidence.
+
+## Steady-camera and combined installed checkpoint
+
+Clean source `da21863bc73bb19d2d32af4dd63425fbc58565ca`, local Android 78,
+installed templates, `source_dirty=false`. APK SHA256:
+`a065c136a42e0f1264491ea8d4454f3f7ee77e9783a9292d9503b8bfc4bb75b5`.
+Golden/JNI runtime and both actual installed UI probes passed. Solo selected
+Calling only/Elite/fast watching, sent a guard, zoomed, issued HARD/OFF, toggled
+steady overhead through Settings during travel, paused/resumed with the ice
+board, watched the opponent fast, and reached the next Gold call. Its accepted
+match journal replayed exactly at `c61a8247754e7170`.
+
+Actual touch drills produced another three-star retained takeout (journal
+`028998ff45180508`) and a 5.858 s split, correctly zero stars against 14 s
+(journal `707d7720028365df`). Both practice journals replayed exactly. Normal
+practice/match/solo/drill saves, preferences and ice-note sidecars stayed unchanged.
+The corrected capture wait shows the rendered three-star result, not the prior
+settlement frame. Steady overhead and takeout/timing screenshots were inspected.
+
+Evidence: `build/probes/solo-ui-53e00f6fa7824538abb06fcae6665498/` and
+`build/probes/drills-ui-3499e4de058040148f2d688e5e00e654/`; logs
+`build/steady-camera-android-{runtime,solo,drills}.log`. The dedicated hidden
+emulator was stopped after testing. Physical-device feel, latency/thermal behavior,
+audible quality and real-ice coefficients remain unverified.
