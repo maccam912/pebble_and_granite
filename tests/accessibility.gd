@@ -113,11 +113,12 @@ func run() -> void:
 	root.add_child(prefs)
 	prefs.call_keys = PackedInt32Array([KEY_J, KEY_K, KEY_L])
 	prefs.human_position = 5
+	prefs.steady_camera = true
 	prefs.update_preferences()
 	var loaded := CurlPlaySettings.new()
 	loaded.config_path = prefs.config_path
 	root.add_child(loaded)
-	check(loaded.call_keys == prefs.call_keys and loaded.human_position == 5, "Call shortcuts/control mode did not persist")
+	check(loaded.call_keys == prefs.call_keys and loaded.human_position == 5 and loaded.steady_camera and loaded.steady_toggle.button_pressed, "Call shortcuts/control mode did not persist")
 	DirAccess.remove_absolute(ProjectSettings.globalize_path(prefs.config_path))
 	prefs.queue_free()
 	loaded.queue_free()

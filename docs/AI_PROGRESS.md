@@ -209,3 +209,27 @@ setup/outcome replay, real early-release hog timing, thresholds and attainabilit
 of all five time goals. Native tests cover five takeout attempts, no setup grade,
 ready-target/in-flight timing restore, legacy scores and malformed metrics.
 Weekly usage: 23% used / 77% remaining; work continues.
+
+### Steady camera accessibility
+
+Settings now offers a persistent “Steady overhead after release (Auto)” option.
+It uses a fixed house view during travel while preserving the ready/held delivery
+view and explicit manual camera choices. It works with the existing FOV, zoom and
+opponent fast watching preferences. Native tests verify that moving a rendered
+stone does not translate/rotate this camera, manual cameras remain available,
+turning the option off restores following, and neither preference changes nor
+rendering mutate the authoritative hash. Preference reload and modal focus pass;
+the larger settings panel was inspected at mobile UI sizing.
+
+Remote team-rule CI: all four core jobs plus Linux/Windows packages passed;
+Android export failed on Maven HTTP 429 dependency downloads. Gradle dependencies
+and wrapper caching were added for subsequent Android builds. This does not
+change the successful local clean Android 76 installed evidence. The macOS job
+is still running; there is no new all-platform release claim yet.
+
+Clean Android 77 then passed installed golden/JNI and actual drill menu/touch
+flows: a 3-star retained takeout, a measured 6.191 s split correctly outside the
+14 s tolerance, and next-target/next-goal transitions. Both practice journals
+replay exactly on desktop, and normal save/preference/note files are unchanged.
+Two light adb fixture attempts preceded the corrected single-forward-push driver;
+no gameplay change was required. See ANDROID_INPUT.md for exact provenance.

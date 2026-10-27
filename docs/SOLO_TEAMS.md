@@ -24,7 +24,10 @@ are guards, 4–6 the front rings, 7 tee, and 8–10 the back rings. In other
 positions, follow the AI skip's text/symbol call and scrub or hold to sweep.
 Device speech is optional and depends on an installed English voice; the visual
 call is always present. Lead/second/vice use the sweeper view during teammate
-shots; the caller watches from behind the broom. Camera remains manually selectable.
+shots; the caller watches from behind the broom. Camera remains manually selectable. Settings → Steady overhead after release
+(Auto) keeps the traveling-stone view stationary when Auto is selected. Ready
+and held delivery views keep the handle visible; explicit manual cameras still
+work. This preference is independent of FOV, zoom and fast watching.
 
 **AI shot accuracy** has three tiers. All use the same physics and the same
 bounded one-ply search over draws, center guards and hits. The executor adds

@@ -136,6 +136,26 @@ func run() -> void:
 	scene.end_pointer(hand + Vector2(0, -9.6))
 	check(scene.run_active, "3D scene rejected shared delivery stroke")
 	for i in range(30): scene._process(1.0 / 60.0)
+	# Reduced motion keeps Auto fixed while the stone travels, and preserves
+	# the ready/held delivery viewpoint and explicit manual view selection.
+	scene.play_settings.steady_toggle.button_pressed = true
+	scene.rink.mode = 0
+	scene.update_spatial(0)
+	check(scene.rink.current_camera == "House", "Steady Auto did not select the fixed overhead")
+	var fixed_camera: Transform3D = scene.rink.camera.transform
+	var camera_hash: String = scene.session.state_hash()
+	var shifted: Dictionary = scene.frame.duplicate(true)
+	shifted.stones[0].position += Vector2(.5, 2)
+	scene.rink.render_frame(shifted, true, false, -900, 1, false, .1)
+	check(scene.rink.camera.transform.is_equal_approx(fixed_camera), "Steady overhead moved with the traveling stone")
+	check(scene.session.state_hash() == camera_hash, "Motion preference changed simulation")
+	scene.rink.mode = 3
+	scene.update_spatial(0)
+	check(scene.rink.current_camera == "Skip", "Motion preference blocked manual camera selection")
+	scene.rink.mode = 0
+	scene.play_settings.steady_toggle.button_pressed = false
+	scene.update_spatial(0)
+	check(scene.rink.current_camera == "Sweeper", "Follow camera did not resume after turning steady view off")
 	scene.begin_pointer(0, scene.camera_button.get_global_rect().get_center())
 	check(not scene.sweeping and scene.pointer == -99, "Camera control started a sweep gesture")
 	var before: String = scene.session.state_hash()
@@ -166,8 +186,11 @@ func run() -> void:
 	var moved: Node3D = scene.rink.stones[transition.stones[0].id]
 	check(moved.get_meta("team") == 1, "Reused stone ID retained another team's handle")
 	check(moved.position == Vector3(transition.stones[0].position.x, 0, -transition.stones[0].position.y), "End transition interpolated an obsolete stone position")
+	scene.play_settings.steady_toggle.button_pressed = true
+	scene.rink.mode = 0
 	scene.reset(false)
 	scene.update_spatial(0)
+	check(scene.rink.current_camera == "Delivery", "Steady view hid the ready delivery grip")
 	check(scene.rink.stones.is_empty(), "Reset left stale stones in the renderer")
 	scene.queue_free()
 	await process_frame

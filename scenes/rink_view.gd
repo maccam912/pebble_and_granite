@@ -32,6 +32,7 @@ var mode := 0
 var current_camera := "Delivery"
 var field_of_view := 52.0
 var zoomed := false
+var steady_camera := false
 var role_camera := ""
 var drill_target := Vector2.INF
 var called_target := Vector2.INF
@@ -427,7 +428,8 @@ func render_frame(frame: Dictionary, running: bool, sweep: bool, broom_mm: int, 
 	brush.position = followed + Vector3(offset.x, 0, -offset.y)
 	brush.rotation.y = atan2(direction.x, direction.y)
 	var selected: String = MODES[mode]
-	if selected == "Auto": selected = role_camera if not role_camera.is_empty() else ("Sweeper" if running and has_followed else ("Delivery" if aiming else "House"))
+	if selected == "Auto":
+		selected = "House" if steady_camera and running else role_camera if not role_camera.is_empty() else ("Sweeper" if running and has_followed else ("Delivery" if aiming else "House"))
 	if selected == "Sweeper" and not has_followed: selected = "Delivery"
 	broom.visible = not running or selected == "Skip"
 	set_camera(selected, followed)

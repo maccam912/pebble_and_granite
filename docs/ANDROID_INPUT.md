@@ -212,3 +212,23 @@ No installed no-tick collision fixture was driven: both remedies, pending restor
 AI choice and moving-clock rematch have desktop native/core coverage. Existing
 direct-touch evidence above remains tied to build 75. New drill work follows this
 APK and requires its own installed validation.
+
+## Takeout/timing installed checkpoint
+
+Clean source `af72dfbd758d39ddd962d3702570269c7c804c4b`, local Android 77,
+installed templates, `source_dirty=false`, APK SHA256:
+`dd9ffc905f48bc02b99549a140dea1d0c07de04f1604a1e5c76f10ed1301d879`.
+Golden/JNI runtime check passed. Actual menu selections and touchscreen delivery
+strokes produced a 3-star takeout (target removed, shooter retained in the house)
+and a measured 6.191 s hog split, correctly graded zero for a 14 s goal. Next
+advanced to another takeout target and a 15 s timing goal. Cross-core practice
+replay hashes: takeout `73d41544dbdbd424`, timing `bbf9a4c9551bc8fc`.
+Normal saves/preferences/notes were unchanged. Evidence:
+`build/probes/drills-ui-4be51f6fdead479a89a81701b7614d81/`, log
+`build/expanded-drills-android-ui-third.log`. Two preceding fixture runs were too
+light to cross both hog lines: the small first forward nudge consumed the native
+120 ms drive window during adb command latency. The driver now sends one clear
+forward push. Gameplay/input mapping did not change. The early takeout screenshot
+preceded the next rendered UI frame; a presentation wait was added to future
+captures. The report/state/journal all contain the validated 3-star grade.
+The new steady-camera setting follows this APK and has separate native evidence.

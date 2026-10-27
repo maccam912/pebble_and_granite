@@ -1,3 +1,7 @@
+Settings now offers a steady overhead view after release when Camera is Auto.
+It keeps the travel camera fixed while retaining the ready delivery viewpoint
+and manual camera selection.
+
 Drills now includes takeouts and hog-to-hog timing. Alternate takeout targets
 reward removal and staying in the house; timing rounds compare your actual
 crossings against five time goals. Existing drill best scores are preserved.

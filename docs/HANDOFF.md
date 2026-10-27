@@ -1126,3 +1126,16 @@ Clippy pass. New source still needs its commit/package and installed drill check
 Team-rule Android 76 (clean 2851fef) passed golden/JNI and actual solo UI actions,
 normal-save isolation and cross-core journal verification. Exact APK hash/evidence
 are in ANDROID_INPUT.md. Weekly usage is 23% used / 77% remaining.
+
+## Steady travel camera and remote Android dependency failure
+
+The bible’s camera-motion accessibility work now has a persistent fixed overhead
+option for Auto travel views. Native geometry/hash, manual override, ready-grip,
+preference reload and existing focus tests pass; mobile-size settings render was
+inspected. No native/model/journal changes. The clean build 77 takeout/timing
+probe is running separately before this preference's Android package.
+
+CI 40460167625: core across four platforms and Linux/Windows packages passed;
+Android Gradle dependency downloads returned Maven HTTP 429. Added a Gradle cache
+for subsequent workflows. macOS remains in progress; Build 95 stays the last
+verified complete release until a newer complete publish is confirmed.

@@ -64,6 +64,8 @@ def wait_for(predicate, description, timeout=90):
 
 
 def capture(name):
+    # State is written before the next draw; let the renderer present it too.
+    time.sleep(.5)
     data = adb('exec-out', 'screencap', '-p')
     if data[:8] != b'\x89PNG\r\n\x1a\n':
         raise RuntimeError('Expected an Android screenshot')
@@ -132,6 +134,12 @@ def run_solo():
     tap('off')
     wait_for(lambda s: s['call_override'] == 0, 'OFF obeyed')
     capture('05-off-call')
+    tap('settings')
+    wait_for(lambda s: s['settings_visible'], 'motion settings open')
+    tap('steady')
+    wait_for(lambda s: s['steady_camera'] and s['camera'] == 'House', 'steady overhead enabled')
+    tap('done')
+    capture('05b-steady-overhead')
     wait_for(lambda s: s['delivered_count'] >= 1 and s['review_count'] >= 1, 'first shot settled', timeout=120)
     tap('ice_board')
     paused = wait_for(lambda s: s['board_visible'], 'ice board open')
@@ -177,21 +185,22 @@ def touch(kind, x, y):
 def throw_from_handle():
     state = read_state()
     x, y = state['handle']['x'], state['handle']['y']
-    # Same reviewed relative stroke as android_touch_probe.py, on the live handle.
+    # Relative stroke on the observed live handle. A longer push and earlier
+    # lift make it robust to adb command latency without missing the hog lines.
+    # Use one forward event: a small initial nudge would consume the 120 ms
+    # drive window while a later adb command is still starting.
     touch('DOWN', x, y)
     try:
         time.sleep(.08)
         touch('MOVE', x, y + 36)
         time.sleep(.06)
-        touch('MOVE', x, y + 26)
-        time.sleep(.14)
-        touch('MOVE', x, y - 18)
-        time.sleep(.8)
-        touch('MOVE', x, y - 18)
-        touch('MOVE', x + 48, y - 27)
+        touch('MOVE', x, y - 90)
+        time.sleep(.35)
+        touch('MOVE', x, y - 90)
+        touch('MOVE', x + 48, y - 99)
         time.sleep(.04)
-        touch('MOVE', x + 96, y - 36)
-        touch('UP', x + 96, y - 36)
+        touch('MOVE', x + 96, y - 108)
+        touch('UP', x + 96, y - 108)
     finally:
         adb('shell', 'input', 'touchscreen', 'motionevent', 'CANCEL', x, y, check=False)
 
@@ -234,6 +243,7 @@ def run_drills():
     for attempt in range(3):
         throw_from_handle()
         timing = wait_for(lambda s: s['drill_kind'] == 5 and len(s['drill_results']) == 1 and not s['run_active'] and s['hash'] == s['journal_hash'], 'timing graded', timeout=90)
+        (out / ('timing-attempt-' + str(attempt) + '-session.json')).write_bytes(read_file('diagnostics/ui-session-' + nonce + '.json'))
         if 'split_ms' in timing['drill_results'][0]:
             break
         if attempt == 2:

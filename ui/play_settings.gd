@@ -4,6 +4,8 @@ extends Panel
 signal changed
 signal closed
 var fov := 52.0
+var steady_camera := false
+var steady_toggle: CheckButton
 var fast_opponents := false
 var spoken_calls := true
 var difficulty := 1
@@ -26,12 +28,13 @@ const POSITIONS := ["Lead", "Second", "Vice", "Skip"]
 const CONTROL_LABELS := ["Lead", "Second", "Vice", "Skip", "Full team", "Calling only"]
 
 func _ready() -> void:
-	position = Vector2(360, 128)
-	size = Vector2(560, 544)
+	position = Vector2(360, 100)
+	size = Vector2(560, 600)
 	add_theme_stylebox_override("panel", CurlPresentation.surface(Color("11252f"), CurlPresentation.GOLD, 12))
 	var config := ConfigFile.new()
 	if persistence_enabled and config.load(config_path) == OK:
 		fov = clampf(float(config.get_value("view", "fov", 52.0)), 40, 85)
+		steady_camera = bool(config.get_value("view", "steady_camera", false))
 		spoken_calls = bool(config.get_value("audio", "spoken_calls", true))
 		fast_opponents = bool(config.get_value("solo", "fast_opponents", false))
 		difficulty = clampi(int(config.get_value("solo", "difficulty", 1)), 0, 2)
@@ -49,24 +52,31 @@ func _ready() -> void:
 	fov_slider.value = fov
 	fov_slider.value_changed.connect(func(value): fov = value; update_preferences())
 	add_child(fov_slider)
+	steady_toggle = CheckButton.new()
+	steady_toggle.text = "Steady overhead after release (Auto)"
+	steady_toggle.position = Vector2(18, 164)
+	steady_toggle.size = Vector2(524, 48)
+	steady_toggle.button_pressed = steady_camera
+	steady_toggle.toggled.connect(func(value): steady_camera = value; update_preferences())
+	add_child(steady_toggle)
 	fast_toggle = CheckButton.new()
 	fast_toggle.text = "Fast opponent travel between hog lines (4×)"
-	fast_toggle.position = Vector2(18, 164)
+	fast_toggle.position = Vector2(18, 220)
 	fast_toggle.size = Vector2(524, 48)
 	fast_toggle.button_pressed = fast_opponents
 	fast_toggle.toggled.connect(func(value): fast_opponents = value; update_preferences())
 	add_child(fast_toggle)
-	label("AI shot accuracy", Vector2(24, 232))
+	label("AI shot accuracy", Vector2(24, 288))
 	difficulty_choice = OptionButton.new()
-	difficulty_choice.position = Vector2(268, 220)
+	difficulty_choice.position = Vector2(268, 276)
 	difficulty_choice.size = Vector2(268, 50)
 	for tier in ["Club · forgiving", "Competitive", "Elite · precise"]: difficulty_choice.add_item(tier)
 	difficulty_choice.select(difficulty)
 	difficulty_choice.item_selected.connect(func(value): difficulty = value; update_preferences())
 	add_child(difficulty_choice)
-	label("Your solo control", Vector2(24, 296))
+	label("Your solo control", Vector2(24, 352))
 	position_choice = OptionButton.new()
-	position_choice.position = Vector2(268, 284)
+	position_choice.position = Vector2(268, 340)
 	position_choice.size = Vector2(268, 50)
 	for role in CONTROL_LABELS: position_choice.add_item(role)
 	position_choice.select(human_position)
@@ -74,22 +84,22 @@ func _ready() -> void:
 	add_child(position_choice)
 	var speech := CheckButton.new()
 	speech.text = "Spoken skip calls (device voice, if available)"
-	speech.position = Vector2(18, 346)
+	speech.position = Vector2(18, 402)
 	speech.size = Vector2(524, 48)
 	speech.button_pressed = spoken_calls
 	speech.toggled.connect(func(value): spoken_calls = value; update_preferences())
 	add_child(speech)
-	var note := label("Calls always show text and symbols.\nZ / Zoom inspects the house.\nZones: 1–3 guard · 4–6 front · 7 tee · 8–10 back.", Vector2(24, 410))
+	var note := label("Calls always show text and symbols.\nZ / Zoom inspects the house.\nZones: 1–3 guard · 4–6 front · 7 tee · 8–10 back.", Vector2(24, 466))
 	note.add_theme_font_size_override("font_size", 16)
 	var done := Button.new()
 	done.text = "Done"
-	done.position = Vector2(364, 482)
+	done.position = Vector2(364, 538)
 	done.size = Vector2(172, 48)
 	done.pressed.connect(func(): hide(); closed.emit())
 	add_child(done)
 	var bindings := Button.new()
 	bindings.text = "Call shortcuts…"
-	bindings.position = Vector2(24, 482)
+	bindings.position = Vector2(24, 538)
 	bindings.size = Vector2(300, 48)
 	bindings.pressed.connect(func(): binding_panel.show())
 	add_child(bindings)
@@ -116,6 +126,7 @@ func update_preferences() -> void:
 	if persistence_enabled:
 		var config := ConfigFile.new()
 		config.set_value("view", "fov", fov)
+		config.set_value("view", "steady_camera", steady_camera)
 		config.set_value("audio", "spoken_calls", spoken_calls)
 		config.set_value("solo", "fast_opponents", fast_opponents)
 		config.set_value("solo", "difficulty", difficulty)
@@ -158,13 +169,13 @@ func create_bindings() -> void:
 	help.add_theme_font_size_override("font_size", 17)
 	var defaults := Button.new()
 	defaults.text = "Restore H / C / O"
-	defaults.position = Vector2(24, 482)
+	defaults.position = Vector2(24, 538)
 	defaults.size = Vector2(300, 48)
 	defaults.pressed.connect(func(): call_keys = PackedInt32Array([KEY_H, KEY_C, KEY_O]); waiting_key = -1; update_preferences(); refresh_bindings())
 	binding_panel.add_child(defaults)
 	var back := Button.new()
 	back.text = "Back"
-	back.position = Vector2(364, 482)
+	back.position = Vector2(364, 538)
 	back.size = Vector2(172, 48)
 	back.pressed.connect(func(): waiting_key = -1; binding_panel.hide())
 	binding_panel.add_child(back)

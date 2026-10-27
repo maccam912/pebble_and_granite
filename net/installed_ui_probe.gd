@@ -50,7 +50,7 @@ func write_state() -> void:
 		"zoom": point(game.zoom_button), "ice_board": point(game.ice_board.menu_button),
 		"send": point(game.solo.send_button), "shot_kind": point(game.solo.shot_choice), "place_target": point(game.solo.target_button),
 		"hard": point(game.solo.call_buttons[0]), "clean": point(game.solo.call_buttons[1]), "off": point(game.solo.call_buttons[2]),
-		"done": point(find_button(settings, "Done")), "role": point(settings.position_choice), "difficulty": point(settings.difficulty_choice), "fast": point(settings.fast_toggle),
+		"done": point(find_button(settings, "Done")), "role": point(settings.position_choice), "difficulty": point(settings.difficulty_choice), "fast": point(settings.fast_toggle), "steady": point(settings.steady_toggle),
 		"board_close": point(find_button(game.ice_board, "Close")), "accept": point(game.solo.accept_button), "restore": point(game.solo.restore_button)}
 	var handle: Vector2 = game.get_viewport_transform() * (game.get_global_transform() * game.handle_point())
 	sequence += 1
@@ -63,7 +63,7 @@ func write_state() -> void:
 		"human_position": settings.human_position, "difficulty": settings.difficulty, "fast": settings.fast_opponents,
 		"planning": game.solo.planning, "planned": not game.solo.planned.is_empty(), "kind": game.solo.planned.get("kind", ""),
 		"call_override": game.solo.call_override, "zone": game.solo.weight_zone, "fast_active": game.solo.fast_forwarding(),
-		"camera": game.rink.current_camera, "fov": game.rink.camera.fov, "camera_size": game.rink.camera.size, "zoomed": game.rink.zoomed,
+		"camera": game.rink.current_camera, "fov": game.rink.camera.fov, "camera_size": game.rink.camera.size, "zoomed": game.rink.zoomed, "steady_camera": settings.steady_camera,
 		"settings_visible": settings.visible, "board_visible": game.ice_board.visible, "review_count": review_count,
 		"voice_feature": DisplayServer.has_feature(DisplayServer.FEATURE_TEXT_TO_SPEECH), "voice_count": voice_count,
 		"journal_hash": journal_hash, "hash": game.session.match_hash() if game.match_mode else game.session.state_hash(), "controls": controls}

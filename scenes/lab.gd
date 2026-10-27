@@ -210,7 +210,9 @@ func create_play_settings() -> void:
 	apply_play_settings()
 
 func apply_play_settings() -> void:
-	if rink != null: rink.field_of_view = play_settings.fov
+	if rink != null:
+		rink.field_of_view = play_settings.fov
+		rink.steady_camera = play_settings.steady_camera
 	if not play_settings.spoken_calls and DisplayServer.has_feature(DisplayServer.FEATURE_TEXT_TO_SPEECH): DisplayServer.tts_stop()
 	if solo != null: solo.refresh_controls()
 	update_spatial(0)

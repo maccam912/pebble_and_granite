@@ -64,6 +64,15 @@ jobs:
         with:
           distribution: temurin
           java-version: '17'
+      - name: Cache Android Gradle dependencies
+        if: matrix.platform == 'android'
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.gradle/caches
+            ~/.gradle/wrapper
+          key: gradle-${{ runner.os }}-${{ hashFiles('tools/toolchain.json', 'tools/android_services.py', 'export_presets.cfg') }}
+          restore-keys: gradle-${{ runner.os }}-
       - uses: android-actions/setup-android@v3
         if: matrix.platform == 'android'
         with:
