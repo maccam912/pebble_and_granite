@@ -78,6 +78,7 @@ var settings_button: Button
 var zoom_button: Button
 var shot_reference := CurlShotReference.new()
 var ice_audio: CurlIceAudio
+var restart_prompt: CurlRestartPrompt
 
 var mobile_ui := OS.get_name() == "Android"
 
@@ -148,7 +149,7 @@ func _ready() -> void:
 	sweep_button.button_down.connect(func(): hold_sweep = true)
 	sweep_button.button_up.connect(func(): hold_sweep = false)
 	one_button = button("One-push: off", Vector2(710, 726), func(): one_push = not one_push; update_labels())
-	fresh_button = button("Fresh ice", Vector2(920, 726), func(): reset())
+	fresh_button = button("Fresh ice", Vector2(920, 726), request_restart)
 	mode_button = button("Mixed doubles", Vector2(1040, 30), func(): switch_mode())
 	clock_label = Label.new()
 	clock_label.position = Vector2(650, 87)
@@ -177,6 +178,9 @@ func _ready() -> void:
 		room_panel = CurlRoomPanel.new()
 		add_child(room_panel)
 		room_panel.hide()
+	restart_prompt = CurlRestartPrompt.new()
+	add_child(restart_prompt)
+	restart_prompt.setup(self)
 	if not installed_ui_nonce.is_empty() and allow_online:
 		var probe = load("res://net/installed_ui_probe.gd").new()
 		probe.game = self
@@ -202,6 +206,8 @@ func create_play_settings() -> void:
 	play_settings.visibility_changed.connect(func():
 		settings_shade.visible = play_settings.visible
 		if play_settings.visible:
+			stop_scrub()
+			hold_sweep = false
 			play_settings.position_choice.disabled = run_active or not frame.get("in_hand", {}).is_empty()
 			move_child(settings_shade, -1)
 			move_child(play_settings, -1)
@@ -307,6 +313,21 @@ func button(text: String, pos: Vector2, action: Callable) -> Button:
 	add_child(b)
 	return b
 
+func request_restart() -> void:
+	if run_active or pointer != -99 or not frame.get("in_hand", {}).is_empty(): return
+	if restart_prompt == null or restart_prompt.visible: return
+	var progress: bool = int(frame.get("delivered", -1)) >= 0 or int(frame.get("delivered_count", 0)) > 0 or int(frame.get("end", 1)) > 1
+	if not progress or frame.get("match_phase", "") == "GameComplete":
+		reset()
+		return
+	var drill: bool = drills != null and drills.enabled
+	var title := "Restart this drill?" if drill else ("Start a new match?" if match_mode else "Start on fresh ice?")
+	var explanation := "This five-shot round will be replaced. Your personal best stays saved." if drill else ("The current match and its autosave will be replaced. Keep playing to return to this end." if match_mode else "The stones, ice wear and current practice session will be cleared.")
+	restart_prompt.ask(title, explanation, "Restart drill" if drill else ("New match" if match_mode else "Fresh ice"), func(): reset())
+
+func local_menu_open() -> bool:
+	return (play_settings != null and play_settings.visible) or (ice_board != null and ice_board.visible) or (restart_prompt != null and restart_prompt.visible)
+
 func reset(persist := true) -> void:
 	shot_reference.clear()
 	if session == null: return
@@ -362,6 +383,7 @@ func update_labels() -> void:
 	mode_button.text = "Practice" if match_mode else "Mixed doubles"
 	mode_button.disabled = run_active
 	fresh_button.text = "New match" if match_mode else "Fresh ice"
+	fresh_button.disabled = run_active or pointer != -99 or not frame.get("in_hand", {}).is_empty()
 	setup_panel.visible = match_mode and frame.get("match_phase", "") == "Placement"
 	if match_mode:
 		gold_score.text = "GOLD  %d" % frame.score_gold
@@ -523,12 +545,10 @@ func handle_point() -> Vector2:
 
 func _process(delta: float) -> void:
 	if session == null or suspended or (room_panel != null and room_panel.visible): return
-	if ice_board != null and ice_board.visible: return
+	if local_menu_open(): return
 	if drills != null and drills.enabled:
-		if play_settings.visible: return
 		drills.advance()
 	if solo != null and solo.enabled:
-		if play_settings.visible: return
 		solo.advance(delta)
 	if match_mode and not run_active and frame.get("match_phase", "") == "Calling" and frame.get("in_hand", {}).is_empty():
 		clock_remainder += delta * 1000.0
@@ -668,8 +688,7 @@ func _notification(what: int) -> void:
 func _input(event: InputEvent) -> void:
 	if room_panel != null and room_panel.visible: return
 	if session == null: return
-	if ice_board != null and ice_board.visible: return
-	if play_settings != null and play_settings.visible: return
+	if local_menu_open(): return
 	if event is InputEventKey and event.pressed and not event.echo and not event.ctrl_pressed and not event.alt_pressed and not event.meta_pressed and solo != null and solo.enabled and run_active and solo.human_skips():
 		var call := play_settings.call_keys.find(event.keycode)
 		if call >= 0:
@@ -697,8 +716,7 @@ func units(p: Vector2) -> Vector2i:
 	return Vector2i(p * (1000000.0 / 800.0))
 
 func begin_pointer(id: int, p: Vector2) -> void:
-	if ice_board != null and ice_board.visible: return
-	if play_settings != null and play_settings.visible: return
+	if local_menu_open(): return
 	if solo != null and solo.enabled and not run_active and (solo.planning or (not solo.human_throws() and not solo.human_skips())): return
 	if solo != null and solo.enabled and solo.human_throws() and not run_active and solo.planned.is_empty() and frame.get("in_hand", {}).is_empty(): return
 	var controls := [camera_button, view_button, settings_button, zoom_button]

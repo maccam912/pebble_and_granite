@@ -64,7 +64,7 @@ func _process(delta: float) -> void:
 	var speed := 0.0
 	for stone in frame.get("stones", []):
 		if stone.active: speed = maxf(speed, float(stone.get("speed", 0)))
-	var muted: bool = paused or not game.is_visible_in_tree() or not game.play_settings.ice_sounds or game.suspended or game.play_settings.visible or (game.ice_board != null and game.ice_board.visible) or (game.room_panel != null and game.room_panel.visible)
+	var muted: bool = paused or not game.is_visible_in_tree() or not game.play_settings.ice_sounds or game.suspended or game.local_menu_open() or (game.room_panel != null and game.room_panel.visible)
 	if muted: hush()
 	else:
 		playing_level = move_toward(playing_level, clampf(speed / 3.0, 0, 1) if game.run_active else 0.0, delta * 4)

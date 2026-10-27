@@ -96,3 +96,12 @@ Validation: `tests/called_shots.gd` checks touch broom aiming, no skip endpoint,
 line preservation under weight/turn changes and clean-shot recording.
 `tests/skip_polish.gd` checks reference invalidation and sound lifecycle/settings.
 Rendered desktop/mobile-layout captures use `tools/solo_review.gd`.
+
+
+Local Settings now pause practice and mixed doubles as well as solo/drills, with
+no accumulated travel debt on close. Fresh ice/New match/Restart drill is blocked
+during a live or held delivery. Replacing an existing session opens a focus-trapped
+review with Keep playing selected; Escape restores the prior focus and session.
+The next-end and completed-match rematch actions remain immediate. Online settings
+do not pause the remote authority. `tests/local_menus.gd` covers pause/resume,
+restart cancellation/confirmation, held-delivery protection and modal input.
