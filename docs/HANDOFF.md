@@ -1,5 +1,24 @@
 # Pebble & Granite development log
 
+## Ordered improvement pass — 27 October 2026
+
+User requested the fourteen review items in order, one at a time, committing and
+pushing checkpoints until weekly quota falls below 50% remaining. Starting usage:
+35% used / 65% remaining. Human/device evidence cannot be replaced by synthetic
+tests; physical-device feel is the third item and needs user participation.
+
+1. Guided tutorial implemented in `scenes/learn.gd`: separate nonpersistent
+   session, actual broom placement, settled draw depth, recognized finishing curl,
+   and at least half a second of accepted sweeping followed by stopping. Retries,
+   skipping, one-push and hold sweeping remain available. Returning preserves the
+   original session, including a held delivery. No model/version changes.
+   `tests/learn.gd` covers progress/failure feedback, real gestures, pause isolation,
+   recorded sweep input and return preservation. Added to desktop CI. Native
+   rendered mobile-layout captures inspected in `build/evidence/learn/`.
+   Headless tutorial, local menus, delivery slide, held resume, sweeping, drills
+   and online UI pass. No installed-Android tutorial or human-feel claim yet.
+2. Next: simplify playing-screen navigation and phase-specific controls.
+
 ## Current state
 
 Foundation work started 25 October 2026. Original repository contained the design

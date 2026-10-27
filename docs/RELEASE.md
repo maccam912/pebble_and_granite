@@ -1,3 +1,7 @@
+Learn to play now guides broom aim, draw weight, finishing curl and sweeping on
+a separate practice sheet. Lessons grade actual input/results, offer retries and
+skipping, and preserve the game you return to, including held deliveries.
+
 Solo callers now drag the broom and choose explicit in-turn/out-turn controls.
 The curl arrow shows direction, leaving the finish for you to judge. An optional
 ghost broom and ring recall your previous contact-free shot while its stone

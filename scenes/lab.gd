@@ -81,6 +81,9 @@ var ice_audio: CurlIceAudio
 var restart_prompt: CurlRestartPrompt
 var match_readout: CurlMatchReadout
 var shot_clock: CurlShotClock
+var lesson_mode := false
+var learn_button: Button
+var learning_game: Control
 
 var mobile_ui := OS.get_name() == "Android"
 
@@ -189,6 +192,10 @@ func _ready() -> void:
 	restart_prompt = CurlRestartPrompt.new()
 	add_child(restart_prompt)
 	restart_prompt.setup(self)
+	if allow_online:
+		learn_button = button("Learn to play", Vector2(450, 30), open_lessons)
+		learn_button.custom_minimum_size = Vector2(185, 38)
+		learn_button.size = learn_button.custom_minimum_size
 	if not installed_ui_nonce.is_empty() and allow_online:
 		var probe = load("res://net/installed_ui_probe.gd").new()
 		probe.game = self
@@ -208,7 +215,7 @@ func create_play_settings() -> void:
 	settings_shade.hide()
 	add_child(settings_shade)
 	play_settings = CurlPlaySettings.new()
-	play_settings.persistence_enabled = persistence_enabled or not allow_online
+	play_settings.persistence_enabled = persistence_enabled or (not allow_online and not lesson_mode)
 	add_child(play_settings)
 	play_settings.changed.connect(apply_play_settings)
 	play_settings.visibility_changed.connect(func():
@@ -312,6 +319,25 @@ func open_online() -> void:
 	cancel_pointer()
 	room_panel.show()
 
+func open_lessons() -> void:
+	if is_instance_valid(learning_game): return
+	cancel_pointer()
+	learning_game = load("res://scenes/learn.gd").new()
+	learning_game.mobile_ui = mobile_ui
+	learning_game.return_game = self
+	get_parent().add_child(learning_game)
+	learning_game.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	hide()
+
+func close_lessons() -> void:
+	var lesson := learning_game
+	learning_game = null
+	show()
+	if is_instance_valid(lesson):
+		lesson.hide()
+		lesson.queue_free()
+	if learn_button != null: learn_button.grab_focus()
+
 func button(text: String, pos: Vector2, action: Callable) -> Button:
 	var b := Button.new()
 	b.text = text
@@ -335,7 +361,7 @@ func request_restart() -> void:
 	restart_prompt.ask(title, explanation, "Restart drill" if drill else ("New match" if match_mode else "Fresh ice"), func(): reset())
 
 func local_menu_open() -> bool:
-	return (play_settings != null and play_settings.visible) or (ice_board != null and ice_board.visible) or (restart_prompt != null and restart_prompt.visible)
+	return is_instance_valid(learning_game) or (play_settings != null and play_settings.visible) or (ice_board != null and ice_board.visible) or (restart_prompt != null and restart_prompt.visible)
 
 func reset(persist := true) -> void:
 	shot_reference.clear()
@@ -375,6 +401,7 @@ func reset(persist := true) -> void:
 	if persist: save_practice()
 
 func update_labels() -> void:
+	if learn_button != null: learn_button.visible = not match_mode
 	var concluded: bool = match_mode and frame.get("match_phase", "") in ["EndComplete", "GameComplete"]
 	for control in [new_button, sweep_button, one_button]: control.visible = not concluded
 	status.text = "Practice  /  " + phase
@@ -712,6 +739,7 @@ func _unhandled_key_input(event: InputEvent) -> void:
 	get_viewport().set_input_as_handled()
 
 func _input(event: InputEvent) -> void:
+	if not is_visible_in_tree(): return
 	if room_panel != null and room_panel.visible: return
 	if session == null: return
 	if local_menu_open(): return
