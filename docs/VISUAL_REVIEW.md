@@ -1019,8 +1019,9 @@ recompilation warning and no script errors.
 
 Reviewed installed Delivery, Skip and active-sweeping screenshots: wall ribs
 remain shallow and visible at gameplay scale; the ice relief and forward handle
-remain clear. The camera/menu review completed and stopped the app, with clean
-Godot logs. Both wrappers verified all four original saves/backups restored byte
+remain clear. The camera/menu review completed and stopped the app; it also
+reported one cached-shader recompilation warning and no script errors. Both
+wrappers verified all four original saves/backups restored byte
 for byte. Final captures/logs are in `build/evidence/polish/android-72/` and
 `build/android-72-review.log`. This verifies the emulator render and input gates,
 not physical-phone performance. CI run `40423314992` is still pending at this
