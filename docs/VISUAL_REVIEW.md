@@ -1088,3 +1088,22 @@ passed the full direct-touch probe and exact four-file restore, with evidence in
 but its hand/handle screenshots are superseded by this user-requested correction.
 It logged one cached-shader recompilation warning, no script errors, and fresh
 acknowledgement of 0.43-0.56 seconds. Weekly quota remaining is 84 percent.
+
+### Installed corrected grip: Android 74
+
+Clean build 74 (`48e5468`, `source_dirty: false`, SHA-256
+`09079713e73349b6caad8d7beb1a1d4a96f1c30313a48440d2c301585450ec53`)
+passed the complete Android direct-touch probe. The result's APK hash matches;
+both curl directions, scrub/lift, accessible hold, held pause/resume/regrip and
+exactly one hog fault pass. Fresh acknowledgement took 0.42-0.56 seconds.
+Reviewed the installed right/left held-delivery captures: the reversed handle
+and thumb-forward grip render correctly at game scale. The wrapper verified
+all four original saves/backups restored byte for byte and stopped the app.
+
+Evidence is `build/probes/touch-bc79c1adb5954e709645dd5404f2867a/`,
+`build/android-74-full-probe.log` and `build/evidence/polish/android-74/app-log.txt`.
+The runtime reports one cached-shader recompilation warning and no script errors.
+CI run `40426832012` for the correction is pending; the earlier cladding checkpoint
+`3004bff` completed all CI/package/publication jobs. This does not claim
+physical-phone performance or latest-head release completion. Weekly quota
+remaining is 82 percent. The broader graphics polish goal remains active.
