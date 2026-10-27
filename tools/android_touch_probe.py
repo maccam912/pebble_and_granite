@@ -64,25 +64,42 @@ atexit.register(release_contact)
 
 
 def fresh():
-    # 1280x800 game fitted to 2400x1080: x offset 336, scale 1.35.
-    # A cold renderer may still be busy after its first visible frame. Wait
-    # for the reset's autosave acknowledgement before timing a real stroke;
-    # otherwise queued DOWN/MOVEs can reach the game in the same millisecond.
-    def saved_at():
-        return adb('shell', 'run-as', PACKAGE, 'stat', '-c', '%y',
-                   'files/practice-session.json', check=False).strip()
-    before = saved_at()
-    adb('shell', 'input', 'tap', '1880', '1012')
+    # Wait for actual settlement before touching restart. An autosave mtime can
+    # also advance during travel, so it is not proof that fresh ice was applied.
     started = time.monotonic()
-    while True:
-        after = saved_at()
-        if after and after != before:
+    saved = None
+    while time.monotonic() - started < 90:
+        raw = adb('exec-out', 'run-as', PACKAGE, 'cat', 'files/practice-session.json', check=False)
+        try:
+            saved = json.loads(raw)
+        except (ValueError, UnicodeDecodeError):
+            time.sleep(.2)
+            continue
+        shots = [r['data'] for r in saved['records'] if r['kind'] == 'Shot']
+        if not saved.get('pending_delivery') and (not shots or shots[-1].get('final_hash')):
             break
-        if time.monotonic() - started > 45:
-            raise RuntimeError('Fresh ice did not acknowledge its reset within 45 seconds')
-        time.sleep(.1)
-    time.sleep(.4)
-    print('FRESH_ICE_READY %.2fs' % (time.monotonic() - started), flush=True)
+        time.sleep(.2)
+    else:
+        raise RuntimeError('Previous delivery did not settle before Fresh ice')
+    adb('shell', 'input', 'tap', '1880', '1012')
+    # Restart confirmation: logical centre (778, 480), fitted at 1.35x +336.
+    # A fresh, empty session skips the prompt. This fixture never clears stones
+    # through the separate capacity action between these resets.
+    if any(r['kind'] == 'Shot' for r in saved['records']):
+        time.sleep(.4)
+        adb('shell', 'input', 'tap', '1386', '648')
+    while time.monotonic() - started < 100:
+        raw = adb('exec-out', 'run-as', PACKAGE, 'cat', 'files/practice-session.json', check=False)
+        try:
+            current = json.loads(raw)
+            if not current.get('pending_delivery') and not any(r['kind'] != 'Idle' for r in current['records']):
+                time.sleep(.4)
+                print('FRESH_ICE_READY %.2fs' % (time.monotonic() - started), flush=True)
+                return
+        except (ValueError, UnicodeDecodeError):
+            pass
+        time.sleep(.2)
+    raise RuntimeError('Fresh ice did not produce an empty saved session')
 
 
 # Reviewed 2400x1080 fixture: this grip lies within the current handle hit area.

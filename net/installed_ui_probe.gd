@@ -47,16 +47,21 @@ func write_state() -> void:
 	var controls := {
 		"solo": point(game.solo.solo_button), "settings": point(game.settings_button), "camera": point(game.camera_button),
 		"drills": point(game.drills.menu_button), "drill_kind": point(game.drills.choice), "next": point(game.new_button), "restart": point(game.fresh_button),
+		"restart_confirm": point(game.restart_prompt.confirm_button), "restart_cancel": point(game.restart_prompt.cancel_button),
+		"ice_sounds": point(settings.sound_toggle), "continue": point(game.match_readout.continue_button),
 		"zoom": point(game.zoom_button), "ice_board": point(game.ice_board.menu_button),
-		"send": point(game.solo.send_button), "shot_kind": point(game.solo.shot_choice), "place_target": point(game.solo.target_button),
+		"send": point(game.solo.send_button), "shot_kind": point(game.solo.shot_choice), "in_turn": point(game.solo.turn_buttons[0]), "out_turn": point(game.solo.turn_buttons[1]),
 		"hard": point(game.solo.call_buttons[0]), "clean": point(game.solo.call_buttons[1]), "off": point(game.solo.call_buttons[2]),
 		"done": point(find_button(settings, "Done")), "role": point(settings.position_choice), "difficulty": point(settings.difficulty_choice), "fast": point(settings.fast_toggle), "steady": point(settings.steady_toggle),
 		"board_close": point(find_button(game.ice_board, "Close")), "accept": point(game.solo.accept_button), "restore": point(game.solo.restore_button)}
+	var broom: Vector2 = game.get_viewport_transform() * (game.get_global_transform() * game.broom_screen_point())
 	var handle: Vector2 = game.get_viewport_transform() * (game.get_global_transform() * game.handle_point())
 	sequence += 1
 	var state := {"schema": 1, "nonce": nonce, "sequence": sequence, "age_s": age, "expired": age > 360.0,
 		"mode": "solo" if game.solo.enabled else ("match" if game.match_mode else "drills" if game.drills.enabled else "practice"), "phase": game.phase,
 		"choice_team": frame.get("choice_team", -1), "violation": frame.get("violation", ""), "remedy_restored": frame.get("remedy_restored", false), "match_phase": frame.get("match_phase", ""), "team": frame.get("team", -1), "thrower": frame.get("thrower", -1),
+		"broom": {"x": roundi(broom.x), "y": roundi(broom.y)}, "broom_mm": game.broom_mm, "turn": game.turn,
+		"target_visible": game.rink.target_rings.visible, "restart_visible": game.restart_prompt.visible, "ice_sounds": settings.ice_sounds,
 		"handle": {"x": roundi(handle.x), "y": roundi(handle.y)}, "delivered": frame.get("delivered", -1),
 		"drill_kind": game.drills.kind, "drill_attempt": game.drills.attempt, "drill_results": game.drills.results, "drill_goal_ms": game.drills.split_target_ms(), "drill_target_text": game.drills.target_label.text, "report": game.report,
 		"delivered_count": count, "end": frame.get("end", -1), "run_active": game.run_active,

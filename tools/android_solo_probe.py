@@ -126,6 +126,22 @@ def run_solo():
     wait_for(lambda s: s['zoomed'] and s['camera'] == 'House' and s['camera_size'] < 3, 'guard zoom')
     capture('03-called-guard-zoom')
     tap('zoom')
+    before = wait_for(lambda s: s['planned'] and not s['target_visible'], 'direction-only skip view')
+    tap('out_turn')
+    changed = wait_for(lambda s: s['turn'] == -1 and not s['planning'], 'out-turn selected')
+    if changed['broom_mm'] != before['broom_mm']:
+        raise RuntimeError('Turn choice moved the broom')
+    start = changed['broom']
+    # Actual drag, in device pixels, then verify the authoritative line selection.
+    touch('DOWN', start['x'], start['y'])
+    time.sleep(.1)
+    touch('MOVE', start['x'] + 45, start['y'])
+    time.sleep(.1)
+    touch('UP', start['x'] + 45, start['y'])
+    moved = wait_for(lambda s: abs(s['broom_mm'] - changed['broom_mm']) > 100, 'skip broom dragged')
+    if moved['target_visible'] or moved['camera'] != 'House':
+        raise RuntimeError('Dragging broom revealed a target or left the house view')
+    capture('03b-manual-broom-turn')
     tap('send')
     wait_for(lambda s: s['run_active'] and s['team'] == 0, 'AI Gold delivery')
     tap('hard')
@@ -249,6 +265,8 @@ def run_drills():
         if attempt == 2:
             raise RuntimeError('Three actual strokes failed to reach both hog lines')
         tap('restart')
+        wait_for(lambda s: s['restart_visible'], 'restart confirmation')
+        tap('restart_confirm')
         wait_for(lambda s: not s['drill_results'] and s['delivered'] == -1, 'timing round restarted')
     capture('04-timing-grade')
     if 's slower' not in timing['report'] and 's faster' not in timing['report'] and 'on target' not in timing['report']:

@@ -8,6 +8,7 @@ func run() -> void:
 	var path := "user://diagnostics/self-test-request.json"
 	var report_path := "user://diagnostics/ui-state-" + nonce + ".json"
 	DirAccess.make_dir_recursive_absolute("user://diagnostics")
+	DirAccess.remove_absolute(ProjectSettings.globalize_path(report_path))
 	var file := FileAccess.open(path, FileAccess.WRITE)
 	file.store_string(JSON.stringify({"schema": 3, "nonce": nonce}))
 	file.close()
@@ -25,8 +26,14 @@ func run() -> void:
 		var value = JSON.parse_string(input.get_as_text())
 		input.close()
 		if value is Dictionary and value.get("nonce") == nonce: report = value; break
+	if report.is_empty():
+		push_error("Native UI observer produced no report")
+		game.queue_free()
+		quit(1)
+		return
 	check(not report.is_empty() and report.mode == "practice", "Native UI probe did not report the real initial scene")
 	check(report.controls.solo.x > 0 and report.controls.send.is_empty(), "UI probe exported hidden or missing controls")
+	check(report.controls.in_turn.is_empty() and report.controls.out_turn.is_empty() and not report.restart_visible, "Probe exposed hidden skip/restart controls")
 	check(report.handle.x > 0 and report.handle.y > 0 and not report.controls.drills.is_empty(), "Probe did not map the live handle/drill control to pixels")
 	game.drills.toggle()
 	game.drills.kind = 4
