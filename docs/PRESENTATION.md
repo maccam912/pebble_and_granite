@@ -131,3 +131,10 @@ Solo defaults to waiting after Gold's settled shots; Continue advances without
 charging the opponent's thinking clock during review. The optional setting
 restores two-second auto continuation. `tests/shot_review_pause.gd` checks the
 pause, saved-result restoration, opponent continuation and scrolled volume access.
+
+Solo save metadata preserves the review/Continue boundary and the caller's last
+broom, turn and weight, including an unsent setup. Older saves remain readable.
+Restored settled shots rebuild feedback from the recorded shot history. Feedback
+uses left/right and short of/behind the tee, actual hog-to-hog timing, unsigned
+rotation counts and stone contacts; incomplete splits are never presented as a
+different timer. `tests/shot_feedback.gd` checks these observational labels.

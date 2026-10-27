@@ -122,6 +122,7 @@ jobs:
           python tools/godot.py --headless --path . --script tests/local_menus.gd
           python tools/godot.py --headless --path . --script tests/match_readout.gd
           python tools/godot.py --headless --path . --script tests/shot_review_pause.gd
+          python tools/godot.py --headless --path . --script tests/shot_feedback.gd
           python tools/godot.py --headless --path . --script tests/throwing_call.gd
           python tools/godot.py --headless --path . --script tests/drills.gd
           python tools/godot.py --headless --path . --script tests/solo_restore.gd

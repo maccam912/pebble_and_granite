@@ -597,12 +597,7 @@ func _process(delta: float) -> void:
 				hold_sweep = false
 				pointer = -99
 				phase = "Stone at rest"
-				var s: Dictionary = delivered_stone()
-				if s.is_empty(): s = {"turns": 0.0, "position": Vector2.ZERO, "active": false}
-				var true_split := int(frame.get("hog_split_ms", -1))
-				var split := "%.2f s" % (true_split / 1000.0) if true_split >= 0 else ("—" if frame.hog_tick < 0 else "%.2f s" % (float(frame.hog_tick) / 240.0))
-				var split_name := "Hog-to-hog" if true_split >= 0 else "Release to far hog"
-				report = "Release %.3f m/s\n%s %s\n%.2f rotations • %.2f s travel\nRest: %.2f m across, %.2f m from tee\n%s" % [float(release_report.get("speed_mm_s", 0)) / 1000.0, split_name, split, s.turns, float(frame.tick) / 240.0, s.position.x, s.position.y, "In play" if s.active else "Out of play"]
+				report = CurlShotFeedback.from_frame(frame)
 				if match_mode and frame.get("match_phase", "") == "GameComplete" and not frame.resting:
 					report = "Thinking time expired. %s wins. Choose Rematch to play again." % team_name(frame.winner)
 				update_labels()
@@ -1092,6 +1087,9 @@ func restore_current(is_match: bool) -> void:
 		if solo != null and solo.enabled: solo.reset_turn()
 		release_report = {"speed_mm_s": int(frame.get("release_speed", 0.0) * 1000.0)}
 		report = "Delivery restored. Regrip the handle to continue from this point." if not frame.get("in_hand", {}).is_empty() else ("Match" if is_match else "Practice") + " restored. The ice and your stones are just as you left them."
+		if phase == "Stone at rest" and solo != null and solo.enabled:
+			var shots: Array = session.shot_reviews().shots
+			if not shots.is_empty(): report = "Restored shot.\n" + CurlShotFeedback.from_review(shots[0])
 		held_last_us = -1
 		if drills != null and drills.enabled: drills.restore_metadata(envelope)
 		update_labels()

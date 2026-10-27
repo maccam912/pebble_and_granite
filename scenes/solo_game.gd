@@ -27,11 +27,13 @@ var call_label: Label
 var call_background: Panel
 var shot_card: CurlShotCall
 var restored_call: Dictionary = {}
+var restored_review := false
 var turn_buttons: Array[Button] = []
 var skip_aid: CurlSkipAid
 var keep_broom := false
 var caller_broom := -900
 var caller_turn := 1
+var caller_kind := 0
 var save_path := "user://solo-teams.json"
 
 func _init(owner_game) -> void:
@@ -114,10 +116,13 @@ func start() -> void:
 	game.update_spatial(0)
 
 func reset_turn() -> void:
+	if restored_review and game.frame.get("match_phase", "") == "Calling" and game.frame.get("in_hand", {}).is_empty(): game.phase = "Stone at rest"
+	restored_review = false
 	keep_broom = false
 	if human_skips() and not human_throws():
 		game.broom_mm = caller_broom
 		game.turn = caller_turn
+		shot_choice.select(caller_kind)
 	planning = false
 	planned.clear()
 	if not game.frame.get("in_hand", {}).is_empty() and not restored_call.is_empty():
@@ -168,7 +173,7 @@ func advance(delta: float) -> void:
 	if not planning and planned.is_empty():
 		if human_skips() and not human_throws():
 			if game.turn == 0: game.turn = 1
-			request_call(0, Vector2.ZERO)
+			request_call(caller_kind, Vector2(0, -3.0 if caller_kind == 1 else 0.0))
 			return
 		var error: String = game.session.request_ai_plan()
 		if not error.is_empty(): game.report = error; return
@@ -260,6 +265,7 @@ func send_shot() -> void:
 	if human_skips():
 		caller_broom = game.broom_mm
 		caller_turn = game.turn
+		caller_kind = shot_choice.selected
 	var error: String = game.session.execute_ai_plan(game.broom_mm, game.turn, game.play_settings.difficulty)
 	if not error.is_empty(): game.report = error; return
 	planned.clear()
@@ -295,14 +301,24 @@ func speak_call(force := false) -> void:
 	DisplayServer.tts_speak(text, voices[0], 90, 1.0, 1.0, 0, true)
 
 func save_envelope(match_json: String) -> String:
+	var caller := {"broom": caller_broom, "turn": caller_turn, "kind": caller_kind}
+	if human_skips() and not human_throws() and not game.run_active and game.phase != "Stone at rest":
+		caller = {"broom": game.broom_mm, "turn": game.turn, "kind": shot_choice.selected}
 	return JSON.stringify({"schema": 1, "match": match_json, "position": human_position(), "difficulty": game.play_settings.difficulty,
 		"target_x_mm": game.frame.get("solo_target_x_mm", 0), "target_y_mm": game.frame.get("solo_target_y_mm", 0),
-		"call": planned if human_throws() else {}})
+		"caller": caller, "call": planned if human_throws() else {}, "review_pending": game.phase == "Stone at rest" and game.frame.get("match_phase", "") == "Calling"})
 
 func valid_envelope(data: Variant) -> bool:
 	if not data is Dictionary or data.get("schema") != 1 or not data.get("match") is String: return false
 	for key in ["position", "difficulty", "target_x_mm", "target_y_mm"]:
 		if not (data.get(key) is float or data.get(key) is int) or not is_finite(float(data[key])) or float(data[key]) != floorf(float(data[key])): return false
+	if not data.get("review_pending", false) is bool: return false
+	var caller = data.get("caller", {})
+	if not caller is Dictionary: return false
+	if not caller.is_empty():
+		for key in ["broom", "turn", "kind"]:
+			if not (caller.get(key) is float or caller.get(key) is int) or not is_finite(float(caller[key])) or float(caller[key]) != floorf(float(caller[key])): return false
+		if absi(int(caller.broom)) > 2200 or int(caller.turn) not in [-1, 1] or int(caller.kind) not in [0, 1, 2]: return false
 	var call = data.get("call", {})
 	if not call is Dictionary: return false
 	if not call.is_empty():
@@ -315,6 +331,11 @@ func valid_envelope(data: Variant) -> bool:
 func restore_metadata(data: Dictionary) -> void:
 	game.shot_reference.clear()
 	restored_call = data.get("call", {}).duplicate()
+	restored_review = data.get("review_pending", false)
+	var caller: Dictionary = data.get("caller", {})
+	caller_broom = int(caller.get("broom", -900))
+	caller_turn = int(caller.get("turn", 1))
+	caller_kind = int(caller.get("kind", 0))
 	game.play_settings.human_position = int(data.position)
 	game.play_settings.position_choice.select(int(data.position))
 	game.play_settings.difficulty = int(data.difficulty)

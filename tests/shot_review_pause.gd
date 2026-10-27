@@ -25,15 +25,23 @@ func run() -> void:
 	for i in range(50): game._process(1.0)
 	check(game.solo.review_waiting() and game.session.match_hash() == before, "Review charged thinking time or started the opponent")
 	# Restoring a settled result must use the previous team, not frame.team.
-	var save: String = game.session.match_json()
+	game.solo.save_path = "user://review-pause-test.json"
+	game.persistence_enabled = true
+	game.save_practice()
 	game.reset(false)
-	check(game.session.load_match(save).is_empty(), "Review journal failed to load")
-	game.frame = game.session.frame()
-	game.phase = "Stone at rest"
-	game.solo.reset_turn()
-	check(game.solo.review_waiting(), "Settled reload lost review pause")
+	game.restore_current(true)
+	check(game.solo.review_waiting() and game.phase == "Stone at rest", "Settled reload lost review pause")
+	check(game.session.match_hash() == before and "Restored shot" in game.report and "Hog-to-hog" in game.report, "Review reload changed authority or lost its measured report")
+	var envelope: Dictionary = JSON.parse_string(game.solo.save_envelope(game.session.match_json()))
+	envelope.review_pending = 1
+	check(not game.solo.valid_envelope(envelope), "Malformed review metadata accepted")
 	game.new_button.pressed.emit()
 	check(not game.solo.review_waiting() and game.phase == "Ready", "Continue did not release the review pause")
+	game.reset(false)
+	game.restore_current(true)
+	check(game.phase == "Ready" and not game.solo.review_waiting(), "Acknowledged review returned on reload")
+	game.persistence_enabled = false
+	for suffix in ["", ".bak", ".tmp"]: DirAccess.remove_absolute(ProjectSettings.globalize_path(game.solo.save_path + suffix))
 	# Opponent results still move on automatically.
 	check(game.session.hog_violation().is_empty(), "Opponent review fixture failed")
 	game.frame = game.session.frame()
@@ -48,6 +56,22 @@ func run() -> void:
 	game.solo.delay = 0
 	game._process(2.1)
 	check(game.phase == "Ready" and not game.solo.review_waiting(), "Automatic continuation preference was ignored")
+	# Unsent manual call survives an actual disk save, without an AI re-aim.
+	game.next_throw()
+	game.session.hog_violation()
+	game.frame = game.session.frame()
+	game.next_throw()
+	check(game.solo.human_skips(), "Caller restore fixture is not Gold")
+	game.broom_mm = 1420
+	game.turn = -1
+	game.solo.shot_choice.select(1)
+	game.persistence_enabled = true
+	game.save_practice()
+	game.reset(false)
+	game.restore_current(true)
+	game.persistence_enabled = false
+	check(game.broom_mm == 1420 and game.turn == -1 and game.solo.caller_kind == 1, "Unsent caller line/turn/weight did not restore")
+	for suffix in ["", ".bak", ".tmp"]: DirAccess.remove_absolute(ProjectSettings.globalize_path(game.solo.save_path + suffix))
 	game.play_settings.show()
 	game.play_settings.content_scroll.scroll_vertical = 250
 	await process_frame
