@@ -1181,3 +1181,38 @@ capture is build/evidence/skip-polish/previous-shot.png. git diff --check passed
 This pass did not run physical Android, export packages, full-match soak or remote
 CI, and did not commit/push the working tree. Prior release status is unchanged
 by this local work.
+
+## 27 October 2026 — continued gameplay polish, committed and pushed
+
+The user authorized committing/pushing the prior work and further polish, with
+weekly usage below 50 percent remaining as the stop boundary. The prior skip,
+thrower-call and audio work was committed as `a6450c6`. Subsequent batches through
+`9107e03` add the following behavior:
+
+- Consistent local Settings pause and safe restart confirmation. Escape interrupts
+  a gesture safely and retains held deliveries for regrip. Online held delivery
+  suspension uses the existing authority command; ordinary online travel keeps
+  running behind Settings.
+- Native exact counting-stone IDs, stone inventory, hammer and end-result cards.
+  Pending no-tick choices hide counts; completed-end actions retain host gating.
+- Scrolling Settings with fixed close controls, ice volume and optional Gold-shot
+  review before Continue. Review state and unsent caller line/turn/weight survive
+  real disk save/reload, including an acknowledged review staying acknowledged.
+- Directional observed finish reports and contacts, useful/off-path/stationary
+  sweep cues, and a live local hog-to-hog stopwatch driven by actual crossings.
+  No predicted endpoint was added to the caller controls. Online live timing is
+  deferred because late sweeps can revise observations before reconciliation.
+
+The new frame fields and review metadata do not alter physics, command protocols,
+match/session schemas or canonical hashes. Existing old solo envelopes remain
+readable. Core checks and every-tick golden traces pass, as does bridge Clippy.
+A final 22-script Godot regression run passed, including a 112-delivery full solo
+match through an extra end, reconstruction and rematch. Additional online UI and
+replica checks passed, including Escape suspension and Settings during travel.
+Desktop sweep/stopwatch screens and installed Android 80 solo/drill screens were
+inspected. Exact Android package identity and evidence are in ANDROID_INPUT.md.
+
+The first new CI run exposed a stale installed-probe reference to the removed
+target button; `0985aa0` fixes it. Android probes now exercise real broom dragging,
+explicit turns and the reviewed restart confirmation. Physical-device feel,
+audible sound mix and measured ice calibration remain human validation work.

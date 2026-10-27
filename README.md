@@ -35,6 +35,10 @@ Cycle Camera for delivery, sweeper, skip or overhead house views; drag the broom
 and brush position matters. Tap another eligible moving stone to select it. A gold
 disc marks the selection, and the Sweeper camera follows it. The **Hold to sweep**
 button follows the selected stone at steady effort. Lift to stop.
+Scrubbing feedback explains when your brush is behind or beside the useful path.
+A live local hog-to-hog stopwatch measures the actual crossings during travel.
+Escape opens Settings and pauses local play; close it and regrip to resume a held
+delivery. Fresh ice and New match ask before replacing an ongoing session.
 Next stone retains the field and evolving ice; Fresh ice starts a new session.
 Practice saves automatically, including held slides and interrupted shots, with a previous-save backup. Choose **Solo 4 vs 4** to play one position with seven AI players. Settings
 selects your position (or Full team / Calling only), three AI accuracy tiers,

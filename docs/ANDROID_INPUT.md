@@ -274,3 +274,31 @@ The later scrolling Settings/shot-review pacing work is not in this APK.
 A separate desktop full-match check completed 112 deliveries through an extra
 end and passed journal reconstruction/rematch. Physical feel and audible mix
 remain unvalidated on real devices.
+
+## Play-feedback installed checkpoint — 27 October 2026
+
+Clean source `9107e031269da46bb33fed72eb5ce5e365ed4370`, local Android 80,
+installed templates, SHA256
+`e3f1e02d57f2fcfa7f3d8ec0586d352deff4c35b2d023164ea29e9ca88a16575`.
+The dedicated emulator passed actual-touch solo and takeout/timing drills again.
+This build includes scrolling Settings, volume, Gold-shot review/Continue, saved
+caller setup, clearer finish reports, sweep cues and the live local split clock.
+The solo probe continued from Gold review and reached the next manual call with
+its previous weight/turn/broom retained. Both journals rebuilt exactly, and
+normal saves/preferences stayed unchanged. Installed captures of the manual
+caller, ghost reference and accelerated stopwatch were inspected.
+
+Evidence: `build/probes/solo-ui-f39b10c5a181451b9644c44676c7919f/` and
+`build/probes/drills-ui-ccc8c0045e7f4e2a8515bb7694ea1180/`; logs
+`build/polish-android-80-{solo,drills}.log`. A later wording correction changes
+“4× replay” to “4× travel” in the stopwatch; no timing behavior changed.
+
+The Android 80 full direct-touch probe also passed: both finishing curls,
+spatial scrubbing, stopped heat after lift, accessible steady sweeping,
+background/regrip recovery and exactly-once hog faults. Restart now waits for a
+settled journal and confirms replacement; clean first launches are supported.
+Evidence: `build/probes/touch-010609c4b4824c9fa4038d961590f678/` and
+`build/polish-android-80-touch.log`. The wrapper restored the original practice
+save and backup byte for byte and removed its temporary file. The installed
+hold-sweep/stopwatch capture was inspected. Physical-device and audible-mix
+validation remain open.

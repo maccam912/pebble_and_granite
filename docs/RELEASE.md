@@ -1,3 +1,19 @@
+Solo callers now drag the broom and choose explicit in-turn/out-turn controls.
+The curl arrow shows direction, leaving the finish for you to judge. An optional
+ghost broom and ring recall your previous contact-free shot while its stone
+remains in place. Caller line, turn and weight survive save/resume.
+
+New stone, brush and contact sounds have a separate mute and volume control.
+Settings scroll while Done stays accessible. Escape opens Settings safely, even
+during a held slide. Local play pauses in menus, and replacing an ongoing session
+requires confirmation. Online stone travel continues while Settings is open.
+
+Hammer, remaining stones and counting rings make the score easier to read.
+End results show points, totals and the next hammer. Solo can wait after your
+team's shots so you can review before continuing. Shot reports use left/right
+and short/behind descriptions, and local travel has a measured hog-to-hog clock.
+Scrubbing now explains off-path or stationary brush input.
+
 Settings now offers a steady overhead view after release when Camera is Auto.
 It keeps the travel camera fixed while retaining the ready delivery viewpoint
 and manual camera selection.

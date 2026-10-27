@@ -36,4 +36,4 @@ func refresh() -> void:
 	reading.text = "%.2f s" % (float(game.frame.hog_clock_ms) / 1000.0) if state in ["Running", "Complete"] else "—"
 	reading.add_theme_color_override("font_color", CurlPresentation.GOLD if state == "Complete" else CurlPresentation.PAPER)
 	detail.text = {"Waiting": "Starts at the near hog", "Running": "Timing to the far hog…", "Complete": "Split complete", "Incomplete": "Split not completed"}.get(state, "")
-	if state == "Running" and game.solo != null and game.solo.fast_forwarding(): detail.text = "4× replay · ice time shown"
+	if state == "Running" and game.solo != null and game.solo.fast_forwarding(): detail.text = "4× travel · ice time shown"

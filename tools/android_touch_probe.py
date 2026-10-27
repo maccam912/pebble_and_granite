@@ -63,13 +63,23 @@ def release_contact():
 atexit.register(release_contact)
 
 
-def fresh():
+def fresh(initial=False):
     # Wait for actual settlement before touching restart. An autosave mtime can
     # also advance during travel, so it is not proof that fresh ice was applied.
     started = time.monotonic()
     saved = None
     while time.monotonic() - started < 90:
         raw = adb('exec-out', 'run-as', PACKAGE, 'cat', 'files/practice-session.json', check=False)
+        exists = True
+        if initial:
+            exists = subprocess.run([a.adb, '-s', a.serial, 'shell', 'run-as',
+                                     PACKAGE, 'test', '-f', 'files/practice-session.json'],
+                                    capture_output=True, timeout=30).returncode == 0
+        if not exists:
+            # A clean first launch has no autosave until an action occurs.
+            # adb exec-out can merge cat's missing-file diagnostic into stdout.
+            saved = {'records': []}
+            break
         try:
             saved = json.loads(raw)
         except (ValueError, UnicodeDecodeError):
@@ -85,7 +95,7 @@ def fresh():
     # Restart confirmation: logical centre (778, 480), fitted at 1.35x +336.
     # A fresh, empty session skips the prompt. This fixture never clears stones
     # through the separate capacity action between these resets.
-    if any(r['kind'] == 'Shot' for r in saved['records']):
+    if any(r['kind'] in ['Shot', 'HogViolation'] for r in saved['records']):
         time.sleep(.4)
         adb('shell', 'input', 'tap', '1386', '648')
     while time.monotonic() - started < 100:
@@ -145,7 +155,7 @@ time.sleep(a.startup_wait)
 capture('ready')
 results = {}
 for direction, label in [(1, 'right'), (-1, 'left')]:
-    fresh()
+    fresh(initial=label == 'right')
     drive()
     time.sleep(.8)
     capture(label + '-held')

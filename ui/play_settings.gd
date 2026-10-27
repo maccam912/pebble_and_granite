@@ -145,11 +145,16 @@ func _ready() -> void:
 	content_scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
 	content_scroll.follow_focus = true
 	var content := Control.new()
+	# Pass touch-drag events through the free-positioned content to its scroller.
+	content.mouse_filter = Control.MOUSE_FILTER_PASS
 	content.custom_minimum_size = Vector2(512, 676)
 	content_scroll.add_child(content)
 	for child in get_children():
 		if child in [title, done, bindings]: continue
 		if child is Control:
+			if child is CheckButton:
+				child.mouse_filter = Control.MOUSE_FILTER_PASS
+				child.action_mode = BaseButton.ACTION_MODE_BUTTON_RELEASE
 			var original: Vector2 = child.position
 			child.reparent(content)
 			child.position = original - Vector2(12, 66)

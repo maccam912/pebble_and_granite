@@ -3,6 +3,16 @@ var failed := false
 func _initialize() -> void: call_deferred("run")
 func check(ok: bool, message: String) -> void:
 	if not ok: push_error(message); failed = true
+func escape() -> void:
+	var event := InputEventKey.new()
+	event.keycode = KEY_ESCAPE
+	event.pressed = true
+	Input.parse_input_event(event)
+	await process_frame
+	event = InputEventKey.new()
+	event.keycode = KEY_ESCAPE
+	Input.parse_input_event(event)
+	await process_frame
 func run() -> void:
 	var lab = load("res://scenes/lab.tscn").instantiate()
 	lab.persistence_enabled = false
@@ -51,6 +61,15 @@ func run() -> void:
 	for i in range(40): game._process(.05)
 	check(game.frame.in_hand.in_play, "Held authority did not cross delivery tee")
 	var thinking: int = game.frame.clock_gold
+	await escape()
+	game.refresh_online()
+	check(game.play_settings.visible and game.frame.in_hand.suspended and game.pointer == -99, "Escape failed to suspend the online held delivery")
+	await escape()
+	game.update_spatial(0)
+	game.begin_pointer(0, game.handle_point())
+	game.move_pointer(game.handle_point())
+	game.refresh_online()
+	check(not game.frame.in_hand.suspended, "Online regrip after Escape did not resume the held stone")
 	var cancelled := InputEventScreenTouch.new()
 	cancelled.index = 0
 	cancelled.pressed = false
@@ -77,6 +96,12 @@ func run() -> void:
 	check(game.frame.clock_gold == thinking, "Online clock ran after delivery tee")
 	check(game.run_active and game.frame.match_phase == "InFlight", "Online stroke did not release through authority")
 	check(game.can_sweep(), "Mixed-doubles thrower could not sweep after release")
+	await escape()
+	var before_menu: String = online.state.hash
+	game._process(.05)
+	check(game.play_settings.visible and game.run_active and online.state.hash != before_menu, "Local Settings paused online authority during travel")
+	check(not game.shot_clock.visible, "Online showed an unsupported local stopwatch")
+	await escape()
 	var before_brush: String = online.state.hash
 	check(online.send_command({"kind": "BrushSpan", "tick": int(game.frame.global_tick), "count": 12, "input": {"stone": 0, "brush": 0, "effort": 255, "lateral_mm": 0, "ahead_mm": 180}}).is_empty(), "Late stationary-target brush produced a visible rejection")
 	check(online.state.hash == before_brush, "Rejected stationary-target brush changed match state")
@@ -96,6 +121,6 @@ func run() -> void:
 	check(online.state.phase == null, "Rematch did not return to readiness")
 	game.queue_free()
 	online.close()
-	await process_frame
+	await create_timer(.5).timeout
 	print("ONLINE_UI_OK" if not failed else "ONLINE_UI_FAILED")
 	quit(1 if failed else 0)
