@@ -242,7 +242,7 @@ impl Authority {
         };
         let delivered = self.sim.delivered.ok_or("no delivered stone")?;
         let mixed = self.game.rules.format == Format::MixedDoubles;
-        if !mixed && input.stone != delivered {
+        if !mixed && self.sim.version < 4 && input.stone != delivered {
             return Err("only delivered-stone sweeping supported in this format");
         }
         let stone = self
@@ -251,7 +251,7 @@ impl Authority {
             .iter()
             .find(|s| s.id == input.stone && s.active)
             .ok_or("stone out of play")?;
-        if mixed {
+        if mixed || self.sim.version >= 4 {
             if stone.vel == curl_fx::V2::ZERO {
                 return Err("stone is not moving");
             }
@@ -260,7 +260,7 @@ impl Authority {
             }
             if stone.pos.y >= curl_fx::Fx::ZERO
                 && seat.team != self.game.delivering_team()
-                && seat.position != 1
+                && seat.position != if mixed { 1 } else { 3 }
             {
                 return Err("only defending skip may sweep behind tee");
             }
@@ -276,6 +276,8 @@ impl Authority {
         // and ends. The client cannot select a fresher brush identity.
         input.brush = if mixed {
             seat.team * 2 + seat.position
+        } else if self.sim.version >= 4 {
+            seat.team * 4 + seat.position
         } else {
             seat.team
         };
@@ -310,13 +312,30 @@ impl Authority {
         self.inputs_for_team(sim, self.game.delivering_team())
     }
     fn inputs_for_team(&self, sim: &Sim, delivering_team: u8) -> Vec<Sweep> {
+        self.inputs_at_tick(sim, delivering_team, sim.tick)
+    }
+    /// Last accepted brush intents for presentation, never a simulation input.
+    pub fn active_brushes(&self) -> Vec<Sweep> {
+        if self.game.phase != Phase::InFlight || self.sim.tick <= self.sim.release_tick {
+            return vec![];
+        }
+        self.inputs_at_tick(&self.sim, self.game.delivering_team(), self.sim.tick - 1)
+    }
+    pub(crate) fn brush_fatigue_at_release(&self) -> &[u16; curl_sim::MAX_BRUSHES] {
+        self.release_snapshot
+            .as_ref()
+            .map_or(&self.sim.brush_fatigue, |s| &s.brush_fatigue)
+    }
+    fn inputs_at_tick(&self, sim: &Sim, delivering_team: u8, tick: u32) -> Vec<Sweep> {
         let mut behind = [false; 2];
         self.sweeps
-            .range((sim.tick, 0)..=(sim.tick, u8::MAX))
+            .range((tick, 0)..=(tick, u8::MAX))
             .filter_map(|(_, input)| {
-                if self.game.rules.format != Format::MixedDoubles {
+                let mixed = self.game.rules.format == Format::MixedDoubles;
+                if !mixed && sim.version < 4 {
                     return Some(*input);
                 }
+                let players = if mixed { 2 } else { 4 };
                 let stone = sim
                     .stones
                     .iter()
@@ -324,14 +343,14 @@ impl Authority {
                 if input.effort == 0 || stone.vel == curl_fx::V2::ZERO {
                     return None;
                 }
-                let team = input.brush / 2;
+                let team = input.brush / players;
                 if stone.pos.y < curl_fx::Fx::ZERO {
                     return (stone.team == team).then_some(*input);
                 }
                 // Evaluate against THIS tick's state, including resimulation and
                 // spans scheduled before crossing. Stable player order resolves
                 // simultaneous behind-tee requests, independent of packet order.
-                if team != delivering_team && input.brush % 2 != 1 {
+                if team != delivering_team && input.brush % players != players - 1 {
                     return None;
                 }
                 if std::mem::replace(&mut behind[team as usize], true) {
@@ -710,3 +729,8 @@ pub mod room;
 pub mod recorded;
 
 pub mod sync;
+
+#[cfg(test)]
+mod legacy_tests;
+
+pub mod team_sweeping;

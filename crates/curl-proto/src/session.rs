@@ -25,10 +25,11 @@ pub struct RecordedShot {
 impl RecordedShot {
     pub fn validate(&self) -> Result<(), &'static str> {
         self.release.validate()?;
-        if self.ticks > MAX_TICKS || self.sweeps.len() > MAX_TICKS as usize * 4 {
+        if self.ticks > MAX_TICKS || self.sweeps.len() > MAX_TICKS as usize * curl_sim::MAX_BRUSHES
+        {
             return Err("shot limit exceeded");
         }
-        let mut ends = [0; 4];
+        let mut ends = [0; curl_sim::MAX_BRUSHES];
         let mut previous = None;
         for span in &self.sweeps {
             if !span.input.valid() || span.start >= span.end || span.end > self.ticks {
@@ -148,7 +149,7 @@ impl SessionLog {
         Ok(log)
     }
     pub fn validate(&self) -> Result<(), &'static str> {
-        if self.schema != SESSION_SCHEMA || self.model != MODEL_VERSION {
+        if self.schema != SESSION_SCHEMA || !curl_sim::supported_model(self.model) {
             return Err("incompatible session version");
         }
         if self.records.len() > MAX_RECORDS {
@@ -172,6 +173,13 @@ impl SessionLog {
                 }
                 Record::Shot(shot) => {
                     shot.validate()?;
+                    if shot
+                        .sweeps
+                        .iter()
+                        .any(|s| s.input.brush as usize >= curl_sim::brush_count(self.model))
+                    {
+                        return Err("brush unavailable in recorded model");
+                    }
                     count += 1;
                     spans += shot.sweeps.len();
                     if shot.final_hash.is_none() && i + 1 != self.records.len() {

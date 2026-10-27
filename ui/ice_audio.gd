@@ -73,6 +73,10 @@ func _process(delta: float) -> void:
 		var brush: Dictionary = game.current_brush() if game.run_active else {}
 		var effort := float(brush.get("effort", 0)) / 255.0
 		if game.solo != null and game.solo.enabled and game.run_active: effort = maxf(effort, float(game.solo.brush_effort()) / 255.0)
+		if frame.get("model", 3) >= 4 and frame.get("format", "") == "Teams":
+			effort = 0.0
+			for input in frame.get("team_brushes", []):
+				effort += float(input.effort) / 255.0 * (1.0 - float(input.fatigue) / 20000.0) / 2.0
 		loop_level(brushing, effort if speed > .01 else 0.0, -24)
 		if not fresh and contacts > last_contacts:
 			# Contact count comes from the fixed-tick sim. Pre-contact speed is

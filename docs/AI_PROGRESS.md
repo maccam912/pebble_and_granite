@@ -293,3 +293,27 @@ reconstruction and rematch. Clean Android 83 from `648419c` passed actual-touch
 solo and takeout/timing drill flows with desktop journal replay and unchanged
 normal saves/preferences. Exact provenance is in ANDROID_INPUT.md; the dedicated
 emulator is stopped. This does not certify every catalogue shot on Android. This remains a heuristic rather than a full uncertainty model.
+
+### Independent team sweepers (27 October 2026)
+
+New model-4 team matches use eight seat-owned brush/fatigue identities. Two players
+brush independently; human input and selected contact stone no longer merge with
+the AI partner's effort/target. Thrower/caller roles rotate, and a human following
+their own delivery gets the fresher regular partner chosen at release. Each brush
+head follows its actual target; labels and animation/audio reflect accepted effort
+and fatigue. Full-team OFF has no hidden automatic input. The one-player-per-team
+behind-tee limit is enforced in tick simulation and replay.
+
+Old model-3/rules-4 practice and team journals load, continue, resave and replay
+with their original hashes and brush semantics. Retained Android-83 journals and
+old every-tick golden traces protect that boundary. Protocol 12 prevents unlike
+online models joining. Rules and recorded schemas are unchanged.
+
+Core/golden tests and all-target Clippy pass. Six role/target/fatigue tests cover
+independent recovery, physical sweep contribution, behind-tee arbitration, OFF
+and role rotation. Native team/legacy continuation, contact-target presentation,
+save/restore, accessibility, sweeping, rink, online UI, replica and rules pass.
+A complete 96-delivery solo game passed replay/reviews and rematch; its existing
+two-object cleanup warning remains. Rendered mobile-layout brushes and tiring
+feedback inspected. Installed Android verification follows the source commit;
+physical-device feel, measured fatigue calibration and audible quality remain open.

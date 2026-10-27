@@ -669,7 +669,8 @@ func _process(delta: float) -> void:
 			var error: String
 			if solo != null and solo.enabled:
 				var human_effort := int(brush.get("effort", 0)) if solo.shot_team == 0 else 0
-				error = session.step_solo_ticks(steps, int(frame.get("delivered", 0)), human_effort, int(brush.get("lateral_mm", 0)), int(brush.get("ahead_mm", 180)), solo.brush_effort())
+				var human_target := int(brush.get("stone", frame.get("delivered", 0))) if frame.get("model", 3) >= 4 else int(frame.get("delivered", 0))
+				error = session.step_team_ticks(steps, human_target, human_effort, int(brush.get("lateral_mm", 0)), int(brush.get("ahead_mm", 180)), solo.brush_effort(), solo.human_position())
 			else:
 				error = session.step_brush_ticks(steps, int(brush.get("stone", 0)), int(brush.get("effort", 0)), int(brush.get("lateral_mm", 0)), int(brush.get("ahead_mm", 180)))
 			if not error.is_empty(): report = error

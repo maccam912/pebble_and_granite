@@ -96,13 +96,30 @@ FOV. FOV, speech, accuracy, role and fast travel preferences persist on the devi
 
 ## Scope still open
 
-The current team authority has one combined brush per team. AI partner effort
-and human input contribute to that brush, with its existing fatigue. Independent
-four-player brush/fatigue identities, individual teammate personalities, deeper
-stochastic strategy, richer uncertainty models, coaching and
-career remain future work. Mixed-doubles online continues to use its existing
-separate per-player brushes. No simulation, rules or journal version changes
-are needed for this first solo implementation.
+New matches give every player a separate brush and fatigue history. Two sweepers
+work ahead of the stone, with the thrower and caller normally leaving the two
+remaining teammates to brush. A human who is not calling can still follow their
+own delivery; the fresher available teammate at release partners them for the
+whole shot. Human input keeps its own effort and position, while the AI partner
+obeys the skip's call. You can select a moving contact stone while your partner
+continues brushing the delivered stone. Calling-only controls two AI sweepers. Full-team mode has
+manual brushing and explicit calls, with no automatic effort after OFF.
+
+Both brush heads are visible and the call panel names the active players, marking
+them as tiring when fatigue is high. Animation and brush sound use each player's
+accepted effort/fatigue. Rest recovers fatigue; it carries across deliveries and
+ends, and restores from the journal. Behind the tee, the authority accepts only
+one brush per team, with stable player ordering.
+
+New sessions use model 4 and online protocol 12. Existing model-3/rules-4 saves
+continue with their original combined team brush and exact replay hashes; start
+a new match to get independent team brushes. Archived installed Android practice
+and solo journals and every-tick model-3 traces guard this compatibility.
+
+Individual teammate personalities, deeper stochastic strategy, richer uncertainty
+models, coaching and career remain future work. Mixed-doubles online retains its
+separate per-player brushes. Fatigue strength and audible quality still need
+human evaluation and measured calibration.
 
 Physical Android performance/feel, human curling judgement and measured ice
 calibration remain separate validation gates.

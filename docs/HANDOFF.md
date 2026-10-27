@@ -83,7 +83,24 @@ tests; physical-device feel is the third item and needs user participation.
    current model's metrics and the reference-data contract. Actual coefficient
    fitting remains pending a measured dataset; user asked asynchronously. No
    empirical constants or model versions changed. Continue independent work.
-8. Next: independent team sweeper roles and fatigue.
+8. Independent team sweeper roles implemented: new model-4 matches have eight
+   seat-owned fatigue identities and two active brushes. Human effort and target
+   stay independent from the AI partner, including moving contact stones. Roles
+   rotate with the thrower/caller; the human can follow their own delivery with
+   the fresher available partner selected at release. Full-team OFF has no hidden
+   automatic brushing. Behind the tee only one brush per team contributes.
+   Both brush heads, individual tiring labels and fatigue-aware sound are visible.
+   Model-3/rules-4 saves continue under their original semantics; retained Android
+   83 journals and model-3 every-tick traces verify exact hashes. New protocol 12
+   requires matching online builds; rules and journal schemas are unchanged.
+   Core/golden, Clippy, native team-role/fatigue/restore/OFF and legacy continuation
+   checks pass. Mobile-layout two-brush capture inspected. Full solo match passed
+   96 deliveries, replay/reviews and rematch (existing two-object cleanup warning).
+   Save/restore, accessibility, spatial sweeping, rink, online UI, replica and rules
+   regressions pass. A final target-selection test verifies separate contact-stone
+   and delivered-stone brush positions. Installed Android verification follows.
+9. Next: online scope and recovery. Physical feel (3) and coefficient fitting (7)
+   remain pending the requested human feedback and measured data.
 
 ## Current state
 

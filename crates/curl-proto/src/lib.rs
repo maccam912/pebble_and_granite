@@ -2,7 +2,7 @@
 use curl_fx::Hash64;
 use curl_sim::{MAX_TICKS, MODEL_VERSION, Release, Sim, Stone, Sweep};
 use serde::{Deserialize, Serialize};
-pub const PROTOCOL_VERSION: u32 = 11;
+pub const PROTOCOL_VERSION: u32 = 12;
 pub const REPLAY_VERSION: u32 = 1;
 pub const MAX_REPLAY_BYTES: usize = 4 * 1024 * 1024;
 
@@ -44,7 +44,7 @@ impl Replay {
         Ok(replay)
     }
     pub fn start(&self) -> Result<Sim, String> {
-        if self.schema != REPLAY_VERSION || self.model != MODEL_VERSION {
+        if self.schema != REPLAY_VERSION || !curl_sim::supported_model(self.model) {
             return Err("incompatible replay version".into());
         }
         if self.initial.len() > 15 || self.sweeps.len() > MAX_TICKS as usize {
@@ -54,20 +54,23 @@ impl Replay {
         for frame in &self.sweeps {
             if frame.tick >= MAX_TICKS
                 || previous.is_some_and(|p| frame.tick <= p)
-                || frame.inputs.len() > 4
+                || frame.inputs.len() > curl_sim::brush_count(self.model)
             {
                 return Err("invalid sweep timeline".into());
             }
-            let mut seen = [false; 4];
+            let mut seen = [false; curl_sim::MAX_BRUSHES];
             for s in &frame.inputs {
-                if !s.valid() || seen[s.brush as usize] {
+                if !s.valid()
+                    || s.brush as usize >= curl_sim::brush_count(self.model)
+                    || seen[s.brush as usize]
+                {
                     return Err("invalid sweep command".into());
                 }
                 seen[s.brush as usize] = true;
             }
             previous = Some(frame.tick);
         }
-        let mut sim = Sim::new(self.seed);
+        let mut sim = Sim::new_model(self.seed, self.model)?;
         sim.ice.varied = self.varied_ice;
         for stone in &self.initial {
             sim.add_resting(stone.clone())?;
@@ -128,6 +131,23 @@ mod tests {
         let mut r = Replay::draw(0);
         r.model += 1;
         assert!(r.start().is_err());
+    }
+    #[test]
+    fn legacy_brush_bounds_and_new_eighth_identity() {
+        let mut replay = Replay::draw(42);
+        let mut input = Sweep::centered(0, 255);
+        input.brush = 7;
+        replay.sweeps = vec![SweepFrame {
+            tick: 0,
+            inputs: vec![input],
+        }];
+        let mut sim = replay.start().unwrap();
+        sim.step(&[input]);
+        assert_eq!(sim.brush_fatigue[7], 3);
+        replay.model = 3;
+        assert!(replay.start().is_err());
+        replay.sweeps[0].inputs[0].brush = 3;
+        assert!(replay.start().is_ok());
     }
     #[test]
     fn reject_duplicate_ticks() {

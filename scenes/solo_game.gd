@@ -24,6 +24,7 @@ var accept_button: Button
 var restore_button: Button
 var called_target := Vector2.ZERO
 var call_label: Label
+var sweepers_label: Label
 var call_background: Panel
 var shot_card: CurlShotCall
 var restored_call: Dictionary = {}
@@ -79,7 +80,7 @@ func create_controls() -> void:
 		call_buttons.append(b)
 	call_background = Panel.new()
 	call_background.position = Vector2(450, 136)
-	call_background.size = Vector2(540, 48)
+	call_background.size = Vector2(540, 72)
 	call_background.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	call_background.add_theme_stylebox_override("panel", CurlPresentation.surface(Color("11252f"), CurlPresentation.GOLD))
 	game.add_child(call_background)
@@ -87,6 +88,11 @@ func create_controls() -> void:
 	call_label.position = Vector2(12, 8)
 	call_label.add_theme_font_size_override("font_size", 21)
 	call_background.add_child(call_label)
+	sweepers_label = Label.new()
+	sweepers_label.position = Vector2(12, 39)
+	sweepers_label.add_theme_font_size_override("font_size", 16)
+	sweepers_label.add_theme_color_override("font_color", CurlPresentation.MUTED)
+	call_background.add_child(sweepers_label)
 	shot_card = CurlShotCall.new()
 	game.add_child(shot_card)
 	shot_card.setup(game)
@@ -347,8 +353,8 @@ func restore_metadata(data: Dictionary) -> void:
 func brush_effort() -> int:
 	if human_position() == 4 and shot_team == 0: return maxi(0, call_override)
 	if human_skips() and call_override >= 0: return call_override
-	# Human sweepers supply one half; the AI partner supplies the other half.
-	return ai_effort if human_skips() or shot_team != 0 else int(ai_effort / 2)
+	# Legacy model 3 combined the human and AI into one shared brush.
+	return ai_effort if game.frame.get("model", 3) >= 4 or human_skips() or shot_team != 0 else int(ai_effort / 2)
 
 func fast_forwarding() -> bool:
 	if not enabled or not game.run_active or not game.play_settings.fast_opponents or shot_team != 1: return false
@@ -410,6 +416,12 @@ func refresh_controls() -> void:
 	var text := "↑ HARD · SWEEP" if effort > 100 else ("≈ CLEAN · LIGHT BRUSH" if effort > 0 else "■ OFF · NO SWEEP")
 	call_label.text = "%s  |  Weight zone %d" % [text, weight_zone] if weight_zone > 0 else (text if call_override >= 0 else "Reading weight…")
 	if fast_forwarding(): call_label.text += "  |  4×"
+	var sweepers: PackedStringArray = []
+	for input in game.frame.get("team_brushes", []):
+		var name: String = CurlPlaySettings.POSITIONS[int(input.position)]
+		if input.team == 0 and input.position == human_position(): name += " (you)"
+		sweepers.append(name + (" tiring" if input.fatigue >= 9000 else " sweeping"))
+	sweepers_label.text = " · ".join(sweepers) if not sweepers.is_empty() else ("Sweepers resting" if game.frame.get("model", 3) >= 4 else "Shared brush · existing match")
 	game.hint.text = "SOLO · Gold %s · %s AI" % [CurlPlaySettings.CONTROL_LABELS[human_position()], ["Club", "Competitive", "Elite"][game.play_settings.difficulty]]
 	var state: String = game.frame.get("match_phase", "")
 	if state == "Calling" or state == "InFlight":

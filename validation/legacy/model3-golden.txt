@@ -1,0 +1,6 @@
+draw-0 ticks=5920 trace=1ba491a5d1dc1d7c state=9ababf5b3ebe859e
+draw-42 ticks=5922 trace=2eb0df4a44c8338d state=40f685ca93893ff7
+draw-999 ticks=5922 trace=88dc7586a3bfa117 state=9390b8a04efd6abe
+swept ticks=6097 trace=0adb1440bfc240b1 state=e7b4b59bf7f5fa1d
+counterclockwise ticks=5920 trace=ea3937a6a545e88e state=b20439d882252c37
+runback ticks=2871 trace=38908a1d542629c8 state=80374a7f2da62e12

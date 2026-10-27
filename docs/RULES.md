@@ -1,6 +1,6 @@
 # Rules implementation audit
 
-Source: [World Curling, 1 September 2026](https://worldcurling.org/wp-content/uploads/2026/08/Rules2026.pdf), R17 and placement diagrams pages 29–30. The PDF became accessible on the second retrieval attempt. Rules version 4 is tracked separately from physics model 3 (wire protocol 11).
+Source: [World Curling, 1 September 2026](https://worldcurling.org/wp-content/uploads/2026/08/Rules2026.pdf), R17 and placement diagrams pages 29–30. The PDF became accessible on the second retrieval attempt. Rules version 4 is tracked separately from physics model 4 (wire protocol 12).
 
 Implemented mixed-doubles boundaries: placement choice independent of hammer;
 positioned stones with four selectable guard marks and either side of each mark;
@@ -32,7 +32,10 @@ Fatigue is attached to the four mixed-doubles seats and persists across match
 releases; accepted idle time recovers it. Standalone practice's single-shot sim
 retains its existing fatigue reset behavior. Rules-3 match journals are preserved
 and rejected rather than silently replayed with new brush identities; model-3
-practice saves are unchanged.
+practice and rules-4 match saves continue under their original model semantics.
+New four-player-team matches have eight per-player identities, two active local
+sweepers, and the same one-contributor-per-team limit behind the tee. Older team
+matches retain their combined brush so accepted journals replay exactly.
 
 The spatial UI now selects eligible moving collision stones, including own stones
 while the delivered stone is stopped. Scrub position/effort and accessible hold
@@ -40,6 +43,5 @@ use the same authoritative per-player brush path. The UI checks current eligibil
 the host remains responsible for actual tick-by-tick permission and arbitration.
 
 Still open: full clause audit beyond these rules; timeout/break UI; physical
-alternation of sheet ends and their ice coordinates; last-stone draw; full-team
-multi-brush roles; burned stones; wrong-delivery remedies; calibrated fatigue
-animation/audio.
+alternation of sheet ends and their ice coordinates; last-stone draw; burned stones; wrong-delivery remedies; measured fatigue
+calibration and human evaluation of animation/audio.

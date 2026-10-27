@@ -167,10 +167,16 @@ impl RecordedMatch {
             reviews: crate::review::ReviewBook::default(),
         })
     }
+    fn new_model(seed: u64, rules: Rules, hammer: u8, model: u32) -> Result<Self, &'static str> {
+        let mut game = Self::new(seed, rules, hammer)?;
+        game.authority.sim = curl_sim::Sim::new_model(seed, model)?;
+        game.log.model = model;
+        Ok(game)
+    }
     pub fn json(&self) -> Result<String, String> {
         let archive = ArchiveView {
             schema: MATCH_SCHEMA,
-            model: MODEL_VERSION,
+            model: self.sim.version,
             rules_version: RULES_VERSION,
             seed: self.log.seed,
             rules: &self.log.rules,
@@ -212,13 +218,13 @@ impl RecordedMatch {
         let version: Version = serde_json::from_slice(bytes).map_err(|e| e.to_string())?;
         if version.schema == 1 {
             let log: MatchLog = serde_json::from_slice(bytes).map_err(|e| e.to_string())?;
-            if log.model != MODEL_VERSION
+            if !curl_sim::supported_model(log.model)
                 || log.rules_version != RULES_VERSION
                 || log.records.len() > 20000
             {
                 return Err("incompatible legacy match log".into());
             }
-            let mut restored = Self::new(log.seed, log.rules, log.hammer)?;
+            let mut restored = Self::new_model(log.seed, log.rules, log.hammer, log.model)?;
             let total = log.records.len();
             for (done, record) in log.records.into_iter().enumerate() {
                 checkpoint(done, total)?;
@@ -232,14 +238,15 @@ impl RecordedMatch {
         }
         let archive: Archive = serde_json::from_slice(bytes).map_err(|e| e.to_string())?;
         if archive.schema != MATCH_SCHEMA
-            || archive.model != MODEL_VERSION
+            || !curl_sim::supported_model(archive.model)
             || archive.rules_version != RULES_VERSION
             || archive.blocks.len() > MAX_RECORDS / BLOCK_RECORDS
             || archive.tail.len() > BLOCK_RECORDS
         {
             return Err("incompatible or oversized match log".into());
         }
-        let mut restored = Self::new(archive.seed, archive.rules, archive.hammer)?;
+        let mut restored =
+            Self::new_model(archive.seed, archive.rules, archive.hammer, archive.model)?;
         let total = archive.blocks.len() * BLOCK_RECORDS + archive.tail.len();
         let mut done = 0;
         for block in archive.blocks {
@@ -513,30 +520,53 @@ impl RecordedMatch {
         seat: Seat,
         input: Option<Sweep>,
     ) -> Result<(), &'static str> {
-        if count > 64 || input.is_some_and(|s| !s.valid()) {
-            return Err("invalid targeted step");
+        let inputs: Vec<_> = input.map(|input| (seat, input)).into_iter().collect();
+        self.advance_players(count, &inputs)
+    }
+    pub(crate) fn advance_players(
+        &mut self,
+        count: u32,
+        inputs: &[(Seat, Sweep)],
+    ) -> Result<(), &'static str> {
+        if count > 64
+            || inputs.len() > curl_sim::MAX_BRUSHES
+            || inputs.iter().any(|(_, s)| !s.valid())
+        {
+            return Err("invalid player brush step");
         }
-        let input = input.filter(|s| s.effort > 0);
-        if input.is_none() {
+        let mut seats = Vec::new();
+        for (seat, _) in inputs {
+            if seats.contains(seat) {
+                return Err("duplicate player brush");
+            }
+            seats.push(*seat);
+        }
+        let inputs: Vec<_> = inputs
+            .iter()
+            .copied()
+            .filter(|(_, s)| s.effort > 0)
+            .collect();
+        if inputs.is_empty() {
             return self.advance(count, None);
         }
         let mut next = self.clone();
         let mut remaining = count;
         while remaining > 0 && next.game.phase == Phase::InFlight {
             let ticks = remaining.min(12);
-            if let Some(input) = input
-                && next
+            for &(seat, input) in &inputs {
+                if next
                     .sim
                     .stones
                     .iter()
                     .any(|s| s.id == input.stone && s.active && s.vel != curl_fx::V2::ZERO)
-            {
-                next.apply(Record::BrushSpan {
-                    seat,
-                    tick: next.sim.tick,
-                    input,
-                    count: ticks as u8,
-                })?;
+                {
+                    next.apply(Record::BrushSpan {
+                        seat,
+                        tick: next.sim.tick,
+                        input,
+                        count: ticks as u8,
+                    })?;
+                }
             }
             next.advance(ticks, None)?;
             remaining -= ticks;

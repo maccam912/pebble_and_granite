@@ -187,7 +187,7 @@ fn match_release_preserves_player_fatigue_and_idle_time_recovers_it() {
         PowerPlay::None,
     )
     .unwrap();
-    a.sim.brush_fatigue = [4000, 5000, 6000, 7000];
+    a.sim.brush_fatigue = [4000, 5000, 6000, 7000, 0, 0, 0, 0];
     a.think(1000).unwrap();
     let recovered = a.sim.brush_fatigue;
     assert!(recovered[0] < 4000 && recovered[3] < 7000);

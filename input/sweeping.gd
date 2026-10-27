@@ -11,7 +11,7 @@ func allowed(stone: Dictionary, frame: Dictionary, seat: int) -> bool:
 	if seat < 0: return false
 	var seats := 4 if frame.get("format", "MixedDoubles") == "Teams" else 2
 	var team := int(seat / seats)
-	if seats == 4 and stone.id != frame.get("delivered", -1): return false
+	if seats == 4 and frame.get("model", 3) < 4 and stone.id != frame.get("delivered", -1): return false
 	if stone.position.y < 0: return stone.team == team
 	return team == frame.get("team", -1) or seat % seats == seats - 1
 

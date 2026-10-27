@@ -8,6 +8,7 @@ var ceiling: Node3D
 var camera: Camera3D
 var broom: Node3D
 var brush: Node3D
+var partner_brush: Node3D
 var selection: Node3D
 var sweep_target := -1
 var brush_input: Dictionary = {}
@@ -115,6 +116,9 @@ func _ready() -> void:
 	brush_head(brush)
 	var brush_shaft := cylinder(brush, .011, .8, Vector3(.30, .34, 0), material("c7d1d3", .25))
 	brush_shaft.rotation.z = -.8
+	partner_brush = brush.duplicate()
+	world.add_child(partner_brush)
+	partner_brush.hide()
 	selection = Node3D.new()
 	world.add_child(selection)
 	var selection_shape := TorusMesh.new()
@@ -194,7 +198,7 @@ func mesh(parent: Node3D, shape: Mesh, pos: Vector3, mat: Material) -> MeshInsta
 	instance.mesh = shape
 	instance.position = pos
 	instance.material_override = mat
-	if parent in [broom, brush, selection, hand] or parent.has_meta("team"):
+	if parent in [broom, brush, partner_brush, selection, hand] or parent.has_meta("team"):
 		instance.layers = 2
 		instance.gi_mode = GeometryInstance3D.GI_MODE_DYNAMIC
 	parent.add_child(instance)
@@ -440,6 +444,23 @@ func render_frame(frame: Dictionary, running: bool, sweep: bool, broom_mm: int, 
 	var offset := direction * ahead + right * lateral
 	brush.position = followed + Vector3(offset.x, 0, -offset.y)
 	brush.rotation.y = atan2(direction.x, direction.y)
+	partner_brush.hide()
+	if frame.get("model", 3) >= 4 and frame.get("format", "") == "Teams":
+		var inputs: Array = frame.get("team_brushes", [])
+		brush.hide()
+		for index in range(mini(2, inputs.size())):
+			var input: Dictionary = inputs[index]
+			var node: Node3D = brush if index == 0 else partner_brush
+			var targets: Array = frame.stones.filter(func(data: Dictionary): return data.id == input.stone)
+			node.visible = running and not targets.is_empty() and stones.has(input.stone) and input.effort > 0
+			if not node.visible: continue
+			var target_direction: Vector2 = targets[0].velocity.normalized()
+			var target_right := Vector2(target_direction.y, -target_direction.x)
+			var strength := 1.0 - float(input.fatigue) / 20000.0
+			var across := float(input.lateral_mm) / 1000.0 + sin(brush_time * 24.0 * strength + index * PI) * .10
+			var team_offset := target_direction * (float(input.ahead_mm) / 1000.0) + target_right * across
+			node.position = stones[input.stone].position + Vector3(team_offset.x, 0, -team_offset.y)
+			node.rotation.y = atan2(target_direction.x, target_direction.y)
 	var selected: String = MODES[mode]
 	if selected == "Auto":
 		selected = "House" if steady_camera and running else role_camera if not role_camera.is_empty() else ("Sweeper" if running and has_followed else ("Delivery" if aiming else "House"))

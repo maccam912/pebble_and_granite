@@ -868,7 +868,7 @@ impl CurlSession {
         }
         result
     }
-    /// Team play currently uses one combined brush per team. Keep this existing
+    /// Legacy model-3 team play uses one combined brush per team. Keep this existing
     /// journal interpretation rather than changing historical brush identities.
     #[func]
     fn step_solo_ticks(
@@ -907,6 +907,59 @@ impl CurlSession {
                 position: game.game.throwing_seat(),
             },
             Some(input),
+        )
+        .err()
+        .unwrap_or("")
+        .into()
+    }
+    /// Independent model-4 team brushes, with model-3 continuation preserved.
+    #[func]
+    #[allow(clippy::too_many_arguments)]
+    fn step_team_ticks(
+        &mut self,
+        count: i64,
+        stone: i64,
+        human_effort: i64,
+        lateral_mm: i64,
+        ahead_mm: i64,
+        ai_effort: i64,
+        human_position: i64,
+    ) -> GString {
+        if !(0..=64).contains(&count)
+            || !(0..16).contains(&stone)
+            || !(0..=255).contains(&human_effort)
+            || !(0..=255).contains(&ai_effort)
+            || !(-350..=350).contains(&lateral_mm)
+            || !(80..=700).contains(&ahead_mm)
+            || !(0..=5).contains(&human_position)
+        {
+            return "Invalid team brush input".into();
+        }
+        let Some(game) = &mut self.game else {
+            return "No match".into();
+        };
+        if game.sim.version < 4 {
+            return self.step_solo_ticks(
+                count,
+                stone,
+                human_effort,
+                lateral_mm,
+                ahead_mm,
+                ai_effort,
+            );
+        }
+        curl_match::team_sweeping::advance(
+            game,
+            count as u32,
+            human_position as i8,
+            Sweep {
+                stone: stone as u8,
+                brush: 0,
+                effort: human_effort as u8,
+                lateral_mm: lateral_mm as i16,
+                ahead_mm: ahead_mm as u16,
+            },
+            ai_effort as u8,
         )
         .err()
         .unwrap_or("")
@@ -1110,6 +1163,31 @@ pub(crate) fn presentation_frame(
     can_deliver_next: bool,
 ) -> VarDictionary {
     let mut frame = VarDictionary::new();
+    frame.set("model", sim.version as i64);
+    let mut fatigue = PackedInt32Array::new();
+    for value in &sim.brush_fatigue[..curl_sim::brush_count(sim.version)] {
+        fatigue.push(*value as i32);
+    }
+    frame.set("brush_fatigue", &fatigue);
+    let mut team_brushes = Array::<VarDictionary>::new();
+    if let Some(game) = game
+        && sim.version >= 4
+        && game.game.rules.format == curl_rules::Format::Teams
+    {
+        for input in game.active_brushes() {
+            let mut data = VarDictionary::new();
+            data.set("team", (input.brush / 4) as i64);
+            data.set("position", (input.brush % 4) as i64);
+            data.set("stone", input.stone as i64);
+            data.set("effort", input.effort as i64);
+            data.set("fatigue", sim.brush_fatigue[input.brush as usize] as i64);
+            data.set("lateral_mm", input.lateral_mm as i64);
+            data.set("ahead_mm", input.ahead_mm as i64);
+            team_brushes.push(&data);
+        }
+    }
+    frame.set("team_brushes", &team_brushes);
+
     let mut stones = Array::<VarDictionary>::new();
     for s in &sim.stones {
         let mut d = VarDictionary::new();

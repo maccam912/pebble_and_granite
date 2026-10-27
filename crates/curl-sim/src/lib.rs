@@ -3,7 +3,14 @@ use curl_fx::{Fx, Hash64, Rng, V2};
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
 
-pub const MODEL_VERSION: u32 = 3;
+pub const MODEL_VERSION: u32 = 4;
+pub const MAX_BRUSHES: usize = 8;
+pub fn supported_model(version: u32) -> bool {
+    matches!(version, 3 | 4)
+}
+pub fn brush_count(version: u32) -> usize {
+    if version >= 4 { MAX_BRUSHES } else { 4 }
+}
 pub const HZ: u32 = 240;
 pub const DT: Fx = Fx::ratio(1, HZ as i64);
 pub const RADIUS: Fx = Fx::ratio(142, 1000);
@@ -104,7 +111,7 @@ impl Sweep {
         }
     }
     pub fn valid(&self) -> bool {
-        self.brush < 4
+        (self.brush as usize) < MAX_BRUSHES
             && self.stone < 16
             && (-350..=350).contains(&self.lateral_mm)
             && (80..=700).contains(&self.ahead_mm)
@@ -195,7 +202,7 @@ pub struct Sim {
     pub hog_tick: Option<u32>,
     pub contacts: u32,
     pub timed_out: bool,
-    pub brush_fatigue: [u16; 4],
+    pub brush_fatigue: [u16; MAX_BRUSHES],
     last_cells: [Option<u32>; MAX_STONES],
 }
 impl Sim {
@@ -210,9 +217,18 @@ impl Sim {
             hog_tick: None,
             contacts: 0,
             timed_out: false,
-            brush_fatigue: [0; 4],
+            brush_fatigue: [0; MAX_BRUSHES],
             last_cells: [None; MAX_STONES],
         }
+    }
+    /// Old command journals retain their original brush identities and hashes.
+    pub fn new_model(seed: u64, version: u32) -> Result<Self, &'static str> {
+        if !supported_model(version) {
+            return Err("unsupported simulation model");
+        }
+        let mut sim = Self::new(seed);
+        sim.version = version;
+        Ok(sim)
     }
     pub fn add_resting(&mut self, stone: Stone) -> Result<(), &'static str> {
         if !self.is_resting()
@@ -255,7 +271,7 @@ impl Sim {
         self.release_tick = self.tick;
         self.hog_tick = None;
         self.timed_out = false;
-        self.brush_fatigue = [0; 4];
+        self.brush_fatigue = [0; MAX_BRUSHES];
         self.last_cells = [None; MAX_STONES];
         self.stones.push(s);
         self.stones.sort_by_key(|s| s.id);
@@ -319,10 +335,10 @@ impl Sim {
             return vec![];
         }
         let mut events = vec![];
-        let mut used = [false; 4];
+        let mut used = [false; MAX_BRUSHES];
         for sweep in sweeps.iter().filter(|s| s.valid()) {
             let brush = sweep.brush as usize;
-            if used[brush] {
+            if brush >= brush_count(self.version) || used[brush] {
                 continue;
             }
             used[brush] = true;
@@ -535,8 +551,8 @@ impl Sim {
         h.u64(self.hog_tick.map_or(u64::MAX, |t| t as u64));
         h.u64(self.contacts as u64);
         h.u64(self.timed_out as u64);
-        for f in self.brush_fatigue {
-            h.u64(f as u64);
+        for f in &self.brush_fatigue[..brush_count(self.version)] {
+            h.u64(*f as u64);
         }
         for c in self.last_cells {
             h.u64(c.map_or(u64::MAX, |i| i as u64));

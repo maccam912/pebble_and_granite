@@ -62,6 +62,9 @@ beside the rink; cream rings mark counting stones. End cards explain the score
 and lead into the next end or rematch.
 Club plans one shot; Competitive and Elite consider opponent replies, with a
 wider search and execution-risk check for Elite. Score, end and hammer matter.
+New solo matches have two visible sweepers with separate effort and fatigue.
+AI learns line/weight from observed clean draws; it cannot read hidden ice.
+Existing model-3 saves retain their original physics and brush behavior.
 See [solo teams](docs/SOLO_TEAMS.md) for controls and current AI scope.
 **Drills** offers five-shot rounds for tee weight, front guards, alternating line
 and sweeping, plus takeouts and hog-to-hog timing. Gold target rings mark

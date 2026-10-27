@@ -3,6 +3,9 @@ use curl_fx::{Fx, V2};
 use curl_sim::{Stone, Sweep};
 
 pub fn golden_text() -> Result<String, String> {
+    golden_text_for(curl_sim::MODEL_VERSION)
+}
+pub fn golden_text_for(model: u32) -> Result<String, String> {
     let mut cases = Vec::new();
     for seed in [0, 42, 999] {
         let mut replay = Replay::draw(seed);
@@ -28,7 +31,8 @@ pub fn golden_text() -> Result<String, String> {
         .push(Stone::resting(2, 0, V2::new(Fx::ZERO, Fx::ratio(3, 10))));
     cases.push(("runback".into(), hit));
     let mut output = String::new();
-    for (name, replay) in cases {
+    for (name, mut replay) in cases {
+        replay.model = model;
         let outcome = replay.run()?;
         output.push_str(&format!(
             "{name} ticks={} trace={} state={}\n",
@@ -36,4 +40,12 @@ pub fn golden_text() -> Result<String, String> {
         ));
     }
     Ok(output)
+}
+
+#[test]
+fn model_three_replays_keep_every_tick_trace() {
+    assert_eq!(
+        golden_text_for(3).unwrap(),
+        include_str!("../../../validation/legacy/model3-golden.txt")
+    );
 }

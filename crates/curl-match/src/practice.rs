@@ -223,12 +223,15 @@ impl Practice {
         let Some(index) = self.active else {
             return Ok(());
         };
-        let mut seen = [false; 4];
-        if inputs.len() > 4 {
+        let mut seen = [false; curl_sim::MAX_BRUSHES];
+        if inputs.len() > curl_sim::brush_count(self.sim.version) {
             return Err("too many sweepers");
         }
         for input in inputs {
-            if !input.valid() || seen[input.brush as usize] {
+            if !input.valid()
+                || input.brush as usize >= curl_sim::brush_count(self.sim.version)
+                || seen[input.brush as usize]
+            {
                 return Err("invalid sweep input");
             }
             seen[input.brush as usize] = true;
@@ -305,7 +308,7 @@ impl Practice {
     }
     pub fn from_log(log: SessionLog) -> Result<Self, String> {
         log.validate()?;
-        let mut sim = Sim::new(log.seed);
+        let mut sim = Sim::new_model(log.seed, log.model)?;
         sim.ice.varied = log.varied_ice;
         let mut active = None;
         let mut span_count = 0;
@@ -338,7 +341,8 @@ impl Practice {
                         1,
                     );
                     let mut next = 0;
-                    let mut brushes: [Option<SweepSpan>; 4] = [None; 4];
+                    let mut brushes: [Option<SweepSpan>; curl_sim::MAX_BRUSHES] =
+                        [None; curl_sim::MAX_BRUSHES];
                     for tick in 0..shot.ticks {
                         if sim.is_resting() {
                             return Err("record has ticks after rest".into());

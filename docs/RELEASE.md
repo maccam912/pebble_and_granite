@@ -1,3 +1,10 @@
+New solo matches now have two visible sweepers with individual effort and fatigue.
+Your brush stays manual while your partner follows the skip's calls. Player roles
+rotate with the thrower; the call panel names the active sweepers and shows when
+they tire. OFF stops called AI effort. New sessions use model 4 / protocol 12;
+all online peers need matching builds. Existing model-3/rules-4 practice and match
+saves retain their original behavior and exact replay hashes.
+
 AI difficulty now changes strategy as well as accuracy. Competitive considers
 opponent replies to two different shot intentions; Elite considers four and
 checks execution risk. Match score, end and hammer affect choices, including
