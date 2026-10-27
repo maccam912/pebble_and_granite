@@ -47,7 +47,19 @@ tests; physical-device feel is the third item and needs user participation.
    Full solo match passed all 96 deliveries, journal/review reconstruction and
    rematch. Existing Godot cleanup warnings remain in that fixture; no script
    errors. Installed Android strategy is not yet checked.
-5. Next: expand the AI's physical shot catalogue beyond draws, guards and hits.
+5. Expanded catalogue implemented: corner guards, freezes, tap-backs,
+   hit-and-rolls, peels, doubles and runbacks. At most 32 candidates, both turns,
+   with actual settled-outcome checks after legal remedies. Contact events are
+   disposable rollout evidence, never new authoritative or journal state.
+   Physical fixtures pass for every added shot, with rejected failed intentions,
+   protected-guard peels and both corner-guard sides covered. Core/every-tick
+   goldens and all-target Clippy pass. Native rated plans, manual calls, extended
+   call names/weight/save restore, and solo restore pass. Long-name mobile-layout
+   card capture reviewed. Full match passed 96 deliveries, replay/reviews and
+   rematch; existing two-object cleanup warning remains. Empty-house plans:
+   195 / 1,090 / 1,829 ms on M5 Pro; installed Android strategy/catalogue not yet
+   checked. No physical-device timing or feel claim.
+6. Next: observation-based AI ice learning.
 
 ## Current state
 

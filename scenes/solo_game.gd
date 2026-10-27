@@ -188,7 +188,7 @@ func advance(delta: float) -> void:
 			return
 		planned = result
 		called_target = Vector2(float(result.target_x_mm) / 1000.0, float(result.target_y_mm) / 1000.0)
-		shot_choice.select(["Draw", "Guard", "Hit"].find(result.kind))
+		shot_choice.select(CurlShotCall.weight_kind(result.kind))
 		if not keep_broom:
 			game.broom_mm = int(result.broom_mm)
 			game.turn = int(result.turn)
@@ -322,7 +322,7 @@ func valid_envelope(data: Variant) -> bool:
 	var call = data.get("call", {})
 	if not call is Dictionary: return false
 	if not call.is_empty():
-		if call.get("kind") not in ["Draw", "Guard", "Hit"]: return false
+		if call.get("kind") not in ["Draw", "Guard", "Hit", "Corner guard", "Freeze", "Tap-back", "Hit-and-roll", "Peel", "Double", "Runback"]: return false
 		for key in ["target_x_mm", "target_y_mm", "broom_mm", "speed_mm_s", "turn"]:
 			if not (call.get(key) is float or call.get(key) is int) or not is_finite(float(call[key])) or float(call[key]) != floorf(float(call[key])): return false
 		if absf(call.target_x_mm) > 2200 or call.target_y_mm < -5000 or call.target_y_mm > 2000 or absf(call.broom_mm) > 2200 or call.speed_mm_s < 1400 or call.speed_mm_s > 5000 or int(call.turn) not in [-1, 1]: return false

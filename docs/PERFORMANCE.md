@@ -68,3 +68,11 @@ Use `python3 tools/build_native.py --release` before the live probe. Add
 readiness using the same fixed-step scene callback at an accelerated test cadence.
 Only the first swept shot is used for real-time timing; later shots are correctness
 tests. Cross-device, physical Android and long-match reconnect profiling remain open.
+
+### Expanded catalogue, 27 October 2026
+
+After adding seven shot types (at most 32 candidate releases), the native
+`tests/ai_strategy.gd` empty-house probe on this M5 Pro measured 195 ms Club,
+1,090 ms Competitive and 1,829 ms Elite. This is one local optimized run, not a
+phone budget or an exhaustive dense-board worst case. Search stays on a worker;
+no rendering objects cross that boundary. Physical phone timing remains open.

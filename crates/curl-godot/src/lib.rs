@@ -804,6 +804,7 @@ impl CurlSession {
         match shot {
             Ok(plan) => {
                 result.set("kind", plan.kind.name());
+                result.set("weight_kind", plan.kind.weight_kind() as i64);
                 result.set("target_x_mm", rounded_mm(plan.target.x));
                 result.set("target_y_mm", rounded_mm(plan.target.y));
                 result.set("broom_mm", plan.broom_mm);

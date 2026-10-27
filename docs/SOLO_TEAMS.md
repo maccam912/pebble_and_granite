@@ -60,7 +60,8 @@ and held delivery views keep the handle visible; explicit manual cameras still
 work. This preference is independent of FOV, zoom and fast watching.
 
 **AI difficulty** has three tiers. All use the same physics and a bounded
-catalogue of draws, center guards and hits. Club evaluates one shot. Competitive
+catalogue of draws, guards and contact shots (see the catalogue below). Club
+evaluates one shot. Competitive
 checks the opponent's best reply to its two strongest distinct shot intentions;
 Elite checks four and penalizes brittle shots with four fixed execution samples.
 Both turns are evaluated before shortlisting each target/type. Search ends at the
@@ -98,10 +99,30 @@ FOV. FOV, speech, accuracy, role and fast travel preferences persist on the devi
 The current team authority has one combined brush per team. AI partner effort
 and human input contribute to that brush, with its existing fatigue. Independent
 four-player brush/fatigue identities, individual teammate personalities, deeper
-stochastic strategy, Bayesian ice learning, doubles/runbacks/freezes, coaching and
+stochastic strategy, Bayesian ice learning, coaching and
 career remain future work. Mixed-doubles online continues to use its existing
 separate per-player brushes. No simulation, rules or journal version changes
 are needed for this first solo implementation.
 
 Physical Android performance/feel, human curling judgement and measured ice
 calibration remain separate validation gates.
+
+### Physical shot catalogue (27 October 2026)
+
+The bounded search now also offers corner guards, freezes, tap-backs,
+hit-and-rolls, peels, doubles and runbacks. It keeps at most 32 candidate releases
+per board. These are geometry proposals validated through the same authoritative
+physics and legal remedies as ordinary play. A proposed roll must remove its
+opponent and leave the shooter in the house with at least 30 cm lateral movement;
+a peel must remove both; a double must remove both named opponents. A runback
+requires an actual first-to-second contact and removal or at least 30 cm movement
+of the second stone. Freeze gaps are at most 15 mm with less than 8 cm target
+movement; taps move their target 15 cm to 1.5 m forward. Failed intentions are
+excluded, even if they happen to have a useful score. Execution scatter can still
+miss the selected intention.
+
+Contact options use a bounded selection of nearby house stones and guards, not
+an exhaustive search of every combination. Calls retain their names through held
+save/restore, use the existing three weight categories, and show the solved pace.
+Human callers still choose their own draw/guard/takeout line and turn. No new
+command, replay, physics or multiplayer protocol version is required.

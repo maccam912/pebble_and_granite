@@ -386,19 +386,23 @@ impl Authority {
         Ok(())
     }
     pub fn step(&mut self) -> Result<(), &'static str> {
+        self.step_events().map(|_| ())
+    }
+    /// Contact evidence for disposable AI rollouts; never retained in state.
+    pub(crate) fn step_events(&mut self) -> Result<Vec<curl_sim::Event>, &'static str> {
         if self.game.phase != Phase::InFlight {
-            return Ok(());
+            return Ok(vec![]);
         }
         if self.checkpoint_needed(self.sim.tick, self.sim.release_tick) {
             self.remember(Arc::new(self.sim.clone()));
         }
-        self.sim.step(&self.inputs(&self.sim));
+        let events = self.sim.step(&self.inputs(&self.sim));
         if self.sim.timed_out {
             return Err("physics time budget exhausted");
         }
         self.advance_flight_clock();
         if self.game.phase == Phase::GameComplete {
-            return Ok(());
+            return Ok(events);
         }
         if self.sim.is_resting() {
             let resolution = self.game.settle(&self.sim.stones)?;
@@ -407,7 +411,7 @@ impl Authority {
             }
             self.last_resolution = Some(resolution);
         }
-        Ok(())
+        Ok(events)
     }
     pub fn choose(&mut self, seat: Seat, remedy: Remedy) -> Result<(), &'static str> {
         if !self.valid_seat(seat) {

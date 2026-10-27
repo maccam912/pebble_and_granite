@@ -16,6 +16,8 @@ func run() -> void:
 			result = session.poll_ai_plan()
 			await process_frame
 		check(not result.is_empty() and not result.has("error"), "Rated planner failed or stalled")
+		if result.has("kind"):
+			check(int(result.get("weight_kind", -1)) == CurlShotCall.weight_kind(result.kind), "Native and visible weight categories disagree")
 		check(session.match_hash() == initial, "Planning changed authoritative match")
 		print("AI_PLAN tier=%d wall_ms=%d kind=%s" % [level, Time.get_ticks_msec() - started, result.get("kind", "missing")])
 	# Execute and replay the accepted release, not a serialized planning tree.

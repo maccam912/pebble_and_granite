@@ -81,6 +81,25 @@ func run() -> void:
 	var old_save: Dictionary = envelope.duplicate(true)
 	old_save.erase("call")
 	check(restored.solo.valid_envelope(old_save), "Existing solo saves became incompatible")
+	# Every new AI intention survives a held-delivery save and has useful weight.
+	for kind in ["Corner guard", "Freeze", "Tap-back", "Hit-and-roll", "Peel", "Double", "Runback"]:
+		var named: Dictionary = envelope.duplicate(true)
+		named.call.kind = kind
+		check(restored.solo.valid_envelope(named), "New call rejected: " + kind)
+		restored.solo.restore_metadata(named)
+		restored.solo.reset_turn()
+		restored.update_labels()
+		restored._process(.02)
+		check(restored.solo.planned.get("kind") == kind, "New call lost on restore: " + kind)
+		var expected := "Takeout weight" if kind in ["Hit-and-roll", "Peel", "Double", "Runback"] else ("Guard weight" if kind == "Corner guard" else "draw")
+		check(expected in restored.solo.shot_card.details.text, "New call has wrong weight: " + kind)
+		check(restored.solo.shot_card.details.position.y + restored.solo.shot_card.details.get_minimum_size().y <= 215, "Call text overlaps map: " + kind)
+	restored.hide()
+	var long_call := call.duplicate(true)
+	long_call.kind = "Hit-and-roll"
+	long_call.speed_mm_s = 2500
+	game.solo.shot_card.show_call(long_call, false)
+	await capture(game, "03-long-call")
 	clock[0] = 3000000
 	game.end_pointer(handle + Vector2(0, -9.6))
 	check(game.run_active and not game.solo.shot_card.visible, "Call blocked release or stayed over sweeping")

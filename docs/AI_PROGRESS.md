@@ -255,3 +255,19 @@ this checkpoint. Current clean local Android APK is build 78. Physical Android,
 audible quality, advanced strategy/ice learning, independent team brushes, online
 boards/calls, career and calibrated ice remain open. Weekly usage remains
 23% used / 77% remaining; the below-50% remaining cutoff was not triggered.
+
+### Expanded contact catalogue (27 October 2026)
+
+Seven additional intentions now pass actual outcome checks: corner guard,
+freeze, tap-back, hit-and-roll, peel, double and runback. The runback requires
+contact-chain evidence; a protected peel must still survive the legal remedy.
+Both turns and bounded contact geometry are tested, with at most 32 proposals.
+A guarded-house strategy fixture now finds a useful hit-and-roll at both Club
+and Competitive rather than the old hit/draw split. Reply evaluation remains
+no worse than the greedy selection on that fixture.
+
+Core/golden and Clippy checks pass. Native planning, manual calls, held-call
+restore for all names, full solo restore and a 96-delivery game with replay,
+review reconstruction and rematch pass. Rendered mobile-layout long call inspected.
+Native empty-house timings are documented in PERFORMANCE.md. Installed Android
+strategy/catalogue and physical-device feel remain open.

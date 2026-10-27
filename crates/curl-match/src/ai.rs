@@ -4,6 +4,7 @@ use crate::Authority;
 use curl_fx::{Fx, Rng, V2};
 use curl_rules::{Phase, Remedy};
 use curl_sim::{HOUSE, MAX_TICKS, RADIUS, Release, Sim};
+mod catalog;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Difficulty {
@@ -26,6 +27,13 @@ pub enum ShotKind {
     Draw,
     Guard,
     Hit,
+    CornerGuard,
+    Freeze,
+    Tap,
+    HitRoll,
+    Peel,
+    Double,
+    Runback,
 }
 impl ShotKind {
     pub fn name(self) -> &'static str {
@@ -33,7 +41,24 @@ impl ShotKind {
             Self::Draw => "Draw",
             Self::Guard => "Guard",
             Self::Hit => "Hit",
+            Self::CornerGuard => "Corner guard",
+            Self::Freeze => "Freeze",
+            Self::Tap => "Tap-back",
+            Self::HitRoll => "Hit-and-roll",
+            Self::Peel => "Peel",
+            Self::Double => "Double",
+            Self::Runback => "Runback",
         }
+    }
+    pub fn weight_kind(self) -> u8 {
+        match self {
+            Self::Guard | Self::CornerGuard => 1,
+            Self::Hit | Self::HitRoll | Self::Peel | Self::Double | Self::Runback => 2,
+            _ => 0,
+        }
+    }
+    fn hit_weight(self) -> bool {
+        self.weight_kind() == 2
     }
 }
 #[derive(Clone, Debug)]
@@ -79,25 +104,31 @@ pub fn solve(sim: &Sim, target: V2, kind: ShotKind, turn: i64) -> Plan {
         kind,
         target,
         broom_mm: mm(target.x).clamp(-2200, 2200),
-        speed_mm_s: if kind == ShotKind::Hit { 3000 } else { 2050 },
+        speed_mm_s: match kind {
+            ShotKind::Peel | ShotKind::Double => 3600,
+            ShotKind::Runback => 3300,
+            ShotKind::HitRoll => 2500,
+            _ if kind.hit_weight() => 3000,
+            _ => 2050,
+        },
         turn,
     };
     let mut low = 1650;
     let mut high = 2450;
     for _ in 0..12 {
-        if kind != ShotKind::Hit {
+        if !kind.hit_weight() {
             plan.speed_mm_s = (low + high) / 2;
         }
         let at = trajectory(sim, &plan);
         // For a hit, measure line at the target's depth instead of at rest.
-        let distance = if kind == ShotKind::Hit {
+        let distance = if kind.hit_weight() {
             target.y - Release::draw().pos.y
         } else {
             -Release::draw().pos.y
         };
         let correction = (target.x - at.x) * (-Release::draw().pos.y) / distance;
         plan.broom_mm = (plan.broom_mm + mm(correction)).clamp(-2200, 2200);
-        if kind != ShotKind::Hit {
+        if !kind.hit_weight() {
             if at.y < target.y {
                 low = plan.speed_mm_s;
             } else {
@@ -116,7 +147,7 @@ fn trajectory(source: &Sim, plan: &Plan) -> V2 {
     while !sim.is_resting() && sim.tick - start < MAX_TICKS {
         sim.step(&[]);
         let pos = sim.stones[0].pos;
-        if plan.kind == ShotKind::Hit && pos.y >= plan.target.y {
+        if plan.kind.hit_weight() && pos.y >= plan.target.y {
             let span = pos.y - last.y;
             return if span > Fx::ZERO {
                 last + (pos - last) * ((plan.target.y - last.y) / span)
@@ -187,45 +218,18 @@ pub fn plan_at_level(authority: &Authority, level: Difficulty) -> Result<Plan, &
     best.map(|(shot, _)| shot).ok_or("No legal AI candidate")
 }
 
-fn candidate_plans(authority: &Authority) -> Vec<Plan> {
-    let mut targets = vec![
-        (ShotKind::Draw, V2::ZERO),
-        (
-            ShotKind::Draw,
-            V2::new(Fx::ratio(-8, 10), Fx::ratio(-4, 10)),
-        ),
-        (ShotKind::Draw, V2::new(Fx::ratio(8, 10), Fx::ratio(-4, 10))),
-        (ShotKind::Guard, V2::new(Fx::ZERO, Fx::int(-3))),
-    ];
-    let team = authority.game.delivering_team();
-    let mut opponents: Vec<_> = authority
-        .sim
-        .stones
-        .iter()
-        .filter(|s| s.active && s.team != team && s.pos.length() <= HOUSE + RADIUS)
-        .collect();
-    opponents.sort_by_key(|s| s.pos.length());
-    for stone in opponents.into_iter().take(2) {
-        targets.push((ShotKind::Hit, stone.pos));
-    }
-    let mut plans = Vec::new();
-    for (kind, target) in targets {
-        for turn in [-1, 1] {
-            plans.push(solve(&authority.sim, target, kind, turn));
-        }
-    }
-    plans
-}
-
 fn ranked_candidates(
     authority: &Authority,
     team: u8,
 ) -> Result<Vec<(Plan, Authority, i64)>, &'static str> {
     let mut candidates = Vec::new();
-    for candidate in candidate_plans(authority) {
-        let next = outcome(authority, candidate.release())?;
+    for candidate in catalog::generate(authority) {
+        let (next, contacts) = outcome_with_contacts(authority, candidate.plan.release())?;
+        if !candidate.accepts(authority, &next, &contacts) {
+            continue;
+        }
         let value = position_value(&next, team);
-        candidates.push((candidate, next, value));
+        candidates.push((candidate.plan, next, value));
     }
     // Stable sorting preserves the deterministic catalogue order on ties.
     candidates.sort_by_key(|(_, _, value)| std::cmp::Reverse(*value));
@@ -233,7 +237,14 @@ fn ranked_candidates(
 }
 
 fn outcome(authority: &Authority, release: Release) -> Result<Authority, &'static str> {
+    outcome_with_contacts(authority, release).map(|(next, _)| next)
+}
+fn outcome_with_contacts(
+    authority: &Authority,
+    release: Release,
+) -> Result<(Authority, Vec<curl_sim::Event>), &'static str> {
     let mut next = authority.clone();
+    let mut contacts = Vec::new();
     let team = authority.game.delivering_team();
     next.release(
         crate::Seat {
@@ -246,7 +257,11 @@ fn outcome(authority: &Authority, release: Release) -> Result<Authority, &'stati
         if next.game.phase != Phase::InFlight {
             break;
         }
-        next.step()?;
+        contacts.extend(
+            next.step_events()?
+                .into_iter()
+                .filter(|e| matches!(e, curl_sim::Event::Contact(..))),
+        );
     }
     if next.game.phase == Phase::InFlight {
         return Err("AI rollout did not settle");
@@ -261,7 +276,7 @@ fn outcome(authority: &Authority, release: Release) -> Result<Authority, &'stati
             remedy,
         )?;
     }
-    Ok(next)
+    Ok((next, contacts))
 }
 /// The non-offending team chooses its better legal board; ties restore the guard.
 pub fn best_remedy(authority: &Authority) -> Result<Remedy, &'static str> {
@@ -462,9 +477,8 @@ mod tests {
                 .min()
                 .unwrap()
         };
-        assert_eq!(club.kind, ShotKind::Hit);
-        assert_eq!(competitive.kind, ShotKind::Draw);
-        assert!(reply_value(&competitive) > reply_value(&club) + 50_000);
+        assert!(reply_value(&competitive) >= reply_value(&club));
+        assert_eq!(competitive.kind, ShotKind::HitRoll);
         assert_eq!(game.hash(), before);
         let repeated = plan_at_level(&game, Difficulty::Competitive).unwrap();
         assert_eq!(competitive.release(), repeated.release());
