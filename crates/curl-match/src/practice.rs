@@ -6,6 +6,7 @@ use curl_sim::{MAX_STONES, Release, Sim, Sweep};
 pub struct Practice {
     pub sim: Sim,
     pub log: SessionLog,
+    pub reviews: crate::review::ReviewBook,
     active: Option<usize>,
     span_count: usize,
 }
@@ -14,6 +15,7 @@ impl Practice {
         Self {
             sim: Sim::new(seed),
             log: SessionLog::new(seed),
+            reviews: crate::review::ReviewBook::default(),
             active: None,
             span_count: 0,
         }
@@ -51,6 +53,14 @@ impl Practice {
             return Err("shot still active");
         }
         self.sim.release(release.clone())?;
+        self.reviews.begin(
+            &self.sim,
+            crate::Seat {
+                team: release.team,
+                position: 0,
+            },
+            1,
+        );
         self.active = Some(self.log.records.len());
         self.log.records.push(Record::Shot(RecordedShot {
             release,
@@ -78,6 +88,10 @@ impl Practice {
         self.sim.hog_violation(stone, team)?;
         self.log.records.push(Record::HogViolation { stone, team });
         self.log.pending_delivery = None;
+        self.reviews
+            .begin(&self.sim, crate::Seat { team, position: 0 }, 1);
+        self.reviews
+            .finish(&self.sim, Some(curl_rules::Violation::HogRelease));
         Ok(())
     }
     pub fn begin_delivery(&mut self, target_mm_s: i64, broom_mm: i64) -> Result<(), &'static str> {
@@ -249,6 +263,7 @@ impl Practice {
         // The canonical order is start then brush, independent of caller slice order.
         shot.sweeps.sort_by_key(|s| (s.start, s.input.brush));
         self.sim.step(inputs);
+        self.reviews.tick(&self.sim);
         shot.ticks += 1;
         if self.sim.timed_out {
             return Err("physics time budget exhausted");
@@ -256,6 +271,7 @@ impl Practice {
         if self.sim.is_resting() {
             shot.final_hash = Some(format!("{:016x}", self.sim.hash()));
             self.active = None;
+            self.reviews.finish(&self.sim, None);
         }
         Ok(())
     }
@@ -290,16 +306,34 @@ impl Practice {
         sim.ice.varied = log.varied_ice;
         let mut active = None;
         let mut span_count = 0;
+        let mut reviews = crate::review::ReviewBook::default();
         for (index, record) in log.records.iter().enumerate() {
             match record {
                 Record::HogViolation { stone, team } => {
                     sim.hog_violation(*stone, *team)?;
+                    reviews.begin(
+                        &sim,
+                        crate::Seat {
+                            team: *team,
+                            position: 0,
+                        },
+                        1,
+                    );
+                    reviews.finish(&sim, Some(curl_rules::Violation::HogRelease));
                     active = None;
                 }
                 Record::Idle(ticks) => sim.advance_idle(*ticks)?,
                 Record::ClearStones => sim.clear_stones()?,
                 Record::Shot(shot) => {
                     sim.release(shot.release.clone())?;
+                    reviews.begin(
+                        &sim,
+                        crate::Seat {
+                            team: shot.release.team,
+                            position: 0,
+                        },
+                        1,
+                    );
                     let mut next = 0;
                     let mut brushes: [Option<SweepSpan>; 4] = [None; 4];
                     for tick in 0..shot.ticks {
@@ -318,6 +352,7 @@ impl Practice {
                             .map(|s| s.input)
                             .collect();
                         sim.step(&inputs);
+                        reviews.tick(&sim);
                     }
                     if sim.timed_out {
                         return Err("record exceeded physics time budget".into());
@@ -333,6 +368,9 @@ impl Practice {
                         }
                         None => active = Some(index),
                         _ => active = None,
+                    }
+                    if sim.is_resting() {
+                        reviews.finish(&sim, None);
                     }
                     span_count += shot.sweeps.len();
                 }
@@ -357,6 +395,7 @@ impl Practice {
             log,
             active,
             span_count,
+            reviews,
         })
     }
 }

@@ -67,6 +67,7 @@ var scoreboard: Panel
 var gold_score: Label
 var cyan_score: Label
 var end_score: Label
+var ice_board: CurlIceBoard
 var drills: CurlDrills
 var solo: CurlSoloGame
 var play_settings: CurlPlaySettings
@@ -143,7 +144,7 @@ func _ready() -> void:
 	fresh_button = button("Fresh ice", Vector2(920, 726), func(): reset())
 	mode_button = button("Mixed doubles", Vector2(1040, 30), func(): switch_mode())
 	clock_label = Label.new()
-	clock_label.position = Vector2(500, 87)
+	clock_label.position = Vector2(650, 87)
 	clock_label.add_theme_font_size_override("font_size", 16 if mobile_ui else 14)
 	add_child(clock_label)
 	create_scoreboard()
@@ -157,6 +158,9 @@ func _ready() -> void:
 		solo.create_controls()
 		drills = CurlDrills.new(self)
 		drills.create_controls()
+		ice_board = CurlIceBoard.new()
+		add_child(ice_board)
+		ice_board.setup(self)
 		move_child(play_settings, -1)
 	if allow_online:
 		button("Online rooms", Vector2(840, 30), open_online)
@@ -284,6 +288,7 @@ func button(text: String, pos: Vector2, action: Callable) -> Button:
 
 func reset(persist := true) -> void:
 	if session == null: return
+	if ice_board != null: ice_board.new_session(persist)
 	if match_mode:
 		if solo != null and solo.enabled: session.new_team_match(42)
 		else: session.new_match(42)
@@ -340,7 +345,7 @@ func update_labels() -> void:
 		gold_score.text = "GOLD  %d" % frame.score_gold
 		cyan_score.text = "%d  CYAN" % frame.score_cyan
 		end_score.text = "END %d / %d" % [frame.end, frame.scheduled_ends]
-		clock_label.text = "Thinking time   Gold %s   •   Cyan %s" % [clock_text(frame.clock_gold), clock_text(frame.clock_cyan)]
+		clock_label.text = "Gold %s   •   Cyan %s" % [clock_text(frame.clock_gold), clock_text(frame.clock_cyan)]
 		hint.text = "LOCAL MIXED DOUBLES  •  Autosaved"
 		if frame.match_phase == "Placement":
 			status.text = "Mixed doubles  /  Choose placement"
@@ -371,6 +376,7 @@ func update_labels() -> void:
 		new_button.disabled = frame.in_hand.in_play
 	if solo != null: solo.refresh_controls()
 	if drills != null: drills.refresh_controls()
+	if ice_board != null: ice_board.refresh_button()
 	layout_feedback()
 
 func layout_feedback() -> void:
@@ -493,6 +499,7 @@ func handle_point() -> Vector2:
 
 func _process(delta: float) -> void:
 	if session == null or suspended or (room_panel != null and room_panel.visible): return
+	if ice_board != null and ice_board.visible: return
 	if drills != null and drills.enabled:
 		if play_settings.visible: return
 		drills.advance()
@@ -536,8 +543,10 @@ func _process(delta: float) -> void:
 				phase = "Stone at rest"
 				var s: Dictionary = delivered_stone()
 				if s.is_empty(): s = {"turns": 0.0, "position": Vector2.ZERO, "active": false}
-				var split := "—" if frame.hog_tick < 0 else "%.2f s" % (float(frame.hog_tick) / 240.0)
-				report = "Release %.3f m/s\nHog-to-hog %s\n%.2f rotations • %.2f s travel\nRest: %.2f m across, %.2f m from tee\n%s" % [float(release_report.get("speed_mm_s", 0)) / 1000.0, split, s.turns, float(frame.tick) / 240.0, s.position.x, s.position.y, "In play" if s.active else "Out of play"]
+				var true_split := int(frame.get("hog_split_ms", -1))
+				var split := "%.2f s" % (true_split / 1000.0) if true_split >= 0 else ("—" if frame.hog_tick < 0 else "%.2f s" % (float(frame.hog_tick) / 240.0))
+				var split_name := "Hog-to-hog" if true_split >= 0 else "Release to far hog"
+				report = "Release %.3f m/s\n%s %s\n%.2f rotations • %.2f s travel\nRest: %.2f m across, %.2f m from tee\n%s" % [float(release_report.get("speed_mm_s", 0)) / 1000.0, split_name, split, s.turns, float(frame.tick) / 240.0, s.position.x, s.position.y, "In play" if s.active else "Out of play"]
 				update_labels()
 			if frame.resting or frame.global_tick - last_save_tick >= 240:
 				save_practice()
@@ -628,6 +637,7 @@ func _notification(what: int) -> void:
 func _input(event: InputEvent) -> void:
 	if room_panel != null and room_panel.visible: return
 	if session == null: return
+	if ice_board != null and ice_board.visible: return
 	if play_settings != null and play_settings.visible: return
 	if event is InputEventKey and event.pressed and not event.echo and event.keycode == KEY_Z:
 		toggle_zoom()
@@ -650,10 +660,12 @@ func units(p: Vector2) -> Vector2i:
 	return Vector2i(p * (1000000.0 / 800.0))
 
 func begin_pointer(id: int, p: Vector2) -> void:
+	if ice_board != null and ice_board.visible: return
 	if play_settings != null and play_settings.visible: return
 	if solo != null and solo.enabled and not run_active and not solo.human_throws() and not solo.human_skips(): return
 	var controls := [camera_button, view_button, settings_button, zoom_button]
 	if solo != null: controls.append_array([solo.solo_button, solo.send_button, solo.shot_choice, solo.target_button, solo.auto_button] + solo.call_buttons)
+	if ice_board != null: controls.append(ice_board.menu_button)
 	if drills != null: controls.append_array([drills.menu_button, drills.start_button, drills.choice])
 	for control in controls:
 		if control != null and control.is_visible_in_tree() and control.get_global_rect().has_point(p): return

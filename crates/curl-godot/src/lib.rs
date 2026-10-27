@@ -407,6 +407,16 @@ impl CurlSession {
             self.practice.next_id().is_some(),
         );
         frame.set("in_hand", &pending_frame(self.pending().as_ref()));
+        frame.set(
+            "hog_split_ms",
+            self.review_book()
+                .split_ms(
+                    self.game
+                        .as_ref()
+                        .map_or(&self.practice.sim, |game| &game.sim),
+                )
+                .map_or(-1, i64::from),
+        );
         frame.set("solo_target_x_mm", rounded_mm(self.solo_target.x));
         frame.set("solo_target_y_mm", rounded_mm(self.solo_target.y));
         if self.game.is_none() {
@@ -416,6 +426,77 @@ impl CurlSession {
             );
         }
         frame
+    }
+    fn review_book(&self) -> &curl_match::review::ReviewBook {
+        self.game
+            .as_ref()
+            .map_or(&self.practice.reviews, |game| &game.reviews)
+    }
+    #[func]
+    fn shot_reviews(&self) -> VarDictionary {
+        let mut result = VarDictionary::new();
+        let mut shots = Array::<VarDictionary>::new();
+        for review in self.review_book().recent.iter().rev() {
+            let mut shot = VarDictionary::new();
+            shot.set("key", format!("{:016x}", review.key()));
+            shot.set("ordinal", review.ordinal as i64);
+            shot.set("end", review.end as i64);
+            shot.set("team", review.seat.team as i64);
+            shot.set("position", review.seat.position as i64);
+            shot.set("speed_mm_s", review.speed_mm_s);
+            shot.set("hog_split_ms", review.hog_split_ms.map_or(-1, i64::from));
+            shot.set("travel_ms", review.travel_ms as i64);
+            shot.set("in_play", review.in_play);
+            shot.set("contacts", review.contacts as i64);
+            shot.set("turns_milli", review.turns_milli);
+            shot.set("curl_mm", review.curl_mm.unwrap_or(0));
+            shot.set("has_finish", review.finish.is_some());
+            shot.set(
+                "finish",
+                Vector2::new(
+                    render(review.finish.unwrap_or(V2::ZERO).x) as f32,
+                    render(review.finish.unwrap_or(V2::ZERO).y) as f32,
+                ),
+            );
+            shot.set(
+                "release_pos",
+                Vector2::new(
+                    render(review.release_pos.x) as f32,
+                    render(review.release_pos.y) as f32,
+                ),
+            );
+            shot.set(
+                "release_vel",
+                Vector2::new(
+                    render(review.release_vel.x) as f32,
+                    render(review.release_vel.y) as f32,
+                ),
+            );
+            shot.set(
+                "violation",
+                review.violation.map_or(String::new(), |v| format!("{v:?}")),
+            );
+            let mut path = godot::builtin::PackedVector2Array::new();
+            for point in review.path.iter() {
+                path.push(Vector2::new(render(point.x) as f32, render(point.y) as f32));
+            }
+            shot.set("path", &path);
+            shots.push(&shot);
+        }
+        let mut players = Array::<VarDictionary>::new();
+        for (index, stats) in self.review_book().stats.iter().enumerate() {
+            let mut player = VarDictionary::new();
+            player.set("team", (index / 4) as i64);
+            player.set("position", (index % 4) as i64);
+            player.set("shots", stats.shots as i64);
+            player.set("hog_faults", stats.hog_faults as i64);
+            player.set("mean_mm_s", stats.mean_speed_mm_s() as i64);
+            player.set("spread_mm_s", stats.spread_mm_s() as i64);
+            players.push(&player);
+        }
+        result.set("shots", &shots);
+        result.set("players", &players);
+        result
     }
     #[func]
     fn drill_target(&self, kind: i64, attempt: i64) -> VarDictionary {

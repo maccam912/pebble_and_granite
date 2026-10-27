@@ -84,3 +84,32 @@ line with opposite curl. Ask AI skip restores automatic strategy suggestions.
 Core guard/hit inverse tests cover both sides/turns; native target picking,
 turn reversal, guard release, retained sweep target and rejected-call atomicity
 pass. The positive target save bound also now includes legal back-house stones.
+
+### Observed ice board and true splits
+
+Rust now rebuilds the last 32 actual paths, true hog-to-hog timing, observed curl,
+contacts and release statistics from accepted journals. Per-position totals and
+release spread include every delivery even when old paths leave the bounded
+recent list. The local ice board plots actual path versus release ray and saves
+optional annotations against exact observed-shot fingerprints in separate bounded
+sidecars with backup recovery. Solo shows the human team's board; local mixed
+play can select a team. Opening the board pauses local play and clears live brush
+input. No full trajectory is claimed to predict a called shot.
+
+Tests cover early release timing, practice/match review reconstruction, bounded
+history with complete stats, late-sweep path reconciliation, protected-stone
+remedies and unchanged canonical hashes. Native UI/annotation backup recovery and
+rendered desktop/mobile-sized inspection pass. Core/golden and all-target Clippy
+pass. Physics/rules/journal versions stay unchanged because reviews are derived.
+Online ice boards, team note replication and Bayesian AI ice learning remain open.
+The last usage check was 21% used / 79% remaining.
+
+Release distinction: camera/solo pipelines passed, but newer workflow revisions
+superseded their publish steps. Their tested packages are CI artifacts. The latest
+verified downloadable release remains Build 88 at 79f5615 until a later complete
+run publishes; a passing pipeline alone is not a newly published release.
+
+The full six-end / 96-delivery solo gate passed again with the observer enabled:
+32 retained paths, all 96 deliveries in per-position totals, identical rebuilt
+observations and canonical hash after restore, and working rematch. Fourteen
+existing/new desktop integration gates also passed after the board integration.

@@ -10,6 +10,7 @@ pub mod ai;
 mod brushing_tests;
 pub mod delivery;
 pub mod drills;
+pub mod review;
 
 pub const LATE_WINDOW: u32 = 24; // 100 ms; older samples apply at authority arrival.
 pub const FUTURE_WINDOW: u32 = 12;
@@ -306,6 +307,9 @@ impl Authority {
         })
     }
     fn inputs(&self, sim: &Sim) -> Vec<Sweep> {
+        self.inputs_for_team(sim, self.game.delivering_team())
+    }
+    fn inputs_for_team(&self, sim: &Sim, delivering_team: u8) -> Vec<Sweep> {
         let mut behind = [false; 2];
         self.sweeps
             .range((sim.tick, 0)..=(sim.tick, u8::MAX))
@@ -327,7 +331,7 @@ impl Authority {
                 // Evaluate against THIS tick's state, including resimulation and
                 // spans scheduled before crossing. Stable player order resolves
                 // simultaneous behind-tee requests, independent of packet order.
-                if team != self.game.delivering_team() && input.brush % 2 != 1 {
+                if team != delivering_team && input.brush % 2 != 1 {
                     return None;
                 }
                 if std::mem::replace(&mut behind[team as usize], true) {
@@ -336,6 +340,18 @@ impl Authority {
                 Some(*input)
             })
             .collect()
+    }
+    /// Rebuild derived observations after late input or a rules remedy, with the
+    /// delivering team from the shot rather than the next calling phase.
+    pub(crate) fn replay_for_review(&self, team: u8, mut observe: impl FnMut(&Sim)) {
+        let Some(snapshot) = &self.release_snapshot else {
+            return;
+        };
+        let mut sim = snapshot.as_ref().clone();
+        while sim.tick < self.sim.tick && !sim.is_resting() {
+            sim.step(&self.inputs_for_team(&sim, team));
+            observe(&sim);
+        }
     }
     fn checkpoint_needed(&self, tick: u32, release_tick: u32) -> bool {
         (tick - release_tick).is_multiple_of(12)

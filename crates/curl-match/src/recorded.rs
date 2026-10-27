@@ -110,6 +110,7 @@ pub struct RecordedMatch {
     sealed_records: usize,
     sealed_bytes: usize,
     last_speed: curl_fx::Fx,
+    pub reviews: crate::review::ReviewBook,
 }
 type PreparedJournal = (MatchLog, Arc<Vec<Arc<str>>>, usize, usize);
 #[derive(Deserialize)]
@@ -163,6 +164,7 @@ impl RecordedMatch {
             sealed_records: 0,
             sealed_bytes: 0,
             last_speed: curl_fx::Fx::ZERO,
+            reviews: crate::review::ReviewBook::default(),
         })
     }
     pub fn json(&self) -> Result<String, String> {
@@ -269,7 +271,11 @@ impl RecordedMatch {
         }
         Ok(restored)
     }
-    fn execute(a: &mut Authority, r: &Record) -> Result<(), &'static str> {
+    fn execute(
+        a: &mut Authority,
+        r: &Record,
+        reviews: &mut crate::review::ReviewBook,
+    ) -> Result<(), &'static str> {
         match r {
             Record::BeginAnalogDelivery {
                 seat,
@@ -323,13 +329,17 @@ impl RecordedMatch {
                     return Err("invalid match step span");
                 }
                 for _ in 0..*ticks {
-                    Self::tick(a, *brush)?;
+                    Self::tick(a, *brush, reviews)?;
                 }
                 Ok(())
             }
         }
     }
-    fn tick(a: &mut Authority, brush: Option<Brush>) -> Result<(), &'static str> {
+    fn tick(
+        a: &mut Authority,
+        brush: Option<Brush>,
+        reviews: &mut crate::review::ReviewBook,
+    ) -> Result<(), &'static str> {
         if a.game.phase != Phase::InFlight {
             return Err("cannot step settled match");
         }
@@ -359,7 +369,9 @@ impl RecordedMatch {
                 )?;
             }
         }
-        a.step()
+        a.step()?;
+        reviews.tick(&a.sim);
+        Ok(())
     }
     fn prepare_append(&self, r: Record) -> Result<PreparedJournal, &'static str> {
         if self.sealed_records + self.log.records.len() >= MAX_RECORDS {
@@ -417,7 +429,13 @@ impl RecordedMatch {
         }
         let journal = self.prepare_append(r.clone())?;
         let mut next = self.authority.clone();
-        Self::execute(&mut next, &r)?;
+        let mut reviews = self.reviews.clone();
+        Self::execute(&mut next, &r, &mut reviews)?;
+        if matches!(&r, Record::Sweep { tick, .. } | Record::BrushSpan { tick, .. } if *tick < self.sim.tick)
+        {
+            reviews.changed_past();
+        }
+        reviews.transition(&self.authority, &next);
         if let Record::Release { release, .. } = &r {
             self.last_speed = release.vel.length();
         }
@@ -438,6 +456,7 @@ impl RecordedMatch {
             self.last_speed = curl_fx::Fx::ZERO;
         }
         self.authority = next;
+        self.reviews = reviews;
         self.replay_ticks += ticks;
         (
             self.log,
@@ -458,13 +477,16 @@ impl RecordedMatch {
             return Err("match journal limit reached");
         }
         let mut next = self.authority.clone();
+        let mut reviews = self.reviews.clone();
         let mut ticks = 0;
         while ticks < count && next.game.phase == Phase::InFlight {
-            Self::tick(&mut next, brush)?;
+            Self::tick(&mut next, brush, &mut reviews)?;
             ticks += 1;
         }
         let journal = self.prepare_append(Record::Step { ticks, brush })?;
+        reviews.transition(&self.authority, &next);
         self.authority = next;
+        self.reviews = reviews;
         self.replay_ticks += ticks as u64;
         (
             self.log,

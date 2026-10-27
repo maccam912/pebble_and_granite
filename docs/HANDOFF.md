@@ -1031,3 +1031,25 @@ broom line; turn reversal re-solves the line. The target ring is separate from
 the draggable broom. Ask AI skip returns to a strategy suggestion. Invalid
 requests are atomic, and back-house target metadata accepts legal stones to 2 m
 past tee. Native/target/turn/release tests pass; see AI_PROGRESS.md for the gate.
+
+## Ice board and timing observations
+
+Local practice, drills and matches now rebuild recent paths and per-position
+release totals from accepted journals. The ice board compares actual paths to
+the release ray, displays observed curl/contacts and true hog-to-hog split times,
+and stores optional path notes in bounded per-mode sidecars with backups. Opening
+it pauses local play and clears brush intent. True split timing is sampled at
+both hog crossings; early releases no longer label release-to-far-hog as a true
+hog-to-hog split. Online frames without this derived observer explicitly retain
+that release-to-far-hog label.
+
+Rebuild/late-sweep/remedy tests and native UI/note recovery tests pass; diagrams
+and mobile-sized layout inspected. Core/goldens and all-target Clippy pass. These
+are derived caches, so existing journal bytes, physics, rules and hashes retain
+meaning. Multiplayer board replication and AI ice-learning remain future work.
+
+Publication audit: camera 748adb8 and solo c93cead pipelines succeeded, but their
+publish steps were superseded by newer workflow changes. Do not call those newly
+published releases. Tested packages remain CI artifacts. The latest verified tag
+is Build 88 -> 79f5615; the newest requested features await a final passing publish.
+Usage last checked at 79% remaining.

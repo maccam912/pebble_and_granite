@@ -303,7 +303,7 @@ func refresh_controls() -> void:
 	var text := "↑ HARD · SWEEP" if effort > 100 else ("≈ CLEAN · LIGHT BRUSH" if effort > 0 else "■ OFF · NO SWEEP")
 	call_label.text = "%s  |  Weight zone %d" % [text, weight_zone] if weight_zone > 0 else (text if call_override >= 0 else "Reading weight…")
 	if fast_forwarding(): call_label.text += "  |  4×"
-	game.hint.text = "SOLO TEAMS · You: Gold %s · %s AI · Autosaved" % [CurlPlaySettings.POSITIONS[human_position()], ["Club", "Competitive", "Elite"][game.play_settings.difficulty]]
+	game.hint.text = "SOLO · Gold %s · %s AI" % [CurlPlaySettings.POSITIONS[human_position()], ["Club", "Competitive", "Elite"][game.play_settings.difficulty]]
 	var state: String = game.frame.get("match_phase", "")
 	if state == "Calling" or state == "InFlight":
 		game.status.text = "4 vs 4  /  %s %s%s • %s" % [game.team_name(game.frame.team), CurlPlaySettings.POSITIONS[game.frame.thrower], " (you)" if human_throws() else " (AI)", game.phase]

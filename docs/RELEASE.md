@@ -1,3 +1,8 @@
+Ice board now shows recent actual paths against the release ray, observed curl,
+contacts, true hog-to-hog splits and per-position delivery statistics. Select a
+path to save an ice note. It pauses local play while open. Paths and statistics
+rebuild from the normal journal; annotations have separate bounded backup saves.
+
 Solo 4 vs 4 now lets one human play Lead, Second, Vice or Skip alongside seven AI
 players. Settings offers Club / Competitive / Elite shot accuracy and optional
 4× opponent travel between the hog lines. Skip/vice can review and send shots,

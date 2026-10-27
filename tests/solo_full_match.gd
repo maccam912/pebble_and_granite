@@ -38,6 +38,11 @@ func run() -> void:
 	check(shots >= 96 and game.new_button.text == "Rematch", "Solo full game ended early or lacks rematch")
 	var restore = ClassDB.instantiate("CurlSession")
 	check(restore.load_match(game.session.match_json()).is_empty() and restore.match_hash() == game.session.match_hash(), "Completed solo match failed to replay")
+	var reviews: Dictionary = game.session.shot_reviews()
+	var counted := 0
+	for player in reviews.players: counted += int(player.shots)
+	check(reviews.shots.size() == 32 and counted == shots, "Bounded paths lost full-game per-position totals")
+	check(restore.shot_reviews() == reviews, "Completed match observations did not rebuild exactly")
 	game.next_throw()
 	check(game.solo.enabled and game.frame.end == 1 and game.frame.match_phase == "Calling", "Solo rematch lost teams mode")
 	game.queue_free()
