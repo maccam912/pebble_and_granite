@@ -38,7 +38,7 @@ func run() -> void:
 		game._process(64.0 / 240.0)
 	check(not game.run_active, "Practice fixture did not settle")
 	initial = game.session.state_hash()
-	game.fresh_button.grab_focus()
+	game.menu_button.grab_focus()
 	game.request_restart()
 	await process_frame
 	check(game.restart_prompt.visible and root.gui_get_focus_owner() == game.restart_prompt.cancel_button, "Restart does not default to keeping progress")
@@ -56,7 +56,7 @@ func run() -> void:
 	Input.parse_input_event(escape)
 	await process_frame
 	check(not game.restart_prompt.visible and not game.restart_prompt.shade.visible and game.session.state_hash() == initial, "Escape discarded the practice session")
-	check(root.gui_get_focus_owner() == game.fresh_button, "Restart cancellation lost keyboard focus")
+	check(root.gui_get_focus_owner() == game.menu_button, "Restart cancellation lost keyboard focus")
 	game.request_restart()
 	game.restart_prompt.confirm_button.pressed.emit()
 	check(not game.restart_prompt.visible and game.frame.stones.is_empty(), "Confirmed restart did not clear practice")

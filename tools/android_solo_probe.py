@@ -73,6 +73,8 @@ def capture(name):
 
 
 def tap(name):
+    if name in ('solo', 'drills', 'restart'):
+        tap('menu')
     state = wait_for(lambda s: bool(s['controls'].get(name))
                      and not s['controls'][name].get('disabled', False), name + ' available')
     point = state['controls'][name]

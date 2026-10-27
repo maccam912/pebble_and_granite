@@ -32,9 +32,9 @@ func run() -> void:
 		quit(1)
 		return
 	check(not report.is_empty() and report.mode == "practice", "Native UI probe did not report the real initial scene")
-	check(report.controls.solo.x > 0 and report.controls.send.is_empty(), "UI probe exported hidden or missing controls")
+	check(not report.controls.menu.is_empty() and report.controls.solo.is_empty() and report.controls.send.is_empty(), "UI probe exported hidden or missing controls")
 	check(report.controls.in_turn.is_empty() and report.controls.out_turn.is_empty() and not report.restart_visible, "Probe exposed hidden skip/restart controls")
-	check(report.handle.x > 0 and report.handle.y > 0 and not report.controls.drills.is_empty(), "Probe did not map the live handle/drill control to pixels")
+	check(report.handle.x > 0 and report.handle.y > 0 and report.controls.drills.is_empty(), "Probe did not map the live handle or exposed a hidden drill control")
 	game.drills.toggle()
 	game.drills.kind = 4
 	game.reset(false)

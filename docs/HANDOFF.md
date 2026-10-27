@@ -17,7 +17,18 @@ tests; physical-device feel is the third item and needs user participation.
    rendered mobile-layout captures inspected in `build/evidence/learn/`.
    Headless tutorial, local menus, delivery slide, held resume, sweeping, drills
    and online UI pass. No installed-Android tutorial or human-feel claim yet.
-2. Next: simplify playing-screen navigation and phase-specific controls.
+2. Playing-screen cleanup implemented in `ui/play_menu.gd`: one mode menu,
+   persistent Settings, Ice board beside the rink, contextual next/one-push/sweep
+   controls and a short initial hint instead of a large instruction paragraph.
+   Menu pauses local simulation, traps keyboard focus, and prevents switching
+   modes/restarting a held or moving shot. Learn remains available on its separate
+   sheet. Native mobile-layout menu and solo captures reviewed. Menu, tutorial,
+   modal, diagnostic observer, mouse/touch input, match readout/review, drills,
+   solo, online UI and held-resume regression gates pass. Installed Android probe
+   tools now navigate the menu; clean APK verification follows this source commit.
+3. Next: real-device input feel. User asked asynchronously for Android/trackpad
+   feedback; do not claim synthetic tests establish human feel or tune gains
+   without evidence.
 
 ## Current state
 

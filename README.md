@@ -28,10 +28,14 @@ sliding. Before the slide, sideways movement moves the stone and the direction o
 your push adjusts the delivery line around the broom. Once sliding, a small
 left/right finish adds curl; the live label shows the recognized direction. A
 small forward/back finish adjusts weight. A quiet lift gives neutral rotation. One-push skips the initial pullback.
-**Learn to play** opens four guided steps for broom aim, draw weight, finishing
+**Menu → Learn to play** opens four guided steps for broom aim, draw weight, finishing
 curl and sweeping. Each step responds to your real input and offers retries or
 Skip; Return to game restores your paused session. Lessons use a separate sheet
 and never replace your saves or preferences.
+Menu also switches between Practice, Drills, Solo, Mixed doubles and Online rooms.
+Local play pauses while it is open. Finish a held or moving shot before changing
+modes; Resume returns immediately. Fresh ice/New match lives in this menu.
+Delivery and sweep buttons appear only when relevant; Ice board stays beside the rink.
 Settings adjusts field of view (40–85°). Zoom or Z inspects the house closely;
 gripping the handle returns to the normal delivery view. The skip stands behind
 the broom and the sweeper follows beside the moving stone.

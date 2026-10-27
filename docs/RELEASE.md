@@ -1,3 +1,7 @@
+Menu now groups modes and restart actions, leaving the rink clearer. Local play
+pauses in the menu; active shots must finish before switching modes. One-push,
+next-stone and sweeping controls appear in the phases where they are useful.
+
 Learn to play now guides broom aim, draw weight, finishing curl and sweeping on
 a separate practice sheet. Lessons grade actual input/results, offer retries and
 skipping, and preserve the game you return to, including held deliveries.

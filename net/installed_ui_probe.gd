@@ -51,8 +51,8 @@ func write_state() -> void:
 		last_voice_check = age
 	var settings = game.play_settings
 	var controls := {
-		"solo": point(game.solo.solo_button), "settings": point(game.settings_button), "camera": point(game.camera_button),
-		"drills": point(game.drills.menu_button), "drill_kind": point(game.drills.choice), "next": point(game.new_button), "restart": point(game.fresh_button),
+		"menu": point(game.menu_button), "solo": point(game.play_menu.actions.solo), "settings": point(game.settings_button), "camera": point(game.camera_button),
+		"drills": point(game.play_menu.actions.drills), "drill_kind": point(game.drills.choice), "next": point(game.new_button), "restart": point(game.play_menu.actions.restart),
 		"restart_confirm": point(game.restart_prompt.confirm_button), "restart_cancel": point(game.restart_prompt.cancel_button),
 		"review_shots": point(settings.review_toggle), "ice_sounds": point(settings.sound_toggle), "continue": point(game.match_readout.continue_button),
 		"zoom": point(game.zoom_button), "ice_board": point(game.ice_board.menu_button),

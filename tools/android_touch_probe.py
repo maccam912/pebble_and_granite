@@ -91,7 +91,10 @@ def fresh(initial=False):
         time.sleep(.2)
     else:
         raise RuntimeError('Previous delivery did not settle before Fresh ice')
-    adb('shell', 'input', 'tap', '1880', '1012')
+    # Menu logical centre (1155, 56), then Fresh ice at (497, 576).
+    adb('shell', 'input', 'tap', '1895', '76')
+    time.sleep(.4)
+    adb('shell', 'input', 'tap', '1007', '778')
     # Restart confirmation: logical centre (778, 480), fitted at 1.35x +336.
     # A fresh, empty session skips the prompt. This fixture never clears stones
     # through the separate capacity action between these resets.

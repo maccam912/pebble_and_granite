@@ -84,6 +84,9 @@ var shot_clock: CurlShotClock
 var lesson_mode := false
 var learn_button: Button
 var learning_game: Control
+var play_menu: CurlPlayMenu
+var menu_button: Button
+var online_button: Button
 
 var mobile_ui := OS.get_name() == "Android"
 
@@ -179,7 +182,7 @@ func _ready() -> void:
 		ice_board.setup(self)
 		move_child(play_settings, -1)
 	if allow_online:
-		button("Online rooms", Vector2(840, 30), open_online)
+		online_button = button("Online rooms", Vector2(840, 30), open_online)
 		room_panel = CurlRoomPanel.new()
 		add_child(room_panel)
 		room_panel.hide()
@@ -196,6 +199,16 @@ func _ready() -> void:
 		learn_button = button("Learn to play", Vector2(450, 30), open_lessons)
 		learn_button.custom_minimum_size = Vector2(185, 38)
 		learn_button.size = learn_button.custom_minimum_size
+		play_menu = CurlPlayMenu.new()
+		add_child(play_menu)
+		play_menu.setup(self)
+		menu_button = button("Menu", Vector2(1070, 30), func(): play_menu.open())
+		menu_button.custom_minimum_size = Vector2(170, 52)
+		settings_button.position = Vector2(880, 30)
+		settings_button.custom_minimum_size = Vector2(170, 52)
+		ice_board.menu_button.position = Vector2(1048, 726)
+		ice_board.menu_button.custom_minimum_size = Vector2(192, 52)
+		update_labels()
 	if not installed_ui_nonce.is_empty() and allow_online:
 		var probe = load("res://net/installed_ui_probe.gd").new()
 		probe.game = self
@@ -229,7 +242,7 @@ func create_play_settings() -> void:
 			settings_focus.open(play_settings)
 		else: settings_focus.close(play_settings))
 	if rink != null:
-		zoom_button = button("Zoom · Z", Vector2(270, 134), toggle_zoom)
+		zoom_button = button("Zoom · Z", Vector2(292, 134), toggle_zoom)
 		zoom_button.custom_minimum_size = Vector2(155, 40)
 		zoom_button.size = zoom_button.custom_minimum_size
 		move_child(play_settings, -1)
@@ -257,7 +270,7 @@ func create_spatial_view() -> void:
 	move_child(rink, 0)
 	camera_button = button("Camera: Auto", Vector2(56, 134), func():
 		if pointer == -99: camera_button.text = "Camera: " + rink.cycle_camera())
-	camera_button.custom_minimum_size = Vector2(208, 52) if mobile_ui else Vector2(190, 40)
+	camera_button.custom_minimum_size = Vector2(220, 52) if mobile_ui else Vector2(220, 40)
 	camera_button.size = camera_button.custom_minimum_size
 	var toggle := button("2D lab", Vector2(600, 122), func(): pass)
 	view_button = toggle
@@ -336,7 +349,27 @@ func close_lessons() -> void:
 	if is_instance_valid(lesson):
 		lesson.hide()
 		lesson.queue_free()
-	if learn_button != null: learn_button.grab_focus()
+	if menu_button != null: menu_button.grab_focus()
+	elif learn_button != null: learn_button.grab_focus()
+
+func select_mode(target: String) -> void:
+	if run_active or not frame.get("in_hand", {}).is_empty(): return
+	if target == "solo":
+		if not solo.enabled: solo.start()
+		return
+	if target == "drills":
+		if not drills.enabled: drills.toggle()
+		return
+	var mixed := target == "mixed"
+	if match_mode == mixed and not solo.enabled and not drills.enabled: return
+	save_practice()
+	solo.enabled = false
+	drills.enabled = false
+	match_mode = mixed
+	reset(false)
+	restore_current(mixed)
+	update_labels()
+	update_spatial(0)
 
 func button(text: String, pos: Vector2, action: Callable) -> Button:
 	var b := Button.new()
@@ -361,7 +394,7 @@ func request_restart() -> void:
 	restart_prompt.ask(title, explanation, "Restart drill" if drill else ("New match" if match_mode else "Fresh ice"), func(): reset())
 
 func local_menu_open() -> bool:
-	return is_instance_valid(learning_game) or (play_settings != null and play_settings.visible) or (ice_board != null and ice_board.visible) or (restart_prompt != null and restart_prompt.visible)
+	return is_instance_valid(learning_game) or (play_menu != null and play_menu.visible) or (play_settings != null and play_settings.visible) or (ice_board != null and ice_board.visible) or (restart_prompt != null and restart_prompt.visible)
 
 func reset(persist := true) -> void:
 	shot_reference.clear()
@@ -468,7 +501,25 @@ func update_labels() -> void:
 		var selected := selected_sweep_stone()
 		if selected.is_empty(): report_label.text = "STONE NO LONGER AVAILABLE\nLift, then select another eligible moving stone."
 		else: report_label.text = sweep_input.feedback(brush_offsets(selected), int(current_brush().get("effort", 0)), hold_sweep)
+	if play_menu != null: refresh_play_controls()
 	layout_feedback()
+
+func refresh_play_controls() -> void:
+	for control in [mode_button, online_button, learn_button, solo.solo_button, drills.menu_button, fresh_button]: control.hide()
+	var held: bool = not frame.get("in_hand", {}).is_empty()
+	var choosing: bool = match_mode and frame.get("match_phase", "") in ["Placement", "Choice", "EndComplete", "GameComplete"]
+	one_button.visible = not run_active and not held and not choosing and phase == "Ready" and (not solo.enabled or solo.human_throws())
+	sweep_button.visible = run_active and can_sweep()
+	new_button.visible = not choosing and not run_active and (phase == "Stone at rest" or held)
+	if solo.enabled and solo.human_skips() and run_active: sweep_button.hide()
+	# Keep the handle and the active house clear of unnecessary instruction text.
+	if feedback_bg != null:
+		var default_help := report.begins_with("House camera:")
+		var show_help := not default_help or phase != "Ready" or held or choosing or not spatial_view
+		feedback_bg.visible = show_help
+		report_label.visible = show_help
+		if default_help and not match_mode and phase == "Ready": hint.text = "Grip the handle to deliver · Menu → Learn to play"
+	play_menu.refresh()
 
 func layout_feedback() -> void:
 	if feedback_bg == null: return
@@ -773,7 +824,7 @@ func begin_pointer(id: int, p: Vector2) -> void:
 	if local_menu_open(): return
 	if solo != null and solo.enabled and not run_active and (solo.planning or (not solo.human_throws() and not solo.human_skips())): return
 	if solo != null and solo.enabled and solo.human_throws() and not run_active and solo.planned.is_empty() and frame.get("in_hand", {}).is_empty(): return
-	var controls := [camera_button, view_button, settings_button, zoom_button]
+	var controls := [camera_button, view_button, settings_button, zoom_button, menu_button]
 	if match_readout != null: controls.append(match_readout.end_panel)
 	if solo != null: controls.append_array([solo.solo_button, solo.send_button, solo.shot_choice, solo.auto_button, solo.accept_button, solo.restore_button, solo.shot_card] + solo.call_buttons + solo.turn_buttons)
 	if ice_board != null: controls.append(ice_board.menu_button)
