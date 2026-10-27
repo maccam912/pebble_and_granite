@@ -262,6 +262,26 @@ mod tests {
         }
     }
     #[test]
+    fn called_guards_and_hits_solve_both_turns_and_target_sides() {
+        let sim = Sim::new(42);
+        for kind in [ShotKind::Guard, ShotKind::Hit] {
+            for turn in [-1, 1] {
+                for x in [-800, 800] {
+                    let target = V2::new(
+                        Fx::ratio(x, 1000),
+                        if kind == ShotKind::Guard {
+                            Fx::int(-3)
+                        } else {
+                            Fx::ZERO
+                        },
+                    );
+                    let plan = solve(&sim, target, kind, turn);
+                    assert!((trajectory(&sim, &plan) - target).length() < Fx::ratio(8, 100));
+                }
+            }
+        }
+    }
+    #[test]
     fn accuracy_tiers_reduce_release_scatter_without_changing_the_plan() {
         let plan = solve(&Sim::new(42), V2::ZERO, ShotKind::Draw, 1);
         let ideal = plan.release();

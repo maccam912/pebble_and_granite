@@ -17,6 +17,11 @@ var shot_team := 0
 var solo_button: Button
 var send_button: Button
 var call_buttons: Array[Button] = []
+var shot_choice: OptionButton
+var target_button: Button
+var auto_button: Button
+var placing_target := false
+var called_target := Vector2.ZERO
 var call_label: Label
 var call_background: Panel
 var save_path := "user://solo-teams.json"
@@ -31,6 +36,22 @@ func create_controls() -> void:
 	send_button = game.button("Send called shot", Vector2(960, 555), send_shot)
 	send_button.custom_minimum_size = Vector2(260, 52)
 	send_button.theme_type_variation = "PrimaryButton"
+	shot_choice = OptionButton.new()
+	shot_choice.position = Vector2(960, 425)
+	shot_choice.size = Vector2(260, 52)
+	for kind in ["Draw", "Guard", "Hit"]: shot_choice.add_item(kind)
+	shot_choice.item_selected.connect(revise_kind)
+	game.add_child(shot_choice)
+	target_button = game.button("Place target", Vector2(960, 360), func():
+		placing_target = true
+		game.rink.mode = 4
+		game.rink.zoomed = false
+		game.report = "Tap the intended landing point (or a stone for a hit). The AI solves weight and broom line."
+		game.update_labels()
+		game.update_spatial(0))
+	target_button.custom_minimum_size = Vector2(260, 52)
+	auto_button = game.button("Ask AI skip", Vector2(960, 295), suggest_again)
+	auto_button.custom_minimum_size = Vector2(260, 52)
 	for i in range(3):
 		var effort: int = [255, 80, 0][i]
 		var b: Button = game.button(["↑ HARD", "≈ CLEAN", "■ OFF"][i], Vector2(750 + i * 160, 640), func(): set_call(effort))
@@ -75,6 +96,7 @@ func start() -> void:
 func reset_turn() -> void:
 	planning = false
 	planned.clear()
+	placing_target = false
 	last_spoken = ""
 	delay = 0.0
 	advice_time = 0.0
@@ -116,13 +138,68 @@ func advance(delta: float) -> void:
 			game.report = result.error
 			return
 		planned = result
+		called_target = Vector2(float(result.target_x_mm) / 1000.0, float(result.target_y_mm) / 1000.0)
+		shot_choice.select(["Draw", "Guard", "Hit"].find(result.kind))
 		game.broom_mm = int(result.broom_mm)
 		game.turn = int(result.turn)
-		game.report = "%s calls %s • %s turn.\n%s" % ["Your team" if game.frame.team == 0 else "Cyan skip", result.kind.to_lower(), "right" if game.turn > 0 else "left", "Use House camera to adjust the broom, then Send called shot." if human_skips() else "The AI thrower will deliver; follow the skip's visible calls."]
+		game.report = "%s calls %s • %s turn.\n%s" % ["Your team" if game.frame.team == 0 else "Cyan skip", result.kind.to_lower(), "right" if game.turn > 0 else "left", "Choose a shot and target, adjust the broom if needed, then Send called shot." if human_skips() else "The AI thrower will deliver; follow the skip's visible calls."]
 		delay = 0.0
 	if not planned.is_empty() and not human_skips():
 		delay += delta
 		if delay >= 1.3: send_shot()
+
+func suggest_again() -> void:
+	if not enabled or planning or game.run_active: return
+	planned.clear()
+	placing_target = false
+	delay = 0.0
+	game.update_labels()
+
+func request_call(kind: int, target: Vector2) -> void:
+	if not enabled or not human_skips() or game.run_active or planning: return
+	if kind == 0: target.y = clampf(target.y, -1.8, 1.8)
+	elif kind == 1: target.y = clampf(target.y, -5.0, -2.1)
+	target.x = clampf(target.x, -2.2, 2.2)
+	var error: String = game.session.request_called_shot(kind, roundi(target.x * 1000.0), roundi(target.y * 1000.0), game.turn)
+	if not error.is_empty(): game.report = error; return
+	planning = true
+	placing_target = false
+	called_target = target
+	planned.clear()
+	game.report = "Solving the called shot on this ice…"
+	game.update_labels()
+
+func revise_kind(kind: int) -> void:
+	var target := called_target
+	if kind == 1: target.y = -3.0
+	elif kind == 0: target.y = 0.0
+	else:
+		var nearest := INF
+		for stone in game.frame.get("stones", []):
+			if not stone.active: continue
+			var distance: float = stone.position.length()
+			if distance < nearest: target = stone.position; nearest = distance
+		if not is_finite(nearest): return
+	request_call(kind, target)
+
+func place_target(screen: Vector2) -> void:
+	if not placing_target or game.rink == null: return
+	var at = game.rink.ice_point(screen)
+	if at == null: return
+	if shot_choice.selected == 2:
+		var nearest := .5
+		var found := false
+		for stone in game.frame.get("stones", []):
+			if stone.active and stone.position.distance_to(at) < nearest:
+				nearest = stone.position.distance_to(at)
+				called_target = stone.position
+				found = true
+		if not found: return
+		at = called_target
+	request_call(shot_choice.selected, at)
+
+func reverse_turn() -> void:
+	if not planned.is_empty(): request_call(shot_choice.selected, called_target)
 
 func send_shot() -> void:
 	if not enabled or planned.is_empty() or game.run_active or game.pointer != -99: return
@@ -130,6 +207,7 @@ func send_shot() -> void:
 	if not error.is_empty(): game.report = error; return
 	planned.clear()
 	planning = false
+	placing_target = false
 	game.frame = game.session.frame()
 	game.previous = game.frame
 	game.run_active = not game.frame.resting
@@ -167,7 +245,7 @@ func valid_envelope(data: Variant) -> bool:
 	if not data is Dictionary or data.get("schema") != 1 or not data.get("match") is String: return false
 	for key in ["position", "difficulty", "target_x_mm", "target_y_mm"]:
 		if not (data.get(key) is float or data.get(key) is int) or not is_finite(float(data[key])) or float(data[key]) != floorf(float(data[key])): return false
-	return data.position >= 0 and data.position <= 3 and data.difficulty >= 0 and data.difficulty <= 2 and absi(int(data.target_x_mm)) <= 2200 and data.target_y_mm >= -5000 and data.target_y_mm <= 1800
+	return data.position >= 0 and data.position <= 3 and data.difficulty >= 0 and data.difficulty <= 2 and absi(int(data.target_x_mm)) <= 2200 and data.target_y_mm >= -5000 and data.target_y_mm <= 2000
 
 func restore_metadata(data: Dictionary) -> void:
 	game.play_settings.human_position = int(data.position)
@@ -197,6 +275,7 @@ func fast_step_limit(steps: int) -> int:
 func update_camera() -> void:
 	if game.rink == null: return
 	game.rink.role_camera = ""
+	game.rink.called_target = called_target if enabled and human_skips() and not game.run_active and (planning or not planned.is_empty()) else Vector2.INF
 	if not enabled: return
 	if game.run_active:
 		game.rink.role_camera = "Skip" if human_skips() or shot_team != 0 else "Sweeper"
@@ -209,6 +288,12 @@ func refresh_controls() -> void:
 	solo_button.text = "Solo 4 vs 4" if not enabled else "Resume solo"
 	solo_button.visible = not enabled
 	var owns_call := enabled and human_skips()
+	var show_card: bool = owns_call and not game.run_active and (planning or not planned.is_empty())
+	for control in [shot_choice, target_button, auto_button]:
+		control.visible = show_card
+		control.disabled = planning
+	target_button.text = "Tap target on ice…" if placing_target else "Place target"
+	shot_choice.set_item_disabled(2, not game.frame.get("stones", []).any(func(stone): return stone.active))
 	for b in call_buttons:
 		b.visible = owns_call and game.run_active
 	send_button.visible = owns_call and not game.run_active and not planned.is_empty()

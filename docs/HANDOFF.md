@@ -1022,3 +1022,12 @@ The complete solo game gate also passed all six ends / 96 deliveries, a declared
 winner, completed-save replay hash equality and rematch. It is now a desktop CI
 gate. Camera commit 748adb8's full pipeline succeeded (40447872379). Solo c93cead
 is pushed and its remote pipeline is in progress; new drills await their push.
+
+## Skip shot card
+
+Solo callers now choose draw/guard/hit and place an intended target in House view
+(or tap a stone for a hit). The exact solver runs on a worker and sets weight and
+broom line; turn reversal re-solves the line. The target ring is separate from
+the draggable broom. Ask AI skip returns to a strategy suggestion. Invalid
+requests are atomic, and back-house target metadata accepts legal stones to 2 m
+past tee. Native/target/turn/release tests pass; see AI_PROGRESS.md for the gate.

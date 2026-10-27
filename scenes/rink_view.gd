@@ -34,6 +34,7 @@ var field_of_view := 52.0
 var zoomed := false
 var role_camera := ""
 var drill_target := Vector2.INF
+var called_target := Vector2.INF
 var target_rings: Node3D
 var last_tick := -1
 var last_end := -1
@@ -350,8 +351,11 @@ func cycle_camera() -> String:
 	return MODES[mode]
 func render_frame(frame: Dictionary, running: bool, sweep: bool, broom_mm: int, turn: int, aiming: bool, delta: float) -> void:
 	if camera == null or frame.is_empty(): return
-	target_rings.visible = drill_target.is_finite()
-	if target_rings.visible: target_rings.position = Vector3(drill_target.x, 0, -drill_target.y)
+	var marker := drill_target if drill_target.is_finite() else called_target
+	target_rings.visible = marker.is_finite()
+	if target_rings.visible:
+		target_rings.position = Vector3(marker.x, 0, -marker.y)
+		for index in range(target_rings.get_child_count()): target_rings.get_child(index).visible = drill_target.is_finite() or index == 0
 	var tick: int = frame.get("global_tick", 0)
 	var end: int = frame.get("end", 0)
 	var snap := last_tick < 0 or tick < last_tick or end != last_end or running != was_running
@@ -436,8 +440,9 @@ func set_camera(selected: String, followed: Vector3) -> void:
 	camera.fov = clampf(field_of_view / (2.8 if zoomed else 1.0), 14.0, 85.0)
 	camera.projection = Camera3D.PROJECTION_ORTHOGONAL if selected == "House" else Camera3D.PROJECTION_PERSPECTIVE
 	if selected == "House":
-		camera.size = 2.4 if zoomed else (8.0 if drill_target.is_finite() and drill_target.y < -2 else 6.5)
-		var center := Vector3(drill_target.x, 0, -drill_target.y) if zoomed and drill_target.is_finite() else Vector3.ZERO
+		camera.size = 2.4 if zoomed else (8.0 if (drill_target.is_finite() and drill_target.y < -2) or (called_target.is_finite() and called_target.y < -2) else 6.5)
+		var focus := drill_target if drill_target.is_finite() else called_target
+		var center := Vector3(focus.x, 0, -focus.y) if zoomed and focus.is_finite() else Vector3.ZERO
 		camera.position = center + Vector3(0, 9, 0)
 		camera.look_at(center, Vector3.FORWARD)
 	elif selected == "Skip":

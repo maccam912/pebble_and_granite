@@ -6,8 +6,12 @@ Each position delivers two stones per end, with six scheduled ends and extra
 ends when tied. The existing club rules, thinking clocks, scoring and remedies
 apply. Human deliveries keep the direct pull/push/slide/flick input.
 
-When you are the skip (vice while the skip delivers), review the proposed shot,
-use House camera to adjust the broom, choose the turn, then **Send called shot**.
+When you are the skip (vice while the skip delivers), review the proposed shot.
+Choose **Draw**, **Guard**, or **Hit**. **Place target** lets you tap the intended
+landing point, or a stone for a hit. A small gold ring marks that intention; the
+AI solves release weight and broom line on the current ice. Changing turn solves
+the line again. You can still drag the broom to make your own correction.
+**Ask AI skip** requests another strategy suggestion; **Send called shot** delivers.
 During travel **HARD**, **CLEAN**, and **OFF** control AI brushing. In other
 positions, follow the AI skip's text/symbol call and scrub or hold to sweep.
 Device speech is optional and depends on an installed English voice; the visual

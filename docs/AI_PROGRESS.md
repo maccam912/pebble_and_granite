@@ -73,3 +73,14 @@ A complete six-end solo game passed with 96 deliveries, a declared winner,
 completed-journal replay hash equality and a working solo rematch. This full-game
 gate now joins desktop CI. The camera checkpoint's complete pipeline succeeded
 (run 40447872379); solo checkpoint c93cead's pipeline is still running.
+
+### Skip shot card
+
+Human skip/vice can select draw, guard or hit; tap a target/stone in House view;
+and change turn. A worker inverse-solves the selected call on the shared ice.
+A small gold ring shows the intended target while the broom remains separately
+adjustable. Reversing turn re-solves the broom line instead of reusing the old
+line with opposite curl. Ask AI skip restores automatic strategy suggestions.
+Core guard/hit inverse tests cover both sides/turns; native target picking,
+turn reversal, guard release, retained sweep target and rejected-call atomicity
+pass. The positive target save bound also now includes legal back-house stones.

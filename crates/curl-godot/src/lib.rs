@@ -611,6 +611,42 @@ impl CurlSession {
         GString::new()
     }
     #[func]
+    fn request_called_shot(&mut self, kind: i64, x_mm: i64, y_mm: i64, turn: i64) -> GString {
+        if !(-2200..=2200).contains(&x_mm)
+            || !(-5000..=2000).contains(&y_mm)
+            || ![-1, 1].contains(&turn)
+        {
+            return "Called target is outside the sheet".into();
+        }
+        let kind = match kind {
+            0 => curl_match::ai::ShotKind::Draw,
+            1 => curl_match::ai::ShotKind::Guard,
+            2 => curl_match::ai::ShotKind::Hit,
+            _ => return "Invalid shot type".into(),
+        };
+        let Some(game) = &self.game else {
+            return "No match".into();
+        };
+        if game.game.phase != Phase::Calling || game.in_hand.is_some() || self.ai_task.is_some() {
+            return "Wait for a ready delivery before changing the call".into();
+        }
+        let sim = game.sim.clone();
+        let context = AiContext::of(game);
+        self.ai_plan = None;
+        self.ai_task = Some(AiTask {
+            context,
+            worker: std::thread::spawn(move || {
+                Ok(curl_match::ai::solve(
+                    &sim,
+                    V2::new(Fx::ratio(x_mm, 1000), Fx::ratio(y_mm, 1000)),
+                    kind,
+                    turn,
+                ))
+            }),
+        });
+        GString::new()
+    }
+    #[func]
     fn poll_ai_plan(&mut self) -> VarDictionary {
         let mut result = VarDictionary::new();
         if self
@@ -636,6 +672,8 @@ impl CurlSession {
         match shot {
             Ok(plan) => {
                 result.set("kind", plan.kind.name());
+                result.set("target_x_mm", rounded_mm(plan.target.x));
+                result.set("target_y_mm", rounded_mm(plan.target.y));
                 result.set("broom_mm", plan.broom_mm);
                 result.set("speed_mm_s", plan.speed_mm_s);
                 result.set("turn", plan.turn);
@@ -676,7 +714,7 @@ impl CurlSession {
     }
     #[func]
     fn set_solo_target(&mut self, x_mm: i64, y_mm: i64) -> GString {
-        if !(-2200..=2200).contains(&x_mm) || !(-5000..=1800).contains(&y_mm) {
+        if !(-2200..=2200).contains(&x_mm) || !(-5000..=2000).contains(&y_mm) {
             return "Invalid saved shot target".into();
         }
         self.solo_target = V2::new(Fx::ratio(x_mm, 1000), Fx::ratio(y_mm, 1000));

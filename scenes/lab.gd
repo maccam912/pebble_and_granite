@@ -134,7 +134,7 @@ func _ready() -> void:
 	report_label.minimum_size_changed.connect(func(): layout_feedback.call_deferred())
 	new_button = button("Next stone", Vector2(40, 726), func(): next_throw())
 	new_button.theme_type_variation = "PrimaryButton"
-	turn_button = button("Turn: clockwise ↻", Vector2(225, 726), func(): turn *= -1; update_labels())
+	turn_button = button("Turn: clockwise ↻", Vector2(225, 726), change_turn)
 	sweep_button = button("Hold to sweep", Vector2(500, 726), func(): pass)
 	sweep_button.theme_type_variation = "SweepButton"
 	sweep_button.button_down.connect(func(): hold_sweep = true)
@@ -177,7 +177,7 @@ func create_play_settings() -> void:
 	settings_shade.hide()
 	add_child(settings_shade)
 	play_settings = CurlPlaySettings.new()
-	play_settings.persistence_enabled = persistence_enabled
+	play_settings.persistence_enabled = persistence_enabled or not allow_online
 	add_child(play_settings)
 	play_settings.changed.connect(apply_play_settings)
 	play_settings.visibility_changed.connect(func():
@@ -386,6 +386,11 @@ func layout_feedback() -> void:
 func clock_text(ms: int) -> String:
 	var seconds := int(ceil(float(ms) / 1000.0))
 	return "%d:%02d" % [seconds / 60, seconds % 60]
+
+func change_turn() -> void:
+	turn *= -1
+	if solo != null and solo.enabled and solo.human_skips(): solo.reverse_turn()
+	update_labels()
 
 func team_name(team: int) -> String:
 	return "Gold" if team == 0 else "Cyan"
@@ -648,10 +653,13 @@ func begin_pointer(id: int, p: Vector2) -> void:
 	if play_settings != null and play_settings.visible: return
 	if solo != null and solo.enabled and not run_active and not solo.human_throws() and not solo.human_skips(): return
 	var controls := [camera_button, view_button, settings_button, zoom_button]
-	if solo != null: controls.append_array([solo.solo_button, solo.send_button] + solo.call_buttons)
+	if solo != null: controls.append_array([solo.solo_button, solo.send_button, solo.shot_choice, solo.target_button, solo.auto_button] + solo.call_buttons)
 	if drills != null: controls.append_array([drills.menu_button, drills.start_button, drills.choice])
 	for control in controls:
 		if control != null and control.is_visible_in_tree() and control.get_global_rect().has_point(p): return
+	if solo != null and solo.enabled and solo.placing_target:
+		solo.place_target(p)
+		return
 	if drills != null and drills.enabled and drills.kind == 3 and not run_active: return
 	if match_mode and not run_active and frame.get("match_phase", "") != "Calling": return
 	if pointer != -99 or p.y > 710: return
