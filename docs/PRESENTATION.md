@@ -68,6 +68,12 @@ it is not clamped back onto the stone's path. The brush displays the submitted
 position; accessible hold animates about the centered position. These are local
 intent cues, not confirmation that the host accepted a contribution.
 
+While a player scrubs, the lower-left feedback explains stationary, behind,
+too-far-ahead and off-path input. Useful scrubbing and accessible hold have distinct
+messages; lifting immediately restores the normal shot report. These cues share
+the same position bounds as the input mapper and never clamp an invalid brush
+into a valid one. The selected-stone highlight remains the spatial reference.
+
 
 ## Skip judgement and ice sound pass
 

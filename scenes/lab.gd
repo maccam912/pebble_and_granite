@@ -432,6 +432,10 @@ func update_labels() -> void:
 	if drills != null: drills.refresh_controls()
 	if ice_board != null: ice_board.refresh_button()
 	if match_readout != null: match_readout.refresh()
+	if run_active and (sweeping or hold_sweep):
+		var selected := selected_sweep_stone()
+		if selected.is_empty(): report_label.text = "STONE NO LONGER AVAILABLE\nLift, then select another eligible moving stone."
+		else: report_label.text = sweep_input.feedback(brush_offsets(selected), int(current_brush().get("effort", 0)), hold_sweep)
 	layout_feedback()
 
 func layout_feedback() -> void:
@@ -934,6 +938,11 @@ func current_brush() -> Dictionary:
 	if hold_sweep:
 		return {"stone": int(stone.id), "brush": 0, "effort": 255, "lateral_mm": 0, "ahead_mm": 180, "steady": true}
 	if not sweeping: return {}
+	var offsets := brush_offsets(stone)
+	if not sweep_input.useful(offsets): return {}
+	return {"stone": int(stone.id), "brush": 0, "effort": int(session.scrub_effort(input_clock.call())), "lateral_mm": offsets.lateral_mm, "ahead_mm": offsets.ahead_mm, "steady": false}
+
+func brush_offsets(stone: Dictionary) -> Dictionary:
 	var ice: Variant
 	var displayed := stone.duplicate()
 	if spatial_view and rink != null:
@@ -946,9 +955,7 @@ func current_brush() -> Dictionary:
 		if Rect2(40, 110, 250, 590).has_point(p): ice = Vector2((p.x - 168) / 30, 2.2 - (p.y - 125) / 17)
 		elif Rect2(315, 110, 465, 590).has_point(p): ice = Vector2((p.x - 555) / 94, (325 - p.y) / 94)
 	if ice == null: return {}
-	var offsets := sweep_input.offsets(displayed, ice)
-	if offsets.is_empty(): return {}
-	return {"stone": int(stone.id), "brush": 0, "effort": int(session.scrub_effort(input_clock.call())), "lateral_mm": offsets.lateral_mm, "ahead_mm": offsets.ahead_mm, "steady": false}
+	return sweep_input.raw_offsets(displayed, ice)
 
 func next_throw() -> void:
 	if authoritative_delivery and not frame.get("in_hand", {}).is_empty():

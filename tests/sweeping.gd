@@ -32,6 +32,8 @@ func scrub(scene: Control, touch: bool) -> Dictionary:
 	event(scene, touch, start, "down")
 	check(scene.sweeping and scene.pointer == (0 if touch else -1), "Ice contact did not start scrubbing")
 	check(scene.current_brush().get("effort", 0) == 0, "Stationary contact created heat")
+	scene.update_labels()
+	check("KEEP BRUSHING" in scene.report_label.text, "Stationary brush did not explain how to sweep")
 	if touch:
 		event(scene, true, start, "down", 1)
 		event(scene, true, start, "up", 1)
@@ -41,6 +43,8 @@ func scrub(scene: Control, touch: bool) -> Dictionary:
 		event(scene, touch, start + Vector2(sample[1], 0), "move")
 	var brush: Dictionary = scene.current_brush()
 	check(brush.get("effort", 0) > 0 and absi(brush.get("lateral_mm", 0)) > 0, "Scrub did not map rate and position")
+	scene.update_labels()
+	check("BRUSHING THE PATH" in scene.report_label.text, "Useful scrubbing lacked feedback")
 	scene._process(.05)
 	var saved: Dictionary = JSON.parse_string(scene.session.session_json())
 	var shot: Dictionary = saved.records[-1].data
@@ -50,6 +54,8 @@ func scrub(scene: Control, touch: bool) -> Dictionary:
 	check(scene.current_brush().get("effort", 0) == 0, "Stopped scrub kept heating the ice")
 	event(scene, touch, start, "up")
 	check(not scene.sweep_input.active and scene.current_brush().is_empty(), "Lift retained scrub intent")
+	scene.update_labels()
+	check(scene.report_label.text == scene.report, "Sweep cue obscured normal shot feedback after lifting")
 	return brush
 func run() -> void:
 	var scene = load("res://scenes/play.tscn").instantiate()
@@ -68,10 +74,21 @@ func run() -> void:
 		scene.begin_pointer(0, point)
 		scene.move_pointer(point + Vector2(12, 0))
 		check(scene.current_brush().is_empty(), "Off-path or behind-stone pointer was clamped into a useful brush")
+		var before: String = scene.session.state_hash()
+		scene.update_labels()
+		var expected := "MOVE AHEAD" if offset.y < 0 else ("OFF TO THE SIDE" if offset.x > 0 else "CLOSER TO THE STONE")
+		check(expected in scene.report_label.text and scene.session.state_hash() == before, "Sweep cue changed authority or misdiagnosed " + expected)
+		if offset.x > 0 and "--capture" in OS.get_cmdline_user_args():
+			for i in range(12): await process_frame
+			await RenderingServer.frame_post_draw
+			DirAccess.make_dir_recursive_absolute("res://build/evidence/sweep-feedback")
+			root.get_texture().get_image().save_png("res://build/evidence/sweep-feedback/off-path.png")
 		scene.end_pointer(point)
 	scene.hold_sweep = true
 	var held: Dictionary = scene.current_brush()
 	check(held.get("effort") == 255 and held.get("lateral_mm") == 0 and held.get("ahead_mm") == 180, "Accessible hold lost steady centered effort")
+	scene.update_labels()
+	check("STEADY SWEEP" in scene.report_label.text, "Accessible hold incorrectly asks the player to scrub")
 	scene.update_spatial(.016)
 	check(scene.rink.brush.visible and scene.rink.selection.visible, "Selected stone and held brush were not presented")
 	scene._notification(NOTIFICATION_APPLICATION_PAUSED)
@@ -117,6 +134,6 @@ func run() -> void:
 		await RenderingServer.frame_post_draw
 		root.get_texture().get_image().save_png("res://build/evidence/spatial-sweeping.png")
 	scene.queue_free()
-	await process_frame
+	await create_timer(.5).timeout
 	print("SWEEPING_OK" if not failed else "SWEEPING_FAILED")
 	quit(1 if failed else 0)
