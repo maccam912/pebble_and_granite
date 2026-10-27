@@ -1053,3 +1053,22 @@ publish steps were superseded by newer workflow changes. Do not call those newly
 published releases. Tested packages remain CI artifacts. The latest verified tag
 is Build 88 -> 79f5615; the newest requested features await a final passing publish.
 Usage last checked at 79% remaining.
+
+## Additional control modes and accessible shortcuts
+
+Solo offers Full team (eight manual Gold deliveries, manual brushing/calls) and
+Calling only (AI deliveries, all Gold calls), in addition to individual positions.
+H/C/O call shortcuts are remappable and saved; duplicate choices swap bindings,
+reserved zoom/Esc/modifier keys are rejected, and key repeats do not issue calls.
+Main settings, nested shortcut settings and the ice board keep keyboard focus
+inside the modal and restore it on close. Buttons show their active shortcuts.
+Manual calls speak immediately when available; mute stops the current device
+utterance. The 1–10 zone mapping now agrees with the visible zone legend.
+
+Actual input-event tests pass key capture, Tab containment, swaps, Esc, reserved
+keys, remapped calls, settings isolation, calling-only metadata, preference save
+roundtrip and a full Full team end (8 human / 8 AI). An unswept reference hash
+proves Full team adds no hidden automatic brushing. Core/golden, all-target Clippy
+and eight additional native regressions pass. Mobile-sized settings/shortcut/call
+renders were inspected. Installed Android validation follows a clean checkpoint.
+Weekly remaining last checked: 79%; work continues below the requested cap.

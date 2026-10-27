@@ -32,6 +32,7 @@ class PathPlot extends Control:
 
 var game
 var menu_button: Button
+var modal_focus := CurlModalFocus.new()
 var shade: ColorRect
 var team_choice: OptionButton
 var shot_list: ItemList
@@ -117,7 +118,9 @@ func setup(owner_game) -> void:
 		shade.visible = visible
 		if visible:
 			game.move_child(shade, -1)
-			game.move_child(self, -1))
+			game.move_child(self, -1)
+			modal_focus.open(self)
+		else: modal_focus.close(self))
 
 func label(text: String, at: Vector2, font_size: int) -> Label:
 	var item := Label.new()

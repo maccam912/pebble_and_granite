@@ -37,7 +37,8 @@ disc marks the selection, and the Sweeper camera follows it. The **Hold to sweep
 button follows the selected stone at steady effort. Lift to stop.
 Next stone retains the field and evolving ice; Fresh ice starts a new session.
 Practice saves automatically, including held slides and interrupted shots, with a previous-save backup. Choose **Solo 4 vs 4** to play one position with seven AI players. Settings
-selects your position, three AI accuracy tiers, spoken calls and optional 4×
+selects your position (or Full team / Calling only), three AI accuracy tiers,
+remappable H/C/O call keys, spoken calls and optional 4×
 opponent travel between the hog lines. Skip/vice can send called shots and call
 HARD/CLEAN/OFF; text and symbols support silent play. Solo matches save separately.
 See [solo teams](docs/SOLO_TEAMS.md) for controls and current AI scope.

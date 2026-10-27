@@ -71,6 +71,7 @@ var ice_board: CurlIceBoard
 var drills: CurlDrills
 var solo: CurlSoloGame
 var play_settings: CurlPlaySettings
+var settings_focus := CurlModalFocus.new()
 var settings_shade: ColorRect
 var settings_button: Button
 var zoom_button: Button
@@ -189,7 +190,9 @@ func create_play_settings() -> void:
 		if play_settings.visible:
 			play_settings.position_choice.disabled = run_active or not frame.get("in_hand", {}).is_empty()
 			move_child(settings_shade, -1)
-			move_child(play_settings, -1))
+			move_child(play_settings, -1)
+			settings_focus.open(play_settings)
+		else: settings_focus.close(play_settings))
 	if rink != null:
 		zoom_button = button("Zoom · Z", Vector2(270, 134), toggle_zoom)
 		zoom_button.custom_minimum_size = Vector2(155, 40)
@@ -199,6 +202,8 @@ func create_play_settings() -> void:
 
 func apply_play_settings() -> void:
 	if rink != null: rink.field_of_view = play_settings.fov
+	if not play_settings.spoken_calls and DisplayServer.has_feature(DisplayServer.FEATURE_TEXT_TO_SPEECH): DisplayServer.tts_stop()
+	if solo != null: solo.refresh_controls()
 	update_spatial(0)
 
 func toggle_zoom() -> void:
@@ -639,6 +644,12 @@ func _input(event: InputEvent) -> void:
 	if session == null: return
 	if ice_board != null and ice_board.visible: return
 	if play_settings != null and play_settings.visible: return
+	if event is InputEventKey and event.pressed and not event.echo and not event.ctrl_pressed and not event.alt_pressed and not event.meta_pressed and solo != null and solo.enabled and run_active and solo.human_skips():
+		var call := play_settings.call_keys.find(event.keycode)
+		if call >= 0:
+			solo.set_call([255, 80, 0][call])
+			get_viewport().set_input_as_handled()
+			return
 	if event is InputEventKey and event.pressed and not event.echo and event.keycode == KEY_Z:
 		toggle_zoom()
 		return
@@ -662,7 +673,7 @@ func units(p: Vector2) -> Vector2i:
 func begin_pointer(id: int, p: Vector2) -> void:
 	if ice_board != null and ice_board.visible: return
 	if play_settings != null and play_settings.visible: return
-	if solo != null and solo.enabled and not run_active and not solo.human_throws() and not solo.human_skips(): return
+	if solo != null and solo.enabled and not run_active and (solo.planning or (not solo.human_throws() and not solo.human_skips())): return
 	var controls := [camera_button, view_button, settings_button, zoom_button]
 	if solo != null: controls.append_array([solo.solo_button, solo.send_button, solo.shot_choice, solo.target_button, solo.auto_button] + solo.call_buttons)
 	if ice_board != null: controls.append(ice_board.menu_button)
@@ -761,6 +772,9 @@ func end_pointer(p: Vector2) -> void:
 			phase = "Travel"
 			report = "Scrub the ice ahead of the stone, or hold the sweep button. Tap a moving stone to select it."
 			frame = session.frame()
+			if solo != null and solo.enabled:
+				solo.shot_team = int(frame.team)
+				solo.advice_time = 0.0
 			release_report.speed_mm_s = int(frame.release_speed * 1000.0)
 			held_last_us = -1
 			save_practice()
@@ -833,7 +847,7 @@ func delivered_stone() -> Dictionary:
 
 func sweep_seat() -> int:
 	if solo != null and solo.enabled:
-		return solo.human_position() if solo.shot_team == 0 else -2
+		return mini(solo.human_position(), 3) if solo.shot_team == 0 else -2
 	return int(frame.get("team", 0)) * 2 + int(frame.get("thrower", 0)) if match_mode else -1
 
 func selected_sweep_stone() -> Dictionary:
@@ -927,6 +941,7 @@ func next_throw() -> void:
 	path.clear()
 	report = "Aim again. The stones and the ice stay in play.
 Fresh ice starts a new practice session."
+	if solo != null and solo.enabled: solo.reset_turn()
 	update_labels()
 	save_practice()
 

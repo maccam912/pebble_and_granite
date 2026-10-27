@@ -1,7 +1,9 @@
 # Solo four-player teams
 
 Choose **Solo 4 vs 4**. Gold has one human and three AI players; Cyan has four
-AI players. **Settings → Your solo position** selects Lead, Second, Vice or Skip.
+AI players. **Settings → Your solo control** selects Lead, Second, Vice or Skip.
+**Full team** gives you all eight Gold deliveries and manual brushing/calls.
+**Calling only** delegates every delivery to AI and lets you call all Gold shots.
 Each position delivers two stones per end, with six scheduled ends and extra
 ends when tied. The existing club rules, thinking clocks, scoring and remedies
 apply. Human deliveries keep the direct pull/push/slide/flick input.
@@ -12,7 +14,11 @@ landing point, or a stone for a hit. A small gold ring marks that intention; the
 AI solves release weight and broom line on the current ice. Changing turn solves
 the line again. You can still drag the broom to make your own correction.
 **Ask AI skip** requests another strategy suggestion; **Send called shot** delivers.
-During travel **HARD**, **CLEAN**, and **OFF** control AI brushing. In other
+During travel **HARD**, **CLEAN**, and **OFF** control AI brushing. Default keys
+are H / C / O; **Settings → Call shortcuts** remaps them. Key repeats are ignored.
+A manual call speaks immediately when device speech is enabled; turning speech
+off stops the current utterance. Visual calls always remain. Weight zones 1–3
+are guards, 4–6 the front rings, 7 tee, and 8–10 the back rings. In other
 positions, follow the AI skip's text/symbol call and scrub or hold to sweep.
 Device speech is optional and depends on an installed English voice; the visual
 call is always present. Lead/second/vice use the sweeper view during teammate

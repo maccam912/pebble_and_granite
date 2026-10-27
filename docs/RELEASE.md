@@ -1,3 +1,9 @@
+Full team and Calling only now complement individual solo positions. Call keys
+H/C/O can be remapped in Settings; active keys appear on the call buttons.
+Settings and ice-board dialogs keep keyboard focus inside them. A visible weight
+zone legend supports silent play; manual spoken calls respond immediately when
+an English device voice is available.
+
 Ice board now shows recent actual paths against the release ray, observed curl,
 contacts, true hog-to-hog splits and per-position delivery statistics. Select a
 path to save an ice note. It pauses local play while open. Paths and statistics

@@ -113,3 +113,19 @@ The full six-end / 96-delivery solo gate passed again with the observer enabled:
 32 retained paths, all 96 deliveries in per-position totals, identical rebuilt
 observations and canonical hash after restore, and working rematch. Fourteen
 existing/new desktop integration gates also passed after the board integration.
+
+### Control modes and accessible calls
+
+Added Full team (all eight Gold throws, manual brush/call control) and Calling only
+(all AI throws, human Gold calls), alongside four individual positions. Call keys
+H/C/O are remappable with duplicate-key swapping; Z stays zoom, Esc cancels/closes,
+and held-key repeats do not issue calls. Main/shortcut/ice-board modals contain
+keyboard focus. Visual buttons display current keys. Manual spoken calls bypass
+the automatic chatter delay; muting stops device speech. The weight-zone mapping
+now matches the displayed 1–3 guard / 4–6 front / 7 tee / 8–10 back legend.
+
+The native input fixture covers real key capture, focus containment, reserved
+keys, swaps, Esc, remapped calls, settings isolation, calling-only save metadata,
+and a full 16-stone Full team end. An unswept reference hash checks Full team
+never adds automatic brushing. Position changes remain disabled during held/live
+stones. AI accuracy tiers and the normal position default remain available.

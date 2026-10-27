@@ -54,9 +54,10 @@ func create_controls() -> void:
 	auto_button.custom_minimum_size = Vector2(260, 52)
 	for i in range(3):
 		var effort: int = [255, 80, 0][i]
-		var b: Button = game.button(["↑ HARD", "≈ CLEAN", "■ OFF"][i], Vector2(750 + i * 160, 640), func(): set_call(effort))
-		b.custom_minimum_size = Vector2(150, 48)
+		var b: Button = game.button(["↑ HARD", "≈ CLEAN", "■ OFF"][i], Vector2(750 + i * 160, 622), func(): set_call(effort))
+		b.custom_minimum_size = Vector2(150, 64)
 		b.size = b.custom_minimum_size
+		b.add_theme_font_size_override("font_size", 18)
 		call_buttons.append(b)
 	call_background = Panel.new()
 	call_background.position = Vector2(450, 136)
@@ -74,12 +75,12 @@ func human_position() -> int:
 	return game.play_settings.human_position
 
 func human_throws() -> bool:
-	return game.frame.get("team", -1) == 0 and game.frame.get("thrower", -1) == human_position()
+	return game.frame.get("team", -1) == 0 and (human_position() == 4 or game.frame.get("thrower", -1) == human_position())
 
 func human_skips() -> bool:
 	# Vice calls the skip's deliveries; the skip calls the other three positions.
 	var caller := 2 if game.frame.get("thrower", -1) == 3 else 3
-	return game.frame.get("team", -1) == 0 and human_position() == caller
+	return game.frame.get("team", -1) == 0 and (human_position() in [4, 5] or human_position() == caller)
 
 func start() -> void:
 	if game.run_active or game.pointer != -99: return
@@ -116,7 +117,7 @@ func advance(delta: float) -> void:
 			var advice: Dictionary = game.session.solo_advice(game.play_settings.difficulty)
 			ai_effort = int(advice.get("effort", 0))
 			weight_zone = int(advice.get("zone", 0))
-			speak_call()
+			if human_position() != 4 or shot_team != 0: speak_call()
 		return
 	if state != "Calling": return
 	if game.phase == "Stone at rest":
@@ -223,14 +224,14 @@ func send_shot() -> void:
 func set_call(effort: int) -> void:
 	if not enabled or not game.run_active or not human_skips(): return
 	call_override = effort
-	speak_call()
+	speak_call(true)
 	game.update_labels()
 
-func speak_call() -> void:
+func speak_call(force := false) -> void:
 	if not game.persistence_enabled or not game.play_settings.spoken_calls: return
 	var effort := call_override if human_skips() and call_override >= 0 else ai_effort
 	var text := "Hurry hard!" if effort > 100 else ("Clean." if effort > 0 else "Off! Whoa.")
-	if text == last_spoken or Time.get_ticks_msec() - last_spoken_ms < 1500: return
+	if not force and (text == last_spoken or Time.get_ticks_msec() - last_spoken_ms < 1500): return
 	var voices := DisplayServer.tts_get_voices_for_language("en")
 	if voices.is_empty(): return
 	last_spoken = text
@@ -245,7 +246,7 @@ func valid_envelope(data: Variant) -> bool:
 	if not data is Dictionary or data.get("schema") != 1 or not data.get("match") is String: return false
 	for key in ["position", "difficulty", "target_x_mm", "target_y_mm"]:
 		if not (data.get(key) is float or data.get(key) is int) or not is_finite(float(data[key])) or float(data[key]) != floorf(float(data[key])): return false
-	return data.position >= 0 and data.position <= 3 and data.difficulty >= 0 and data.difficulty <= 2 and absi(int(data.target_x_mm)) <= 2200 and data.target_y_mm >= -5000 and data.target_y_mm <= 2000
+	return data.position >= 0 and data.position <= 5 and data.difficulty >= 0 and data.difficulty <= 2 and absi(int(data.target_x_mm)) <= 2200 and data.target_y_mm >= -5000 and data.target_y_mm <= 2000
 
 func restore_metadata(data: Dictionary) -> void:
 	game.play_settings.human_position = int(data.position)
@@ -255,6 +256,7 @@ func restore_metadata(data: Dictionary) -> void:
 	game.session.set_solo_target(int(data.target_x_mm), int(data.target_y_mm))
 
 func brush_effort() -> int:
+	if human_position() == 4 and shot_team == 0: return maxi(0, call_override)
 	if human_skips() and call_override >= 0: return call_override
 	# Human sweepers supply one half; the AI partner supplies the other half.
 	return ai_effort if human_skips() or shot_team != 0 else int(ai_effort / 2)
@@ -278,7 +280,7 @@ func update_camera() -> void:
 	game.rink.called_target = called_target if enabled and human_skips() and not game.run_active and (planning or not planned.is_empty()) else Vector2.INF
 	if not enabled: return
 	if game.run_active:
-		game.rink.role_camera = "Skip" if human_skips() or shot_team != 0 else "Sweeper"
+		game.rink.role_camera = "Skip" if (human_skips() and human_position() != 4) or shot_team != 0 else "Sweeper"
 	elif game.frame.get("match_phase", "") == "Calling" and not human_throws():
 		game.rink.role_camera = "House" if human_skips() else "Skip"
 
@@ -294,16 +296,18 @@ func refresh_controls() -> void:
 		control.disabled = planning
 	target_button.text = "Tap target on ice…" if placing_target else "Place target"
 	shot_choice.set_item_disabled(2, not game.frame.get("stones", []).any(func(stone): return stone.active))
-	for b in call_buttons:
+	for index in range(call_buttons.size()):
+		var b := call_buttons[index]
+		b.text = "%s\n%s" % [["↑ HARD", "≈ CLEAN", "■ OFF"][index], OS.get_keycode_string(game.play_settings.call_keys[index])]
 		b.visible = owns_call and game.run_active
 	send_button.visible = owns_call and not game.run_active and not planned.is_empty()
 	call_background.visible = enabled and game.run_active
 	if not enabled: return
-	var effort := call_override if owns_call and call_override >= 0 else ai_effort
+	var effort := maxi(0, call_override) if human_position() == 4 and shot_team == 0 else (call_override if owns_call and call_override >= 0 else ai_effort)
 	var text := "↑ HARD · SWEEP" if effort > 100 else ("≈ CLEAN · LIGHT BRUSH" if effort > 0 else "■ OFF · NO SWEEP")
 	call_label.text = "%s  |  Weight zone %d" % [text, weight_zone] if weight_zone > 0 else (text if call_override >= 0 else "Reading weight…")
 	if fast_forwarding(): call_label.text += "  |  4×"
-	game.hint.text = "SOLO · Gold %s · %s AI" % [CurlPlaySettings.POSITIONS[human_position()], ["Club", "Competitive", "Elite"][game.play_settings.difficulty]]
+	game.hint.text = "SOLO · Gold %s · %s AI" % [CurlPlaySettings.CONTROL_LABELS[human_position()], ["Club", "Competitive", "Elite"][game.play_settings.difficulty]]
 	var state: String = game.frame.get("match_phase", "")
 	if state == "Calling" or state == "InFlight":
 		game.status.text = "4 vs 4  /  %s %s%s • %s" % [game.team_name(game.frame.team), CurlPlaySettings.POSITIONS[game.frame.thrower], " (you)" if human_throws() else " (AI)", game.phase]

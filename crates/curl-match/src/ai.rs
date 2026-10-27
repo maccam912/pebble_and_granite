@@ -213,8 +213,15 @@ pub fn advice(sim: &Sim, target: V2, difficulty: Difficulty) -> (u8, u8) {
         0
     };
     // Guard zones 1–3, front rings 4–6, tee 7, back rings 8–10.
-    let zone = ((mm(stop.y) + uncertainty + 6000) / 850 + 1).clamp(1, 10) as u8;
+    let zone = weight_zone(mm(stop.y) + uncertainty);
     (effort, zone)
+}
+
+fn weight_zone(y_mm: i64) -> u8 {
+    [-4200, -3000, -1829, -1220, -610, -150, 150, 610, 1220]
+        .iter()
+        .position(|boundary| y_mm < *boundary)
+        .map_or(10, |index| index as u8 + 1)
 }
 
 fn board_value(sim: &Sim, team: u8, delivered: u8) -> i64 {
@@ -251,6 +258,15 @@ mod tests {
     use super::*;
     use crate::recorded::RecordedMatch;
     use curl_rules::Rules;
+    #[test]
+    fn weight_zones_match_the_accessible_legend() {
+        for (index, y) in [-5000, -3500, -2400, -1500, -900, -400, 0, 400, 900, 1500]
+            .into_iter()
+            .enumerate()
+        {
+            assert_eq!(weight_zone(y), index as u8 + 1);
+        }
+    }
     #[test]
     fn inverse_draw_reaches_both_sides_on_shared_ice() {
         for x in [-800, 0, 800] {
