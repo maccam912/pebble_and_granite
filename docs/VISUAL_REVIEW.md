@@ -1107,3 +1107,36 @@ CI run `40426832012` for the correction is pending; the earlier cladding checkpo
 `3004bff` completed all CI/package/publication jobs. This does not claim
 physical-phone performance or latest-head release completion. Weekly quota
 remaining is 82 percent. The broader graphics polish goal remains active.
+
+## Final presentation audit
+
+Closed the requested screenshot/critique/implementation loop after reviewing the
+current native screen set and the installed build 74 camera/menu set. No further
+presentation change is recommended from this review. This is an art-direction
+judgment about the current game views, not a claim of photographic equivalence
+under every camera or GPU. The final direction preserves readable controls,
+visible curling pebble and the user's corrected handle and hand alignment.
+
+| Requested outcome | Current evidence |
+| --- | --- |
+| Improve existing menus and graphics through reviewed iterations | Native ten-screen captures, recorded accepted/rejected comparisons above, and final Android 74 setup/lobby/camera captures in `build/evidence/polish/android-74/` |
+| Ice should visibly resemble pebbled curling ice | Original packed droplet material, photographic/scientific reference comparison, and reviewed Delivery/Sweeper/House views; the old smooth plastic appearance was replaced |
+| Handle aligned with the sheet, facing the correct end | `48e5468` reverses the mistaken baseline; the open end faces the player and the support faces down-sheet |
+| Wrist follows the arm and thumb | Native neutral/both-curl close-ups and installed held-delivery captures; glove follows the curl pose while the sleeve retains its body-side endpoint |
+| No new gameplay features | Diff from the initial polish parent leaves `crates/` and `compatibility.json` unchanged; controller edits are layout/presentation, with direct-input and restore gates passing |
+| Original/public-domain assets only | Original generated textures, procedural pebble, original vectors/meshes and local lighting bake; provenance files inspected, reference photos excluded from tracked assets |
+| Binary asset handling | Texture/branding PNGs and lighting EXR/bake data tracked in LFS; `git lfs fsck` passes; CI checkout fetches LFS |
+| Validate, commit and push | Native visual/rink/input/held/delivery gates and clean-source Android 74 full touch probe pass; source commit and validation checkpoint match the remote branch |
+| Monitor weekly usage and respect cutoff | 82 percent remained at closing review, above the 50 percent cutoff; closing because no further change is recommended |
+
+The final installed camera/menu wrapper completed with
+`ANDROID_74_REVIEW_CAPTURED_ORIGINAL_STATE_RESTORED`. It restored all four original
+saves/backups byte for byte and stopped the app. Its log has one cached-shader
+recompilation warning and no script errors. The full probe log was preserved as
+`build/evidence/polish/android-74/probe-app-log.txt` before the review.
+
+Release status remains separate: `3004bff` completed all cross-platform CI,
+packages and publication; the final corrected-grip checkpoint `66c293c` has CI
+run `40427385745` queued at closing review. Local validation does not establish
+that queued release's success or physical-phone GPU performance. No additional
+rendering, input, network, simulation or asset changes were made during this audit.
