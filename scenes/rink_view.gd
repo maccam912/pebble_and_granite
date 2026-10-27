@@ -11,7 +11,12 @@ var brush: Node3D
 var selection: Node3D
 var sweep_target := -1
 var brush_input: Dictionary = {}
+const HAND_WRIST := Vector3(.055, .225, .115)
+const HAND_FOREARM := Vector3(.25, .39, 1.05)
 var hand: Node3D
+var hand_grip: Node3D
+var hand_sleeve: MeshInstance3D
+var hand_cuff: MeshInstance3D
 var hand_held := false
 var pull_offset := 0.0
 var shown_pull_offset := 0.0
@@ -116,30 +121,28 @@ func _ready() -> void:
 	glove_material.metallic_specular = .18
 	jacket_material.metallic_specular = .18
 	jacket_material.vertex_color_use_as_albedo = true
+	hand_grip = Node3D.new()
+	hand.add_child(hand_grip)
 	var glove := SphereMesh.new()
 	glove.radius = .044
-	glove.height = .039
-	var palm := mesh(hand, glove, Vector3(.049, .246, -.026), glove_material)
-	palm.scale.x = 1.15
-	# Four curled fingers and the opposing thumb read as a relaxed gloved grip.
-	for z in [-.060, -.042, -.024, -.006]:
-		var a := Vector3(.035, .245, z)
-		var b := Vector3(.004, .244, z)
-		var c := Vector3(-.022, .221, z)
-		var d := Vector3(-.013, .194, z)
+	glove.height = .052
+	var palm := mesh(hand_grip, glove, Vector3(.040, .211, .029), glove_material)
+	palm.scale.x = .55
+	# Handshake grip: thumb runs down the handle, fingers curl underneath it.
+	for z in [-.006, .014, .034, .054]:
+		var a := Vector3(.057, .208, z)
+		var b := Vector3(.040, .184, z)
+		var c := Vector3(.010, .176, z)
+		var d := Vector3(-.014, .190, z)
 		for pair in [[a, b], [b, c], [c, d]]:
-			CurlRinkArt.capsule_between(hand, pair[0], pair[1], .0085, glove_material)
-	CurlRinkArt.capsule_between(hand, Vector3(.058, .237, .011), Vector3(.013, .218, .029), .012, glove_material)
-	CurlRinkArt.capsule_between(hand, Vector3(.013, .218, .029), Vector3(-.010, .210, .010), .011, glove_material)
-	var wrist := Vector3(.105, .248, .018)
-	CurlRinkArt.capsule_between(hand, Vector3(.068, .244, -.013), wrist, .029, glove_material)
-	var forearm := Vector3(.25, .39, 1.05)
-	var length := wrist.distance_to(forearm)
-	var sleeve_shape := CurlRinkArt.jacket_sleeve(length)
-	var sleeve := mesh(hand, sleeve_shape, (wrist + forearm) * .5, jacket_material)
-	sleeve.quaternion = Quaternion(Vector3.UP, (wrist - forearm).normalized())
-	var cuff := cylinder(hand, .040, .026, wrist, glove_material)
-	cuff.quaternion = sleeve.quaternion
+			CurlRinkArt.capsule_between(hand_grip, pair[0], pair[1], .0085, glove_material)
+	CurlRinkArt.capsule_between(hand_grip, Vector3(.042, .232, .073), Vector3(.012, .226, .035), .011, glove_material)
+	CurlRinkArt.capsule_between(hand_grip, Vector3(.012, .226, .035), Vector3(0, .224, -.012), .010, glove_material)
+	CurlRinkArt.capsule_between(hand_grip, Vector3(.043, .213, .065), HAND_WRIST, .027, glove_material)
+	var sleeve_shape := CurlRinkArt.jacket_sleeve(HAND_WRIST.distance_to(HAND_FOREARM))
+	hand_sleeve = mesh(hand, sleeve_shape, Vector3.ZERO, jacket_material)
+	hand_cuff = cylinder(hand, .040, .026, HAND_WRIST, glove_material)
+	pose_hand(0.0)
 	for geometry in hand.find_children("*", "MeshInstance3D", true, false):
 		geometry.layers = 2
 		geometry.gi_mode = GeometryInstance3D.GI_MODE_DYNAMIC
@@ -148,6 +151,16 @@ func _ready() -> void:
 	world.add_child(preview)
 	preview.position = Vector3(0, 0, 29)
 	set_camera("Delivery", Vector3.ZERO)
+func pose_hand(curl_angle: float) -> void:
+	# Turn the grip at the wrist while the sleeve still reaches the same body-side point.
+	hand_grip.rotation.y = curl_angle
+	var wrist := Basis(Vector3.UP, curl_angle) * HAND_WRIST
+	hand_sleeve.position = (wrist + HAND_FOREARM) * .5
+	hand_sleeve.quaternion = Quaternion(Vector3.UP, (wrist - HAND_FOREARM).normalized())
+	hand_sleeve.scale.y = wrist.distance_to(HAND_FOREARM) / HAND_WRIST.distance_to(HAND_FOREARM)
+	hand_cuff.position = wrist
+	hand_cuff.quaternion = hand_sleeve.quaternion
+
 func material(color: String, roughness := .65) -> StandardMaterial3D:
 	var key := color + ":" + str(roughness)
 	if material_cache.has(key): return material_cache[key]
@@ -307,14 +320,14 @@ func stone_mesh(team: int) -> Node3D:
 	mesh(stone, handle_cap_shape, Vector3.ZERO, color).layers = 2
 	var grip := mesh(stone, handle_grip_shape, Vector3.ZERO, color)
 	grip.name = "HandleGrip"
-	grip.rotation.y = -PI / 2.0
+	grip.rotation.y = PI / 2.0
 	grip.layers = 2
 	var tip := SphereMesh.new()
 	tip.radius = .015
 	tip.height = .03
-	mesh(stone, tip, Vector3(0, .201, -.069), color).layers = 2
+	mesh(stone, tip, Vector3(0, .201, .069), color).layers = 2
 	if team == 1:
-		var stripe := box(stone, Vector3(.022, .002, .012), Vector3(0, .217, -.02), material("143943", .5))
+		var stripe := box(stone, Vector3(.022, .002, .012), Vector3(0, .217, .02), material("143943", .5))
 		stripe.layers = 2
 	return stone
 func cycle_camera() -> String:
@@ -368,13 +381,15 @@ func render_frame(frame: Dictionary, running: bool, sweep: bool, broom_mm: int, 
 	shown_pull_offset = lerpf(shown_pull_offset, pull_offset, 1.0 - exp(-18.0 * delta)) if hand_held else 0.0
 	preview.position = Vector3(delivery_x, 0, -delivery_y + shown_pull_offset)
 	shown_camera_x = lerpf(shown_camera_x, delivery_x if sliding else 0.0, 1.0 - exp(-12.0 * delta)) if aiming else 0.0
-	# Seat the reoriented fingers around the grip without moving its input target.
-	hand.position = preview.position - Vector3(0, .014, 0)
+	# The visual hand follows the handle; the input target remains independent.
+	hand.position = preview.position
 	hand.visible = aiming and hand_held
 	preview.visible = aiming
 	var heading := delivery_heading()
 	hand.rotation.y = atan2(-heading.x, -heading.z)
-	preview.rotation.y = hand.rotation.y - float(turn) * PI / 6.0
+	var curl_angle := -float(turn) * PI / 6.0
+	preview.rotation.y = hand.rotation.y + curl_angle
+	pose_hand(curl_angle)
 	brush.visible = running and sweep and has_followed
 	brush_time += delta if brush.visible else 0.0
 	selection.visible = running and has_followed and sweep_target >= 0

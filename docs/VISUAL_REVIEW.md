@@ -667,7 +667,8 @@ latest-head release completion, physical-device GPU performance or human feel.
 Weekly quota remaining is 89 percent. The photographic polish objective stays
 active. Further comparisons can focus on the granite crown/plastic highlights
 against the reference photos and the depth of the existing setup overlay.
-The requested forward handle orientation is now implemented and must be retained.
+This checkpoint aligned the handle with the sheet, but chose the wrong end.
+The later handle-direction correction below supersedes that orientation and grip.
 
 
 ## Granite scale and polished equipment finish
@@ -1052,3 +1053,38 @@ Native `RINK_VIEW_OK`, `HELD_RESUME_OK` and `DELIVERY_SLIDE_OK` also pass with c
 logs. Original source, before image and trial/final logs are retained under
 `build/sleeve-final-review/`. Installed Android verification follows the source
 commit. Weekly quota remaining is 85 percent.
+
+## Correct handle direction and thumb-to-forearm alignment
+
+The user identified that the longitudinal handle was 180 degrees backwards and
+that the wrist approached along the pinky side. The earlier orientation gate
+encoded that same mistaken interpretation; passing it did not establish the
+requested visual result. Rotated the grip, rounded tip and cyan stripe 180 degrees:
+the support now faces down-sheet and the open end faces the player.
+
+An initial hand translation still had the wrong anatomy and was rejected after
+the user's follow-up. Rebuilt the existing glove pose as a handshake grip: thumb
+extends down the handle along the forearm, palm rests alongside it, and four
+fingers curl underneath. The wrist approaches from behind. The glove now follows
+the existing curl preview angle instead of staying fixed while the handle turns.
+The sleeve connects the rotated wrist to the same body-side endpoint. This is
+presentation posing only; hit targets, gesture gains, release angle, simulation,
+replay orientation and camera logic are unchanged. No new mesh instance, texture,
+shader or gameplay feature is added; one transform-only grouping node separates
+the glove pose from the sleeve.
+
+Reviewed neutral and both curl poses at 1920 x 1200, a diagnostic side close-up,
+and the normal ten-screen presentation. The close-up is an unsaved fixture, not
+a new game camera. Final capture logs are clean. Rink, held-resume, delivery-slide
+and input-route gates pass; the rink gate now checks the corrected handle end and
+that the glove follows both curl poses. Evidence and before source/images are in
+`build/handle-direction-review/`; only `final-*.log` describes the accepted pose.
+Installed Android verification follows the source commit.
+
+For traceability, the preceding sleeve build 73 (`a3de179`, clean source, SHA-256
+`837ec8e064c796d7dbea026cd432182d84391aa46ba50b61fb8b2207ddb80532`)
+passed the full direct-touch probe and exact four-file restore, with evidence in
+`build/probes/touch-6b6bca2ee4e14b4bb4e5d3e871c7bcd7/`. Its input result is valid,
+but its hand/handle screenshots are superseded by this user-requested correction.
+It logged one cached-shader recompilation warning, no script errors, and fresh
+acknowledgement of 0.43-0.56 seconds. Weekly quota remaining is 84 percent.
