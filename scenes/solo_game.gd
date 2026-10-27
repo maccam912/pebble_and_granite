@@ -63,6 +63,7 @@ func human_skips() -> bool:
 func start() -> void:
 	if game.run_active or game.pointer != -99: return
 	game.save_practice()
+	if game.drills != null: game.drills.enabled = false
 	enabled = true
 	game.match_mode = true
 	game.reset(false)

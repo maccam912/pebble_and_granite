@@ -9,6 +9,7 @@ pub mod ai;
 #[cfg(test)]
 mod brushing_tests;
 pub mod delivery;
+pub mod drills;
 
 pub const LATE_WINDOW: u32 = 24; // 100 ms; older samples apply at authority arrival.
 pub const FUTURE_WINDOW: u32 = 12;

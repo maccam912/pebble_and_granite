@@ -10,7 +10,8 @@ bible only. Remote: `maccam912/pebble_and_granite`, main branch.
 Latest published checkpoint: `7551472` (rules 4 / protocol 11, physics model 3),
 published as [Build 42](https://github.com/maccam912/pebble_and_granite/releases/tag/v0.0.42-dev).
 Its complete pipeline succeeded (run 40324153949), verified on 26 October.
-Current source adds spatial scrubbing and moving-stone selection; see the final entry.
+Current source includes solo teams, rated AI, role cameras/calls and target drills;
+see docs/AI_PROGRESS.md and the final entries for current evidence.
 The main scene is a 3D curler's view with direct handle grip, pull/push/held slide,
 finishing curl flick and small weight feedback. Practice and local matches save
 held/in-flight state. Online mixed doubles has four seats, per-player sweeping,
@@ -1003,3 +1004,21 @@ views inspected. Physical Android/latency/feel and remote release publication of
 this checkpoint are separate gates. Current team brushes are combined per team;
 individual team fatigue/brush IDs and advanced multi-ply/learning AI remain open.
 See docs/AI_PROGRESS.md for the live work order. Usage last checked: 80% remaining.
+
+## Target drills
+
+Four resumable five-shot rounds now cover tee weight, front guards, alternating
+left/right line and sweeping a light draw home. The Rust core grades actual
+settled positions and counts hog/out-of-play shots as misses. Gold rings mark
+15/45/90 cm thresholds; weight isolates depth. The separate drill envelope stores
+round/best scores with the normal validated practice journal and backup. A save
+between settlement and grading recovers without stranding or double scoring.
+
+Core scoring and native drill UI/round/restore tests pass; target/score rendering
+was inspected. Existing delivery, save, sweep, camera and online UI regressions
+remain passing. Native/desktop evidence does not approve physical Android feel.
+
+The complete solo game gate also passed all six ends / 96 deliveries, a declared
+winner, completed-save replay hash equality and rematch. It is now a desktop CI
+gate. Camera commit 748adb8's full pipeline succeeded (40447872379). Solo c93cead
+is pushed and its remote pipeline is in progress; new drills await their push.

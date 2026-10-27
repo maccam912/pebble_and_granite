@@ -418,6 +418,49 @@ impl CurlSession {
         frame
     }
     #[func]
+    fn drill_target(&self, kind: i64, attempt: i64) -> VarDictionary {
+        let mut result = VarDictionary::new();
+        if !(0..5).contains(&attempt) {
+            return result;
+        }
+        if let Some(kind) = curl_match::drills::Kind::from_index(kind) {
+            let target = kind.target(attempt as u8);
+            result.set("x_mm", rounded_mm(target.x));
+            result.set("y_mm", rounded_mm(target.y));
+        }
+        result
+    }
+    #[func]
+    fn drill_result(&self, kind: i64, attempt: i64) -> VarDictionary {
+        let mut result = VarDictionary::new();
+        if self.game.is_some() || !(0..5).contains(&attempt) {
+            return result;
+        }
+        if let Some(kind) = curl_match::drills::Kind::from_index(kind)
+            && let Some(score) = kind.result(&self.practice.sim, attempt as u8)
+        {
+            result.set("stars", score.stars as i64);
+            result.set("error_mm", score.error_mm);
+            result.set("in_play", score.in_play);
+        }
+        result
+    }
+    #[func]
+    fn start_sweeping_drill(&mut self, attempt: i64) -> GString {
+        if self.game.is_some() || !(0..5).contains(&attempt) {
+            return "Sweeping drill unavailable".into();
+        }
+        let target = curl_match::drills::Kind::Sweeping.target(attempt as u8);
+        // A reachable underweight draw: judge the moving stone and brush it up.
+        let plan = curl_match::ai::solve(
+            &self.practice.sim,
+            target + V2::new(Fx::ZERO, Fx::ratio(-7, 10)),
+            curl_match::ai::ShotKind::Draw,
+            if attempt % 2 == 0 { 1 } else { -1 },
+        );
+        self.apply_delivery(plan.release())
+    }
+    #[func]
     fn golden_trace(&self) -> GString {
         match curl_proto::fixtures::golden_text() {
             Ok(text) => GString::from(&text),

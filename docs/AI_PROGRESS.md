@@ -54,3 +54,22 @@ end; core/golden and all-target Clippy gates; existing desktop integration gates
 Desktop and mobile-sized rendered settings/call/zoom/skip/sweeper screens inspected.
 Independent team brush identities and multi-ply search remain open, documented in
 SOLO_TEAMS.md. Weekly usage: 20% used / 80% remaining; work continues.
+
+### Target drills checkpoint
+
+Implemented four five-shot drills: weight to tee (depth only), front guard,
+alternating left/right line, and sweeping a reachable underweight draw home.
+Core scoring uses actual settled positions and zero stars for out-of-play stones;
+15/45/90 cm rings mark the three thresholds. Current round, best scores and the
+validated practice journal save atomically in their own file. Interrupted shots
+and the settlement-before-grading boundary restore without double scoring.
+
+Core scoring, five-shot completion/restart, target mirroring, in-flight restore,
+malformed-metadata rejection and rendered target/score tests pass. New scripts
+join CI. Timed split-training, takeout fixtures, unlock sequences and historical
+personal statistics remain open. No physics/rules/replay compatibility changes.
+
+A complete six-end solo game passed with 96 deliveries, a declared winner,
+completed-journal replay hash equality and a working solo rematch. This full-game
+gate now joins desktop CI. The camera checkpoint's complete pipeline succeeded
+(run 40447872379); solo checkpoint c93cead's pipeline is still running.

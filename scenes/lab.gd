@@ -67,6 +67,7 @@ var scoreboard: Panel
 var gold_score: Label
 var cyan_score: Label
 var end_score: Label
+var drills: CurlDrills
 var solo: CurlSoloGame
 var play_settings: CurlPlaySettings
 var settings_shade: ColorRect
@@ -154,6 +155,8 @@ func _ready() -> void:
 	if allow_online:
 		solo = CurlSoloGame.new(self)
 		solo.create_controls()
+		drills = CurlDrills.new(self)
+		drills.create_controls()
 		move_child(play_settings, -1)
 	if allow_online:
 		button("Online rooms", Vector2(840, 30), open_online)
@@ -244,6 +247,7 @@ func create_spatial_view() -> void:
 func update_spatial(delta: float) -> void:
 	if rink == null or not spatial_view: return
 	if solo != null: solo.update_camera()
+	if drills != null: drills.update_view()
 	var aiming: bool = not run_active and phase != "Stone at rest" and frame.get("match_phase", "Calling") == "Calling"
 	rink.hand_held = pointer != -99 and not dragging_broom and not sweeping and not run_active
 	rink.pull_offset = clampf((stroke_trace[-1].y - stroke_trace[0].y) * .004, -.08, .18) if rink.hand_held and stroke_trace.size() > 1 and phase in ["Grip", "Pull", "Drive"] else 0.0
@@ -304,6 +308,7 @@ func reset(persist := true) -> void:
 	path.clear()
 	stroke_trace.clear()
 	report = ("House camera: drag the broom to aim." if spatial_view else "Drag the broom in the house.") + "\nGrip handle; pull back and push. Sideways sets aim.\nOnce sliding, nudge left/right for curl, then lift."
+	if drills != null and drills.enabled: drills.reset_round()
 	update_labels()
 	queue_redraw()
 	if match_mode:
@@ -365,6 +370,7 @@ func update_labels() -> void:
 		new_button.text = "Stone in play" if frame.in_hand.in_play else "Return to hack"
 		new_button.disabled = frame.in_hand.in_play
 	if solo != null: solo.refresh_controls()
+	if drills != null: drills.refresh_controls()
 	layout_feedback()
 
 func layout_feedback() -> void:
@@ -442,6 +448,7 @@ func switch_mode() -> void:
 	if run_active: return
 	save_practice()
 	if solo != null: solo.enabled = false
+	if drills != null: drills.enabled = false
 	match_mode = not match_mode
 	own_house = true
 	power_side = 0
@@ -481,6 +488,9 @@ func handle_point() -> Vector2:
 
 func _process(delta: float) -> void:
 	if session == null or suspended or (room_panel != null and room_panel.visible): return
+	if drills != null and drills.enabled:
+		if play_settings.visible: return
+		drills.advance()
 	if solo != null and solo.enabled:
 		if play_settings.visible: return
 		solo.advance(delta)
@@ -639,8 +649,10 @@ func begin_pointer(id: int, p: Vector2) -> void:
 	if solo != null and solo.enabled and not run_active and not solo.human_throws() and not solo.human_skips(): return
 	var controls := [camera_button, view_button, settings_button, zoom_button]
 	if solo != null: controls.append_array([solo.solo_button, solo.send_button] + solo.call_buttons)
+	if drills != null: controls.append_array([drills.menu_button, drills.start_button, drills.choice])
 	for control in controls:
 		if control != null and control.is_visible_in_tree() and control.get_global_rect().has_point(p): return
+	if drills != null and drills.enabled and drills.kind == 3 and not run_active: return
 	if match_mode and not run_active and frame.get("match_phase", "") != "Calling": return
 	if pointer != -99 or p.y > 710: return
 	if run_active:
@@ -863,6 +875,9 @@ func next_throw() -> void:
 		update_labels()
 		return
 	if session == null or run_active: return
+	if drills != null and drills.enabled:
+		drills.next_target()
+		return
 	if match_mode and frame.match_phase == "GameComplete":
 		reset()
 		return
@@ -899,10 +914,11 @@ func save_practice() -> void:
 	if not persistence_enabled or not save_allowed or session == null: return
 	var json: String = session.match_json() if match_mode else session.session_json()
 	if solo != null and solo.enabled and not json.is_empty(): json = solo.save_envelope(json)
+	if drills != null and drills.enabled and not json.is_empty(): json = drills.save_envelope(json)
 	if json.is_empty():
 		save_error("Could not encode the current session.")
 		return
-	var destination := solo.save_path if solo != null and solo.enabled else (match_save_path if match_mode else save_path)
+	var destination := drills.save_path if drills != null and drills.enabled else solo.save_path if solo != null and solo.enabled else (match_save_path if match_mode else save_path)
 	var temp := destination + ".tmp"
 	var file := FileAccess.open(temp, FileAccess.WRITE)
 	if file == null:
@@ -941,16 +957,21 @@ func restore_match() -> void:
 func restore_current(is_match: bool) -> void:
 	if not persistence_enabled: return
 	var found := false
-	var source := solo.save_path if solo != null and solo.enabled else (match_save_path if is_match else save_path)
+	var source := drills.save_path if drills != null and drills.enabled else solo.save_path if solo != null and solo.enabled else (match_save_path if is_match else save_path)
 	for filename in [source, source + ".bak"]:
 		if not FileAccess.file_exists(filename): continue
 		found = true
 		var file := FileAccess.open(filename, FileAccess.READ)
-		if file == null or file.get_length() > (20 if solo != null and solo.enabled else 16) * 1024 * 1024: continue
+		if file == null or file.get_length() > (36 if (solo != null and solo.enabled) or (drills != null and drills.enabled) else 16) * 1024 * 1024: continue
 		var json := file.get_as_text()
 		file.close()
 		var envelope: Dictionary = {}
-		if solo != null and solo.enabled:
+		if drills != null and drills.enabled:
+			var decoder := JSON.new()
+			if decoder.parse(json) != OK or not drills.valid_envelope(decoder.data): continue
+			envelope = decoder.data
+			json = envelope.session
+		elif solo != null and solo.enabled:
 			var decoder := JSON.new()
 			if decoder.parse(json) != OK: continue
 			var parsed = decoder.data
@@ -963,7 +984,7 @@ func restore_current(is_match: bool) -> void:
 			if header.rules.get("format") != ("Teams" if solo != null and solo.enabled else "MixedDoubles"): continue
 		var error: String = session.load_match(json) if is_match else session.load_session(json)
 		if not error.is_empty(): continue
-		if not envelope.is_empty(): solo.restore_metadata(envelope)
+		if not envelope.is_empty() and solo != null and solo.enabled: solo.restore_metadata(envelope)
 		var loaded: Dictionary = session.frame()
 		if is_match and loaded.get("format", "") != ("Teams" if solo != null and solo.enabled else "MixedDoubles"): continue
 		match_mode = is_match
@@ -976,6 +997,7 @@ func restore_current(is_match: bool) -> void:
 		release_report = {"speed_mm_s": int(frame.get("release_speed", 0.0) * 1000.0)}
 		report = "Delivery restored. Regrip the handle to continue from this point." if not frame.get("in_hand", {}).is_empty() else ("Match" if is_match else "Practice") + " restored. The ice and your stones are just as you left them."
 		held_last_us = -1
+		if drills != null and drills.enabled: drills.restore_metadata(envelope)
 		update_labels()
 		return
 	if found:

@@ -1,3 +1,17 @@
+Solo 4 vs 4 now lets one human play Lead, Second, Vice or Skip alongside seven AI
+players. Settings offers Club / Competitive / Elite shot accuracy and optional
+4× opponent travel between the hog lines. Skip/vice can review and send shots,
+then call HARD / CLEAN / OFF. Text and symbols always show calls; optional device
+speech uses an available English voice. Solo matches save separately.
+
+Cameras are closer to the thrower, sweeper and skip behind the broom. Settings
+adjusts field of view; Zoom / Z inspects the house. Both broom directions are
+covered by native release and camera alignment checks.
+
+Drills adds five-shot rounds for tee weight, front guards, alternating draw line
+and sweeping a light shot home. Targets, 0–3 star grading, best scores and
+interrupted-round saves use the shared physics and real settled outcomes.
+
 Early Pebble & Granite 3D feel slice. Aim the broom, grip the handle directly on
 the ice, pull back, push, hold the slide, then flick left/right to release with curl.
 Pullback and push now move the stone sideways, and the push direction affects
