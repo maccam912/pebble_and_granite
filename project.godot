@@ -7,6 +7,8 @@ boot_splash/bg_color=Color(0.043, 0.094, 0.125, 1)
 boot_splash/use_filter=true
 run/main_scene="res://scenes/play.tscn"
 config/features=PackedStringArray("4.7", "GL Compatibility")
+[audio]
+general/text_to_speech=true
 [display]
 window/size/viewport_width=1280
 window/size/viewport_height=800

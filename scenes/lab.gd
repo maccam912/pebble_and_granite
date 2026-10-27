@@ -67,7 +67,9 @@ var scoreboard: Panel
 var gold_score: Label
 var cyan_score: Label
 var end_score: Label
+var solo: CurlSoloGame
 var play_settings: CurlPlaySettings
+var settings_shade: ColorRect
 var settings_button: Button
 var zoom_button: Button
 
@@ -150,6 +152,10 @@ func _ready() -> void:
 	if spatial_view: create_spatial_view()
 	create_play_settings()
 	if allow_online:
+		solo = CurlSoloGame.new(self)
+		solo.create_controls()
+		move_child(play_settings, -1)
+	if allow_online:
 		button("Online rooms", Vector2(840, 30), open_online)
 		room_panel = CurlRoomPanel.new()
 		add_child(room_panel)
@@ -161,10 +167,22 @@ func create_play_settings() -> void:
 		play_settings.visible = not play_settings.visible)
 	settings_button.custom_minimum_size = Vector2(170, 38)
 	settings_button.size = settings_button.custom_minimum_size
+	settings_shade = ColorRect.new()
+	settings_shade.size = Vector2(1280, 800)
+	settings_shade.color = Color(0, 0, 0, .42)
+	settings_shade.mouse_filter = Control.MOUSE_FILTER_STOP
+	settings_shade.hide()
+	add_child(settings_shade)
 	play_settings = CurlPlaySettings.new()
 	play_settings.persistence_enabled = persistence_enabled
 	add_child(play_settings)
 	play_settings.changed.connect(apply_play_settings)
+	play_settings.visibility_changed.connect(func():
+		settings_shade.visible = play_settings.visible
+		if play_settings.visible:
+			play_settings.position_choice.disabled = run_active or not frame.get("in_hand", {}).is_empty()
+			move_child(settings_shade, -1)
+			move_child(play_settings, -1))
 	if rink != null:
 		zoom_button = button("Zoom · Z", Vector2(270, 134), toggle_zoom)
 		zoom_button.custom_minimum_size = Vector2(155, 40)
@@ -225,6 +243,7 @@ func create_spatial_view() -> void:
 	update_spatial(0.0)
 func update_spatial(delta: float) -> void:
 	if rink == null or not spatial_view: return
+	if solo != null: solo.update_camera()
 	var aiming: bool = not run_active and phase != "Stone at rest" and frame.get("match_phase", "Calling") == "Calling"
 	rink.hand_held = pointer != -99 and not dragging_broom and not sweeping and not run_active
 	rink.pull_offset = clampf((stroke_trace[-1].y - stroke_trace[0].y) * .004, -.08, .18) if rink.hand_held and stroke_trace.size() > 1 and phase in ["Grip", "Pull", "Drive"] else 0.0
@@ -235,6 +254,8 @@ func update_spatial(delta: float) -> void:
 	rink.delivery_aim_mm = int(held.get("aim_mm", 0)) if not held.is_empty() else int(gesture.get("aim_mm", 0))
 	rink.sliding = not held.is_empty() or phase == "Slide"
 	var brush := current_brush()
+	if solo != null and solo.enabled and run_active and solo.brush_effort() > 0:
+		if brush.is_empty(): brush = {"stone": int(frame.get("delivered", -1)), "effort": solo.brush_effort(), "ahead_mm": 180, "lateral_mm": 0, "steady": true}
 	var selected := selected_sweep_stone()
 	rink.sweep_target = int(selected.get("id", -1))
 	rink.brush_input = brush
@@ -259,7 +280,9 @@ func button(text: String, pos: Vector2, action: Callable) -> Button:
 
 func reset(persist := true) -> void:
 	if session == null: return
-	if match_mode: session.new_match(42)
+	if match_mode:
+		if solo != null and solo.enabled: session.new_team_match(42)
+		else: session.new_match(42)
 	else: session.reset(42)
 	frame = session.frame()
 	previous = frame
@@ -284,7 +307,8 @@ func reset(persist := true) -> void:
 	update_labels()
 	queue_redraw()
 	if match_mode:
-		phase = "Choose placement"
+		phase = "Ready" if solo != null and solo.enabled else "Choose placement"
+		if solo != null and solo.enabled: solo.reset_turn()
 		update_labels()
 	if persist: save_practice()
 
@@ -340,6 +364,7 @@ func update_labels() -> void:
 	if authoritative_delivery and not frame.get("in_hand", {}).is_empty():
 		new_button.text = "Stone in play" if frame.in_hand.in_play else "Return to hack"
 		new_button.disabled = frame.in_hand.in_play
+	if solo != null: solo.refresh_controls()
 	layout_feedback()
 
 func layout_feedback() -> void:
@@ -416,6 +441,7 @@ func setup_button(pos: Vector2, action: Callable) -> Button:
 func switch_mode() -> void:
 	if run_active: return
 	save_practice()
+	if solo != null: solo.enabled = false
 	match_mode = not match_mode
 	own_house = true
 	power_side = 0
@@ -455,6 +481,9 @@ func handle_point() -> Vector2:
 
 func _process(delta: float) -> void:
 	if session == null or suspended or (room_panel != null and room_panel.visible): return
+	if solo != null and solo.enabled:
+		if play_settings.visible: return
+		solo.advance(delta)
 	if match_mode and not run_active and frame.get("match_phase", "") == "Calling" and frame.get("in_hand", {}).is_empty():
 		clock_remainder += delta * 1000.0
 		var elapsed := mini(int(clock_remainder), 60000)
@@ -465,15 +494,23 @@ func _process(delta: float) -> void:
 		if frame.global_tick - last_save_tick >= 240: save_practice()
 	if run_active:
 		# Retain all time debt. Never change fixed dt or silently skip ticks.
-		accumulator += delta
+		var fast := solo != null and solo.fast_forwarding()
+		accumulator += delta * (4.0 if fast else 1.0)
 		var steps := mini(int(accumulator * 240.0), 64)
+		if fast: steps = solo.fast_step_limit(steps)
 		if steps > 0:
 			previous = frame
 			var brush := current_brush()
-			var error: String = session.step_brush_ticks(steps, int(brush.get("stone", 0)), int(brush.get("effort", 0)), int(brush.get("lateral_mm", 0)), int(brush.get("ahead_mm", 180)))
+			var error: String
+			if solo != null and solo.enabled:
+				var human_effort := int(brush.get("effort", 0)) if solo.shot_team == 0 else 0
+				error = session.step_solo_ticks(steps, int(frame.get("delivered", 0)), human_effort, int(brush.get("lateral_mm", 0)), int(brush.get("ahead_mm", 180)), solo.brush_effort())
+			else:
+				error = session.step_brush_ticks(steps, int(brush.get("stone", 0)), int(brush.get("effort", 0)), int(brush.get("lateral_mm", 0)), int(brush.get("ahead_mm", 180)))
 			if not error.is_empty(): report = error
 			accumulator -= float(steps) / 240.0
 			frame = session.frame()
+			if fast and not solo.fast_forwarding(): accumulator = 0.0
 			if not frame.stones.is_empty():
 				if not delivered_stone().is_empty(): path.append(delivered_stone().position)
 			if frame.resting:
@@ -599,7 +636,10 @@ func units(p: Vector2) -> Vector2i:
 
 func begin_pointer(id: int, p: Vector2) -> void:
 	if play_settings != null and play_settings.visible: return
-	for control in [camera_button, view_button, settings_button, zoom_button]:
+	if solo != null and solo.enabled and not run_active and not solo.human_throws() and not solo.human_skips(): return
+	var controls := [camera_button, view_button, settings_button, zoom_button]
+	if solo != null: controls.append_array([solo.solo_button, solo.send_button] + solo.call_buttons)
+	for control in controls:
 		if control != null and control.is_visible_in_tree() and control.get_global_rect().has_point(p): return
 	if match_mode and not run_active and frame.get("match_phase", "") != "Calling": return
 	if pointer != -99 or p.y > 710: return
@@ -617,7 +657,7 @@ func begin_pointer(id: int, p: Vector2) -> void:
 	if (not authoritative_delivery or frame.get("in_hand", {}).is_empty()) and p.distance_to(broom_screen_point()) < 55:
 		pointer = id
 		dragging_broom = true
-	elif phase == "Ready" and p.distance_to(handle_point()) < 80:
+	elif phase == "Ready" and (solo == null or not solo.enabled or solo.human_throws()) and p.distance_to(handle_point()) < 80:
 		pointer = id
 		var q := units(p)
 		if authoritative_delivery and not frame.get("in_hand", {}).is_empty():
@@ -760,6 +800,8 @@ func delivered_stone() -> Dictionary:
 	return {}
 
 func sweep_seat() -> int:
+	if solo != null and solo.enabled:
+		return solo.human_position() if solo.shot_team == 0 else -2
 	return int(frame.get("team", 0)) * 2 + int(frame.get("thrower", 0)) if match_mode else -1
 
 func selected_sweep_stone() -> Dictionary:
@@ -831,7 +873,8 @@ func next_throw() -> void:
 		previous = frame
 		power_side = 0
 		own_house = true
-		phase = "Choose placement"
+		phase = "Ready" if solo != null and solo.enabled else "Choose placement"
+		if solo != null and solo.enabled: solo.reset_turn()
 		path.clear()
 		stroke_trace.clear()
 		update_labels()
@@ -855,10 +898,11 @@ Fresh ice starts a new practice session."
 func save_practice() -> void:
 	if not persistence_enabled or not save_allowed or session == null: return
 	var json: String = session.match_json() if match_mode else session.session_json()
+	if solo != null and solo.enabled and not json.is_empty(): json = solo.save_envelope(json)
 	if json.is_empty():
 		save_error("Could not encode the current session.")
 		return
-	var destination := match_save_path if match_mode else save_path
+	var destination := solo.save_path if solo != null and solo.enabled else (match_save_path if match_mode else save_path)
 	var temp := destination + ".tmp"
 	var file := FileAccess.open(temp, FileAccess.WRITE)
 	if file == null:
@@ -897,22 +941,38 @@ func restore_match() -> void:
 func restore_current(is_match: bool) -> void:
 	if not persistence_enabled: return
 	var found := false
-	var source := match_save_path if is_match else save_path
+	var source := solo.save_path if solo != null and solo.enabled else (match_save_path if is_match else save_path)
 	for filename in [source, source + ".bak"]:
 		if not FileAccess.file_exists(filename): continue
 		found = true
 		var file := FileAccess.open(filename, FileAccess.READ)
-		if file == null or file.get_length() > 16 * 1024 * 1024: continue
+		if file == null or file.get_length() > (20 if solo != null and solo.enabled else 16) * 1024 * 1024: continue
 		var json := file.get_as_text()
 		file.close()
+		var envelope: Dictionary = {}
+		if solo != null and solo.enabled:
+			var decoder := JSON.new()
+			if decoder.parse(json) != OK: continue
+			var parsed = decoder.data
+			if not solo.valid_envelope(parsed): continue
+			envelope = parsed
+			json = envelope.match
+		if is_match:
+			var header = JSON.parse_string(json)
+			if not header is Dictionary or not header.get("rules") is Dictionary: continue
+			if header.rules.get("format") != ("Teams" if solo != null and solo.enabled else "MixedDoubles"): continue
 		var error: String = session.load_match(json) if is_match else session.load_session(json)
 		if not error.is_empty(): continue
+		if not envelope.is_empty(): solo.restore_metadata(envelope)
+		var loaded: Dictionary = session.frame()
+		if is_match and loaded.get("format", "") != ("Teams" if solo != null and solo.enabled else "MixedDoubles"): continue
 		match_mode = is_match
-		frame = session.frame()
+		frame = loaded
 		previous = frame
 		run_active = frame.match_phase == "InFlight" if is_match else not frame.resting
 		phase = "Travel" if run_active else "Ready"
 		last_save_tick = frame.global_tick
+		if solo != null and solo.enabled: solo.reset_turn()
 		release_report = {"speed_mm_s": int(frame.get("release_speed", 0.0) * 1000.0)}
 		report = "Delivery restored. Regrip the handle to continue from this point." if not frame.get("in_hand", {}).is_empty() else ("Match" if is_match else "Practice") + " restored. The ice and your stones are just as you left them."
 		held_last_us = -1

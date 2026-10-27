@@ -5,6 +5,7 @@ use serde::{Deserialize, Serialize};
 use std::collections::{BTreeMap, VecDeque};
 use std::sync::Arc;
 
+pub mod ai;
 #[cfg(test)]
 mod brushing_tests;
 pub mod delivery;

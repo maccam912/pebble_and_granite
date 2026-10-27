@@ -9,9 +9,11 @@ func allowed(stone: Dictionary, frame: Dictionary, seat: int) -> bool:
 	if not stone.get("active", false) or stone.get("speed", 0.0) <= 0: return false
 	if seat == -1: return true # Practice controls every stone.
 	if seat < 0: return false
-	var team := int(seat / 2)
+	var seats := 4 if frame.get("format", "MixedDoubles") == "Teams" else 2
+	var team := int(seat / seats)
+	if seats == 4 and stone.id != frame.get("delivered", -1): return false
 	if stone.position.y < 0: return stone.team == team
-	return team == frame.get("team", -1) or seat % 2 == 1
+	return team == frame.get("team", -1) or seat % seats == seats - 1
 
 func selected(frame: Dictionary, seat: int, held := false) -> Dictionary:
 	for stone in frame.get("stones", []):

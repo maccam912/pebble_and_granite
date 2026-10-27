@@ -40,8 +40,9 @@ Next priorities, in order:
 2. Physical Android and trackpad feel/latency tests; tune gains and camera/body
    presentation with curlers. Emulator and synthetic input tests cannot approve feel.
 3. Measured real-ice/contact/curl calibration and a complete rules clause audit.
-4. Quick calls and teammate roles, then drills/AI and broader game modes; polished
-   art/audio, career content and store publishing are later work.
+4. Solo teams, rated AI, role cameras and visible calls now have an initial
+   implementation; see docs/AI_PROGRESS.md and docs/SOLO_TEAMS.md. Target drills,
+   ice notes, richer strategy and broader game modes are the next design work.
 
 Compatibility: older rules-3 match files are preserved but rejected. Model-3
 practice saves still load. New constants/mapping require explicit version review;
@@ -63,7 +64,8 @@ the current listen-server slice; publisher signing/physical devices remain open.
 - [x] Installed Android golden/JNI probe using the one-use debug request route.
 - [x] Direct-on-ice 3D delivery/cameras, finishing flick, and local held saves.
 - [x] Initial spatial scrubbing and eligible moving-stone selection.
-- [ ] Measured calibration/performance, human feel approval and AI.
+- [x] Initial solo four-player teams, rated AI execution and accessible skip calls.
+- [ ] Measured calibration/performance, human feel approval and advanced AI.
 
 Latest local gates: 108 core Rust tests (plus four native transport identity/retry tests), shared golden traces, Godot input/practice/match
 save/full-game fixtures. Live network probes are separate from offline CI because
@@ -976,3 +978,28 @@ without another request. At the last CI check, 63e8f0b's four core platform jobs
 and Linux package passed; the other exports were still running. Run 40371904714
 for 12849e6 was pending. Final notes/tests will trigger another run on push;
 remote publication of this milestone is not claimed verified.
+
+## Solo teams and role cameras (26 October 2026)
+
+New user authorization resumes development through a below-50%-weekly-remaining
+cutoff, with regular commits/pushes. Starting usage was 81% remaining. Camera
+checkpoint 748adb8 adds saved FOV, inspection zoom and closer role views; native
+release/projection tests confirm both broom signs are correct.
+
+Solo teams now assign one human position and seven AI players. Six-end club
+matches use the existing rules, authority and accepted-command journals. A native
+worker inverse-solves draws/guards/hits and evaluates the actual board; three
+execution tiers vary speed/line/rotation scatter. Skip (vice for skip's stones)
+can approve the shot and call HARD/CLEAN/OFF. Other positions throw their two
+stones and sweep for teammates with visible/symbol calls. Optional device voice
+supports audible calls when available. Settings also enables opponent-only 4×
+watching between the hog lines. Solo save/backup is separate and includes the
+called target, human role and difficulty.
+
+Full-end, restored journal, role/call, save/backup and fast-watching hash equality
+gates pass. Inverse target and actual landing scatter tests pass. Core/golden,
+all-target Clippy and desktop regression gates pass; rendered desktop/mobile-sized
+views inspected. Physical Android/latency/feel and remote release publication of
+this checkpoint are separate gates. Current team brushes are combined per team;
+individual team fatigue/brush IDs and advanced multi-ply/learning AI remain open.
+See docs/AI_PROGRESS.md for the live work order. Usage last checked: 80% remaining.

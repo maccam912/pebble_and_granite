@@ -36,7 +36,12 @@ and brush position matters. Tap another eligible moving stone to select it. A go
 disc marks the selection, and the Sweeper camera follows it. The **Hold to sweep**
 button follows the selected stone at steady effort. Lift to stop.
 Next stone retains the field and evolving ice; Fresh ice starts a new session.
-Practice saves automatically, including held slides and interrupted shots, with a previous-save backup. Choose Mixed doubles for a local pass-and-play game: select positioned stones, power plays and first/last throwers, then play through scoring and extra ends. Local matches autosave separately from practice; choose Mixed doubles again to resume, including interrupted shots. Choose Online rooms to host or join by four-character code. Four players ready up for online mixed doubles; the host stays open. Both teammates
+Practice saves automatically, including held slides and interrupted shots, with a previous-save backup. Choose **Solo 4 vs 4** to play one position with seven AI players. Settings
+selects your position, three AI accuracy tiers, spoken calls and optional 4×
+opponent travel between the hog lines. Skip/vice can send called shots and call
+HARD/CLEAN/OFF; text and symbols support silent play. Solo matches save separately.
+See [solo teams](docs/SOLO_TEAMS.md) for controls and current AI scope.
+Choose Mixed doubles for a local pass-and-play game: select positioned stones, power plays and first/last throwers, then play through scoring and extra ends. Local matches autosave separately from practice; choose Mixed doubles again to resume, including interrupted shots. Choose Online rooms to host or join by four-character code. Four players ready up for online mixed doubles; the host stays open. Both teammates
 may sweep before the far tee, with per-player fatigue; only one contributes per
 team behind it. Online play is an early prototype: four local peers pass full-game, rematch and in-flight reconnect tests, while cross-device match and Android latency/feel testing remain open. Reconnect recovery runs in the background with visible progress. Held deliveries
 freeze during interruptions and wait for the thrower to regrip after synchronization.

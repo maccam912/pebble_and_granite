@@ -9,6 +9,30 @@ use curl_proto::session::SessionLog;
 use curl_rules::{Phase, PowerPlay, Rules};
 use curl_sim::{Release, Sweep};
 use godot::prelude::*;
+#[derive(PartialEq, Eq)]
+struct AiContext {
+    end: u8,
+    delivered: u8,
+    stones: Vec<curl_sim::Stone>,
+    ice: curl_sim::Ice,
+}
+impl AiContext {
+    fn of(game: &RecordedMatch) -> Self {
+        Self {
+            end: game.game.end,
+            delivered: game.game.delivered,
+            stones: game.sim.stones.clone(),
+            ice: game.sim.ice.clone(),
+        }
+    }
+    fn matches(&self, game: &RecordedMatch) -> bool {
+        game.game.phase == Phase::Calling && game.in_hand.is_none() && *self == Self::of(game)
+    }
+}
+struct AiTask {
+    context: AiContext,
+    worker: std::thread::JoinHandle<Result<curl_match::ai::Plan, &'static str>>,
+}
 struct Extension;
 #[gdextension]
 unsafe impl ExtensionLibrary for Extension {}
@@ -16,6 +40,9 @@ unsafe impl ExtensionLibrary for Extension {}
 #[derive(GodotClass)]
 #[class(base=RefCounted)]
 pub struct CurlSession {
+    ai_task: Option<AiTask>,
+    ai_plan: Option<(AiContext, curl_match::ai::Plan)>,
+    solo_target: V2,
     practice: Practice,
     game: Option<RecordedMatch>,
     match_release_speed: Fx,
@@ -27,6 +54,9 @@ pub struct CurlSession {
 impl IRefCounted for CurlSession {
     fn init(base: Base<RefCounted>) -> Self {
         Self {
+            ai_task: None,
+            ai_plan: None,
+            solo_target: V2::ZERO,
             practice: Practice::new(42),
             game: None,
             match_release_speed: Fx::ZERO,
@@ -43,6 +73,8 @@ fn render(n: Fx) -> f64 {
 impl CurlSession {
     #[func]
     fn reset(&mut self, seed: i64) {
+        self.ai_task = None;
+        self.ai_plan = None;
         self.game = None;
         self.practice = Practice::new(seed as u64);
         self.stroke.cancel();
@@ -65,6 +97,7 @@ impl CurlSession {
         self.apply_delivery(r)
     }
     fn apply_delivery(&mut self, mut r: Release) -> GString {
+        self.solo_target = V2::ZERO;
         let id = if let Some(a) = &self.game {
             a.game.next_stone_id()
         } else {
@@ -194,6 +227,7 @@ impl CurlSession {
             });
             if result.is_ok() {
                 self.match_release_speed = game.last_release_speed();
+                self.solo_target = V2::ZERO;
             }
             result
         } else {
@@ -373,6 +407,8 @@ impl CurlSession {
             self.practice.next_id().is_some(),
         );
         frame.set("in_hand", &pending_frame(self.pending().as_ref()));
+        frame.set("solo_target_x_mm", rounded_mm(self.solo_target.x));
+        frame.set("solo_target_y_mm", rounded_mm(self.solo_target.y));
         if self.game.is_none() {
             frame.set(
                 "team",
@@ -471,6 +507,9 @@ impl CurlSession {
         match RecordedMatch::parse(json.to_string().as_bytes()) {
             Ok(game) => {
                 self.match_release_speed = game.last_release_speed();
+                self.ai_task = None;
+                self.ai_plan = None;
+                self.solo_target = V2::ZERO;
                 self.game = Some(game);
                 self.stroke.cancel();
                 GString::new()
@@ -491,10 +530,169 @@ impl CurlSession {
     }
     #[func]
     fn new_match(&mut self, seed: i64) {
+        self.ai_task = None;
+        self.ai_plan = None;
         self.game =
             Some(RecordedMatch::new(seed as u64, Rules::mixed(), 1).expect("built-in rules valid"));
         self.match_release_speed = Fx::ZERO;
         self.stroke.cancel();
+    }
+    #[func]
+    fn new_team_match(&mut self, seed: i64) {
+        self.ai_task = None;
+        self.ai_plan = None;
+        self.solo_target = V2::ZERO;
+        self.game =
+            Some(RecordedMatch::new(seed as u64, Rules::club(), 1).expect("built-in rules valid"));
+        self.match_release_speed = Fx::ZERO;
+        self.stroke.cancel();
+    }
+    /// Planning runs on a native worker; no Godot objects cross the thread.
+    #[func]
+    fn request_ai_plan(&mut self) -> GString {
+        let Some(game) = &self.game else {
+            return "No match".into();
+        };
+        if game.game.phase != Phase::Calling || game.in_hand.is_some() {
+            return "AI planning requires a ready delivery".into();
+        }
+        if self.ai_task.is_some() {
+            return GString::new();
+        }
+        let authority: curl_match::Authority = (**game).clone();
+        self.ai_plan = None;
+        self.ai_task = Some(AiTask {
+            context: AiContext::of(game),
+            worker: std::thread::spawn(move || curl_match::ai::plan(&authority)),
+        });
+        GString::new()
+    }
+    #[func]
+    fn poll_ai_plan(&mut self) -> VarDictionary {
+        let mut result = VarDictionary::new();
+        if self
+            .ai_task
+            .as_ref()
+            .is_none_or(|task| !task.worker.is_finished())
+        {
+            return result;
+        }
+        let task = self.ai_task.take().expect("checked task");
+        let Ok(shot) = task.worker.join() else {
+            result.set("error", "AI planner worker failed");
+            return result;
+        };
+        if self
+            .game
+            .as_ref()
+            .is_none_or(|game| !task.context.matches(game))
+        {
+            result.set("error", "AI plan no longer matches this delivery");
+            return result;
+        }
+        match shot {
+            Ok(plan) => {
+                result.set("kind", plan.kind.name());
+                result.set("broom_mm", plan.broom_mm);
+                result.set("speed_mm_s", plan.speed_mm_s);
+                result.set("turn", plan.turn);
+                self.ai_plan = Some((task.context, plan));
+            }
+            Err(error) => result.set("error", error),
+        }
+        result
+    }
+    #[func]
+    fn execute_ai_plan(&mut self, broom_mm: i64, turn: i64, level: i64) -> GString {
+        if !(-2200..=2200).contains(&broom_mm)
+            || ![-1, 1].contains(&turn)
+            || !(0..=2).contains(&level)
+        {
+            return "Invalid AI execution settings".into();
+        }
+        let Some(game) = &self.game else {
+            return "No match".into();
+        };
+        let Some((context, mut plan)) = self.ai_plan.take() else {
+            return "No AI shot planned".into();
+        };
+        if !context.matches(game) {
+            return "Delivery not ready or AI plan is stale".into();
+        }
+        plan.broom_mm = broom_mm;
+        plan.turn = turn;
+        let target = plan.target;
+        let seed = game.sim.ice.seed
+            ^ ((game.game.end as u64) << 32)
+            ^ (game.game.delivered as u64 + 1).wrapping_mul(0x9e3779b97f4a7c15);
+        let error = self.apply_delivery(plan.execute(ai_level(level), seed));
+        if error.is_empty() {
+            self.solo_target = target;
+        }
+        error
+    }
+    #[func]
+    fn set_solo_target(&mut self, x_mm: i64, y_mm: i64) -> GString {
+        if !(-2200..=2200).contains(&x_mm) || !(-5000..=1800).contains(&y_mm) {
+            return "Invalid saved shot target".into();
+        }
+        self.solo_target = V2::new(Fx::ratio(x_mm, 1000), Fx::ratio(y_mm, 1000));
+        GString::new()
+    }
+    #[func]
+    fn solo_advice(&self, level: i64) -> VarDictionary {
+        let mut result = VarDictionary::new();
+        if let Some(game) = &self.game {
+            let (effort, zone) =
+                curl_match::ai::advice(&game.sim, self.solo_target, ai_level(level));
+            result.set("effort", effort as i64);
+            result.set("zone", zone as i64);
+        }
+        result
+    }
+    /// Team play currently uses one combined brush per team. Keep this existing
+    /// journal interpretation rather than changing historical brush identities.
+    #[func]
+    fn step_solo_ticks(
+        &mut self,
+        count: i64,
+        stone: i64,
+        human_effort: i64,
+        lateral_mm: i64,
+        ahead_mm: i64,
+        ai_effort: i64,
+    ) -> GString {
+        if !(0..=64).contains(&count)
+            || !(0..16).contains(&stone)
+            || !(0..=255).contains(&human_effort)
+            || !(0..=255).contains(&ai_effort)
+            || !(-350..=350).contains(&lateral_mm)
+            || !(80..=700).contains(&ahead_mm)
+        {
+            return "Invalid solo brush input".into();
+        }
+        let Some(game) = &mut self.game else {
+            return "No match".into();
+        };
+        let effort = (human_effort + ai_effort).min(255) as u8;
+        let input = Sweep {
+            stone: stone as u8,
+            brush: 0,
+            effort,
+            lateral_mm: lateral_mm as i16,
+            ahead_mm: ahead_mm as u16,
+        };
+        game.advance_targeted(
+            count as u32,
+            Seat {
+                team: game.game.delivering_team(),
+                position: game.game.throwing_seat(),
+            },
+            Some(input),
+        )
+        .err()
+        .unwrap_or("")
+        .into()
     }
     #[func]
     fn place_match(&mut self, own_house: bool, side: i64) -> GString {
@@ -692,6 +890,7 @@ pub(crate) fn presentation_frame(
     frame.set("in_hand", &held_frame);
     if let Some(a) = game {
         frame.set("release_speed", render(release_speed));
+        frame.set("format", format!("{:?}", a.game.rules.format));
         frame.set("match_phase", format!("{:?}", a.game.phase));
         frame.set("end", a.game.end as i64);
         frame.set("scheduled_ends", a.game.rules.ends as i64);
@@ -722,6 +921,19 @@ pub(crate) fn presentation_frame(
         );
     }
     frame
+}
+
+fn rounded_mm(value: Fx) -> i64 {
+    let raw = value.raw() as i128 * 1000;
+    ((raw + raw.signum() * (1_i128 << 31)) / (1_i128 << 32)) as i64
+}
+
+fn ai_level(level: i64) -> curl_match::ai::Difficulty {
+    match level {
+        0 => curl_match::ai::Difficulty::Club,
+        2 => curl_match::ai::Difficulty::Elite,
+        _ => curl_match::ai::Difficulty::Competitive,
+    }
 }
 
 pub(crate) fn input_release(

@@ -5,6 +5,7 @@ signal changed
 signal closed
 var fov := 52.0
 var fast_opponents := false
+var spoken_calls := true
 var difficulty := 1
 var human_position := 0
 var persistence_enabled := true
@@ -17,12 +18,13 @@ const PATH := "user://play-settings.cfg"
 const POSITIONS := ["Lead", "Second", "Vice", "Skip"]
 
 func _ready() -> void:
-	position = Vector2(360, 160)
-	size = Vector2(560, 480)
+	position = Vector2(360, 128)
+	size = Vector2(560, 544)
 	add_theme_stylebox_override("panel", CurlPresentation.surface(Color("11252f"), CurlPresentation.GOLD, 12))
 	var config := ConfigFile.new()
 	if persistence_enabled and config.load(PATH) == OK:
 		fov = clampf(float(config.get_value("view", "fov", 52.0)), 40, 85)
+		spoken_calls = bool(config.get_value("audio", "spoken_calls", true))
 		fast_opponents = bool(config.get_value("solo", "fast_opponents", false))
 		difficulty = clampi(int(config.get_value("solo", "difficulty", 1)), 0, 2)
 		human_position = clampi(int(config.get_value("solo", "position", 0)), 0, 3)
@@ -60,11 +62,18 @@ func _ready() -> void:
 	position_choice.select(human_position)
 	position_choice.item_selected.connect(func(value): human_position = value; update_preferences())
 	add_child(position_choice)
-	var note := label("Text and symbols always show skip calls.\nZ or the Zoom button inspects the house.", Vector2(24, 352))
+	var speech := CheckButton.new()
+	speech.text = "Spoken skip calls (device voice, if available)"
+	speech.position = Vector2(18, 346)
+	speech.size = Vector2(524, 48)
+	speech.button_pressed = spoken_calls
+	speech.toggled.connect(func(value): spoken_calls = value; update_preferences())
+	add_child(speech)
+	var note := label("Text and symbols always show skip calls.\nZ or the Zoom button inspects the house.", Vector2(24, 410))
 	note.add_theme_font_size_override("font_size", 17)
 	var done := Button.new()
 	done.text = "Done"
-	done.position = Vector2(364, 414)
+	done.position = Vector2(364, 482)
 	done.size = Vector2(172, 48)
 	done.pressed.connect(func(): hide(); closed.emit())
 	add_child(done)
@@ -86,6 +95,7 @@ func update_preferences() -> void:
 	if persistence_enabled:
 		var config := ConfigFile.new()
 		config.set_value("view", "fov", fov)
+		config.set_value("audio", "spoken_calls", spoken_calls)
 		config.set_value("solo", "fast_opponents", fast_opponents)
 		config.set_value("solo", "difficulty", difficulty)
 		config.set_value("solo", "position", human_position)

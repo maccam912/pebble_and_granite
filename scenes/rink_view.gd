@@ -409,6 +409,7 @@ func render_frame(frame: Dictionary, running: bool, sweep: bool, broom_mm: int, 
 	var selected: String = MODES[mode]
 	if selected == "Auto": selected = role_camera if not role_camera.is_empty() else ("Sweeper" if running and has_followed else ("Delivery" if aiming else "House"))
 	if selected == "Sweeper" and not has_followed: selected = "Delivery"
+	broom.visible = not running or selected == "Skip"
 	set_camera(selected, followed)
 func delivery_heading() -> Vector3:
 	# Match the native release ray from the held origin to the selected broom.
