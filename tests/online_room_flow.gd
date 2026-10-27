@@ -23,6 +23,7 @@ func cleanup() -> void:
 		await panel.leave()
 		panel.queue_free()
 		DirAccess.remove_absolute(ProjectSettings.globalize_path(identity))
+		CurlRoomResume.forget(identity)
 	await process_frame
 func run() -> void:
 	for i in range(4):

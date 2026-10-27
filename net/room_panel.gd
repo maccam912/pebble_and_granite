@@ -15,6 +15,9 @@ var ready_button: Button
 var start_button: Button
 var renew_button: Button
 var reconnect_button: Button
+var forget_button: Button
+var persistence_enabled := true
+var saved_address := ""
 var code := ""
 var token := ""
 var expires := 0
@@ -78,8 +81,26 @@ func _ready() -> void:
 	renew_button = action("New room code", Vector2(480, 478), register_code)
 	reconnect_button = action("Reconnect", Vector2(275, 548), reconnect)
 	action("Leave / back", Vector2(30, 548), leave)
+	forget_button = action("Forget room", Vector2(480, 548), forget_room)
+	if persistence_enabled:
+		last_address = CurlRoomResume.read(room.identity_path).get("endpoint", "")
+		saved_address = last_address
+		if not last_address.is_empty(): message.text = "Reconnect to reclaim your seat in the last room, if its host is still open."
 	room.changed.connect(refresh)
-	room.failed.connect(func(error: String): message.text = error; refresh())
+	room.failed.connect(connection_failed)
+	refresh()
+
+func connection_failed(error: String) -> void:
+	message.text = error
+	if not last_address.is_empty(): message.text += ". Reconnect when the host is available, or join a new room."
+	refresh()
+
+func forget_room() -> void:
+	if room.peer != null or busy: return
+	if persistence_enabled: CurlRoomResume.forget(room.identity_path)
+	last_address = ""
+	saved_address = ""
+	message.text = "Previous room forgotten. Create a room or enter a new code."
 	refresh()
 func label_at(text: String, pos: Vector2, size_px: int) -> Label:
 	var label := Label.new()
@@ -164,6 +185,11 @@ func start_match() -> void:
 func refresh() -> void:
 	if body == null: return
 	var connected := room.peer != null
+	# Save only an admitted connection, never an unresolved/failed join attempt.
+	if persistence_enabled and connected and not room.is_host and room.seat_index() >= 0 and room.endpoint != saved_address:
+		saved_address = room.endpoint
+		if not CurlRoomResume.save(room.identity_path, room.endpoint):
+			message.text = "Connected, but the reconnect shortcut could not be saved. Keep the host's room code."
 	host_button.disabled = busy or connected
 	join_button.disabled = busy or connected
 	code_input.editable = not busy and not connected
@@ -172,6 +198,9 @@ func refresh() -> void:
 	start_button.disabled = room.state.get("phase") == null and (not room.is_host or room.state.get("players", []).size() != 4 or not room.state.players.all(func(p): return p != null and p.ready))
 	renew_button.disabled = busy or not room.is_host
 	reconnect_button.visible = not connected and not last_address.is_empty()
+	reconnect_button.disabled = busy
+	forget_button.visible = reconnect_button.visible
+	forget_button.disabled = busy
 	heading.text = "ROOM " + code if not code.is_empty() else "ONLINE MIXED DOUBLES"
 	var rows := PackedStringArray()
 	for index in range(4):

@@ -184,6 +184,7 @@ func _ready() -> void:
 	if allow_online:
 		online_button = button("Online rooms", Vector2(840, 30), open_online)
 		room_panel = CurlRoomPanel.new()
+		room_panel.persistence_enabled = persistence_enabled
 		add_child(room_panel)
 		room_panel.hide()
 	match_readout = CurlMatchReadout.new()

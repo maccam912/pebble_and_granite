@@ -44,6 +44,14 @@ func run() -> void:
 	game.set_process(false)
 	check(game.house_button.disabled and game.cyan_order.disabled and not game.gold_order.disabled, "Seat ownership not reflected by setup controls")
 	check(not game.persistence_enabled and not game.allow_online, "Online view enabled local persistence")
+	var paused_state: Dictionary = online.state.duplicate(true)
+	online.state.paused = true
+	online.state.players[1].peer = null
+	game.refresh_online()
+	check("Gold player 2 to reconnect" in game.report_label.text, "Paused game did not explain missing player")
+	check(game.report_label.visible and game.feedback_bg.visible, "Pause explanation hidden")
+	online.state = paused_state
+	game.refresh_online()
 	var command := {"epoch": 1, "sequence": 1, "command": {"kind": "Place", "own_house": true, "side": "None"}}
 	check(online.authority.command_peer(3, JSON.stringify(command).to_utf8_buffer()).is_empty(), "Placement fixture failed")
 	online.flush_commits()

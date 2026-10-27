@@ -1,3 +1,8 @@
+Online clients can now reopen the app and use Reconnect to reclaim their seat
+while the original host remains open. Forget room clears the saved shortcut.
+Paused matches explain which players need to reconnect or synchronize. Desktop
+four-peer held-delivery recovery passes; installed Android recovery remains open.
+
 New solo matches now have two visible sweepers with individual effort and fatigue.
 Your brush stays manual while your partner follows the skip's calls. Player roles
 rotate with the thrower; the call panel names the active sweepers and shows when

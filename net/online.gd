@@ -392,3 +392,12 @@ func rematch() -> String:
 		sequence = 0
 		broadcast_state()
 	return result
+
+func pause_reason() -> String:
+	var waiting: PackedStringArray = []
+	for index in range(state.get("players", []).size()):
+		var player = state.players[index]
+		var name := "%s player %d" % ["Gold" if index < 2 else "Cyan", index % 2 + 1]
+		if player == null or player.peer == null: waiting.append(name + " to reconnect")
+		elif not player.get("synchronized", false): waiting.append(name + " to synchronize")
+	return "Waiting for " + ", ".join(waiting) + ". Match and clocks are paused." if not waiting.is_empty() else "Synchronizing the match. Play will resume when everyone is ready."

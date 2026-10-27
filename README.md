@@ -76,7 +76,9 @@ splits, observed curl and delivery totals by position. Select a path to save a
 short ice note. Opening it pauses local play; online boards are future work.
 Choose Mixed doubles for a local pass-and-play game: select positioned stones, power plays and first/last throwers, then play through scoring and extra ends. Local matches autosave separately from practice; choose Mixed doubles again to resume, including interrupted shots. Choose Online rooms to host or join by four-character code. Four players ready up for online mixed doubles; the host stays open. Both teammates
 may sweep before the far tee, with per-player fatigue; only one contributes per
-team behind it. Online play is an early prototype: four local peers pass full-game, rematch and in-flight reconnect tests, while cross-device match and Android latency/feel testing remain open. Reconnect recovery runs in the background with visible progress. Held deliveries
+team behind it. Online play is an early prototype: four local peers pass full-game, rematch and in-flight reconnect tests, while cross-device match and Android latency/feel testing remain open. Reconnect recovery runs in the background with visible progress. A saved Reconnect
+shortcut survives client restarts while the host stays open; Forget room removes
+it. Paused play identifies which players are missing or synchronizing. Held deliveries
 freeze during interruptions and wait for the thrower to regrip after synchronization.
 
 ## Downloaded macOS builds

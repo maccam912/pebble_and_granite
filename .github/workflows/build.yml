@@ -114,6 +114,7 @@ jobs:
           python tools/godot.py --headless --path . --script tests/installed_ui_probe.gd
           python tools/godot.py --headless --path . --script tests/replica.gd
           python tools/godot.py --headless --path . --script tests/online_ui.gd
+          python tools/godot.py --headless --path . --script tests/room_resume.gd
           python tools/godot.py --headless --path . --script tests/rink_view.gd
           python tools/godot.py --headless --path . --script tests/accessibility.gd
           python tools/godot.py --headless --path . --script tests/ice_board.gd

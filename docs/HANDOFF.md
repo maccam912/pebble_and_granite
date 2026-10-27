@@ -102,8 +102,27 @@ tests; physical-device feel is the third item and needs user participation.
    drill touch flows with exact desktop journal replay and unchanged normal saves.
    Its journal includes separate Gold/Cyan sweepers; call panel capture inspected.
    Emulator stopped; exact provenance is in ANDROID_INPUT.md.
-9. Next: online scope and recovery. Physical feel (3) and coefficient fitting (7)
-   remain pending the requested human feedback and measured data.
+9. Online recovery checkpoint: admitted clients retain a compatible endpoint
+   shortcut across app restarts, with Reconnect and Forget room controls. Seat
+   ownership still uses the persistent authenticated identity; the host must stay
+   open. Paused play names missing/unsynchronized players. Native four-peer test
+   destroys/recreates a client during a held slide, reclaims the same seat and
+   matches the frozen state hash without releasing before regrip. Storage/Forget/
+   malformed/version and pause text tests pass, plus online UI, menu and replica
+   regressions. Reconnect panel capture inspected. Desktop CI includes the
+   deterministic test. Installed Android recovery remains unverified; current
+   clean installed Android package 84 is the preceding sweeper checkpoint.
+   Remaining item-9 scope: AI replacement seats, shared calls/ice board, host
+   persistence/migration and cross-device match validation. Do not treat this
+   focused recovery improvement as completion of all online work.
+
+Stopped at the user's weekly cutoff: 51% used / 49% remaining. No work started on
+items 10–14. Physical feel (3) and coefficient fitting (7) remain pending requested
+human feedback and measured data. Latest local source checks pass; remote pipeline
+40566109131 (281963c) has four core jobs plus Windows/Linux/Android packages passed,
+with macOS still running at the stop. Newer pushes await the workflow concurrency
+slot; final source CI is not claimed complete. Last fully passed pipeline inspected
+was 40561065597 (40b6b7a). The dedicated Android emulator is stopped.
 
 ## Current state
 

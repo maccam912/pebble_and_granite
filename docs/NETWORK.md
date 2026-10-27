@@ -220,3 +220,29 @@ and existing saves retain their original input records. The host still determine
 brush identity, tee permissions, retiming and the single contributor behind tee.
 Scrub pauses decay to zero within 200 ms; lifting/focus loss clears local intent.
 Already accepted online spans may finish their bounded twelve-tick tail.
+
+## Reconnect after restarting a client — 27 October 2026
+
+An admitted client saves a small reconnect shortcut alongside its persistent
+player identity. Reopen Online rooms and choose Reconnect to reclaim the reserved
+seat while the original host is still running. No room-code lookup is needed,
+so expiry of the four-character code does not prevent this recovery. Forget room
+removes the shortcut without deleting the player identity. Joining a new room
+replaces the shortcut only after admission. Reopening the panel never connects
+without the player's action. Diagnostic/nonpersistent scenes do not read or write
+this preference.
+
+The shortcut contains a public host endpoint and a compatibility fingerprint,
+not the match or authority. Malformed, oversized and incompatible shortcuts are
+ignored. The authenticated persistent Iroh key remains the seat proof. A host
+restart still ends its foreground room: host migration, server-side persistence,
+AI replacement seats, online shot calls and the online ice board remain open.
+Paused games name the players who need to reconnect or finish synchronization.
+
+Native four-peer validation destroyed/recreated a client panel during a held
+slide, reloaded its shortcut, reclaimed the same seat and matched the frozen
+state hash across all peers. The stone stayed suspended until regrip. Storage,
+Forget, malformed/versioned-input and pause-message tests pass; the deterministic
+subset is in desktop CI. Online UI, local menu and async replica regressions pass.
+The reconnect panel capture was inspected. Installed Android restart recovery
+and cross-device latency/feel are not certified by this desktop test.

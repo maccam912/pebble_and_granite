@@ -83,7 +83,7 @@ func update_labels() -> void:
 	var player := index % 2
 	var paused: bool = online.state.get("paused", true)
 	hint.text = "ONLINE DOUBLES • You: %s player %d" % [team_name(team), player + 1]
-	if paused: status.text = "Online doubles  /  Waiting for players to synchronize"
+	if paused: status.text = "Online doubles  /  Match paused"
 	gold_order.disabled = paused or team != 0
 	cyan_order.disabled = paused or team != 1
 	house_button.disabled = paused or team != frame.placement_team
@@ -100,6 +100,7 @@ func update_labels() -> void:
 	elif run_active and team == frame.team and not delivered_stone().is_empty() and delivered_stone().position.y >= 0:
 		report_label.text = "Past the tee: one sweeper per team. Player 1 takes priority if both hold."
 	elif frame.match_phase == "Placement": report_label.text = "Each team selects its first/last thrower. The indicated team chooses placement."
+	if paused: report_label.text = online.pause_reason()
 	if match_readout != null: match_readout.refresh()
 	layout_feedback()
 func owns_delivery() -> bool:
