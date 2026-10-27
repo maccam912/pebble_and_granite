@@ -1005,3 +1005,23 @@ This changes only the shared finish shader: no new geometry, image assets, draw
 calls, gameplay features, baked-light data or compatibility versions. The
 reference photo remains ignored review material. Installed Android verification
 follows the source commit. Weekly quota remaining is 86 percent.
+
+### Installed cladding validation
+
+Clean Android build 72 (`af452ab`, `source_dirty: false`, SHA-256
+`936ac61b274161008db0c9f4f3819c4ac76affc8c0bd1f58b7db1a6cf7c7449d`)
+passed the full direct-touch probe, including both curls, scrub/lift, hold sweep,
+held pause/regrip and exactly one hog fault. Fresh acknowledgement took
+0.43-0.56 seconds. The result's APK hash matches the package manifest; evidence
+is `build/probes/touch-1500d6b8a3a04f278b718811d7051e53/` and
+`build/android-72-full-probe.log`. The probe emitted one cached-shader
+recompilation warning and no script errors.
+
+Reviewed installed Delivery, Skip and active-sweeping screenshots: wall ribs
+remain shallow and visible at gameplay scale; the ice relief and forward handle
+remain clear. The camera/menu review completed and stopped the app, with clean
+Godot logs. Both wrappers verified all four original saves/backups restored byte
+for byte. Final captures/logs are in `build/evidence/polish/android-72/` and
+`build/android-72-review.log`. This verifies the emulator render and input gates,
+not physical-phone performance. CI run `40423314992` is still pending at this
+checkpoint. Weekly quota remaining is 86 percent.
