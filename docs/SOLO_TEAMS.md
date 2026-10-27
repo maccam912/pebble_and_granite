@@ -81,8 +81,8 @@ centered bounded speed, line and rotation scatter with these maximum bounds:
 | Elite | 12 mm/s | 45 mm | 0.008 turns/s |
 
 These are provisional game tuning values, not measured human accuracy ratings.
-The planner inverse-solves the current ice, then confirms candidates against the
-whole board through the shared authority. Planning runs off the render thread.
+The planner forecasts the visible board on a standard-sheet estimate and
+calibrates delivery from observed clean draws; it cannot read hidden ice cells. Planning runs off the render thread.
 Protected-stone remedies participate in evaluation. Actual releases and brush
 commands are saved in the normal validated match journal; derived AI plans are
 recomputed between shots. Solo metadata/target and match data save together in a
@@ -99,7 +99,7 @@ FOV. FOV, speech, accuracy, role and fast travel preferences persist on the devi
 The current team authority has one combined brush per team. AI partner effort
 and human input contribute to that brush, with its existing fatigue. Independent
 four-player brush/fatigue identities, individual teammate personalities, deeper
-stochastic strategy, Bayesian ice learning, coaching and
+stochastic strategy, richer uncertainty models, coaching and
 career remain future work. Mixed-doubles online continues to use its existing
 separate per-player brushes. No simulation, rules or journal version changes
 are needed for this first solo implementation.
@@ -126,3 +126,30 @@ an exhaustive search of every combination. Calls retain their names through held
 save/restore, use the existing three weight categories, and show the solved pace.
 Human callers still choose their own draw/guard/takeout line and turn. No new
 command, replay, physics or multiplayer protocol version is required.
+
+### Observed ice learning (27 October 2026)
+
+Planning and live weight advice no longer read the real ice seed, heat or wear.
+Tactical search uses a standard-sheet forecast. After choosing an intention,
+the skip adjusts line and draw weight using up to eight clean observed draws
+within 80 cm of the target lane, from this or the previous end. It compares the
+observed endpoint and curl against a standard-sheet rollout with that shot's
+actual release, so inaccurate player aim is not mistaken for an ice error.
+Two prior-equivalent observations reduce corrections when evidence is sparse.
+Weight corrections are bounded to 0.10 m/s and line corrections to 25 cm before
+projection to the broom; ordinary input bounds still apply. Hit weight stays
+fixed, while its line can adapt. This is a local calibration heuristic, not a
+Bayesian surface map or a probability of making the shot.
+
+Swept shots, contacts, faults, out-of-play outcomes and unusual release weights
+or rotations do not train the estimate. Accepted late brush commands also mark
+a shot as swept. The call card says “still learning” or shows the number of clean
+draws used. Observations rebuild from accepted journals, so reloads do not forget
+them; new matches start empty. Call names and observation counts survive held
+save/restore, while older saves remain supported.
+
+A synthetic warm-sheet fixture reduced a 383 mm miss to 145 mm after four
+observations. Tests verify hidden-ice independence at all three tiers, rejection
+of contaminated/old/distant observations, and identical learning after journal
+replay. These are simulation tests, not measured real-ice calibration or human
+playtest approval. Rapid local heating can still surprise this limited model.

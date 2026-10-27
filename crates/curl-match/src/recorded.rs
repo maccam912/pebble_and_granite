@@ -309,13 +309,21 @@ impl RecordedMatch {
             Record::SuspendDelivery { seat, suspended } => a.suspend_delivery(*seat, *suspended),
             Record::CancelDelivery { seat } => a.cancel_delivery(*seat),
             Record::Release { seat, release } => a.release(*seat, release.clone()),
-            Record::Sweep { seat, tick, input } => a.sweep(*seat, *tick, *input).map(|_| ()),
+            Record::Sweep { seat, tick, input } => {
+                a.sweep(*seat, *tick, *input)?;
+                reviews.note_brush(input.effort);
+                Ok(())
+            }
             Record::BrushSpan {
                 seat,
                 tick,
                 input,
                 count,
-            } => a.sweep_span(*seat, *tick, *input, *count),
+            } => {
+                a.sweep_span(*seat, *tick, *input, *count)?;
+                reviews.note_brush(input.effort);
+                Ok(())
+            }
             Record::Think { ms } => a.think(*ms),
             Record::Choose { seat, remedy } => a.choose(*seat, *remedy),
             Record::NextEnd {} => a.next_end(),
@@ -367,6 +375,7 @@ impl RecordedMatch {
                     a.sim.tick,
                     input,
                 )?;
+                reviews.note_brush(b.effort);
             }
         }
         a.step()?;

@@ -78,6 +78,9 @@ func run() -> void:
 	var bad: Dictionary = envelope.duplicate(true)
 	bad.call.target_x_mm = 999999
 	check(not restored.solo.valid_envelope(bad), "Invalid saved call accepted")
+	bad = envelope.duplicate(true)
+	bad.call.ice_samples = 999
+	check(not restored.solo.valid_envelope(bad), "Invalid ice observation count accepted")
 	var old_save: Dictionary = envelope.duplicate(true)
 	old_save.erase("call")
 	check(restored.solo.valid_envelope(old_save), "Existing solo saves became incompatible")

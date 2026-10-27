@@ -5,6 +5,7 @@ use curl_fx::{Fx, Rng, V2};
 use curl_rules::{Phase, Remedy};
 use curl_sim::{HOUSE, MAX_TICKS, RADIUS, Release, Sim};
 mod catalog;
+pub mod learning;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Difficulty {
@@ -68,6 +69,7 @@ pub struct Plan {
     pub broom_mm: i64,
     pub speed_mm_s: i64,
     pub turn: i64,
+    pub ice_samples: u8,
 }
 impl Plan {
     pub fn release(&self) -> Release {
@@ -112,6 +114,7 @@ pub fn solve(sim: &Sim, target: V2, kind: ShotKind, turn: i64) -> Plan {
             _ => 2050,
         },
         turn,
+        ice_samples: 0,
     };
     let mut low = 1650;
     let mut high = 2450;
@@ -167,6 +170,12 @@ pub fn plan(authority: &Authority) -> Result<Plan, &'static str> {
 /// Elite also samples execution error using fixed planning seeds, never the
 /// eventual executor seed. These utilities are not calibrated probabilities.
 pub fn plan_at_level(authority: &Authority, level: Difficulty) -> Result<Plan, &'static str> {
+    let mut estimate = authority.clone();
+    estimate.sim.ice = curl_sim::Ice::new(0);
+    plan_on_estimate(&estimate, level)
+}
+
+fn plan_on_estimate(authority: &Authority, level: Difficulty) -> Result<Plan, &'static str> {
     if authority.game.phase != Phase::Calling || authority.in_hand.is_some() {
         return Err("AI planning requires an unheld calling phase");
     }
@@ -310,6 +319,7 @@ pub fn advice(sim: &Sim, target: V2, difficulty: Difficulty) -> (u8, u8) {
         return (0, 0);
     };
     let mut forecast = sim.clone();
+    forecast.ice = curl_sim::Ice::new(0);
     let start = forecast.tick;
     while !forecast.is_resting() && forecast.tick - start < MAX_TICKS {
         forecast.step(&[]);
@@ -319,7 +329,7 @@ pub fn advice(sim: &Sim, target: V2, difficulty: Difficulty) -> (u8, u8) {
         .iter()
         .find(|s| s.id == id)
         .map_or(stone.pos, |s| s.pos);
-    let mut rng = Rng(sim.ice.seed ^ (id as u64 + 1).wrapping_mul(0x9e3779b97f4a7c15));
+    let mut rng = Rng((id as u64 + 1).wrapping_mul(0x9e3779b97f4a7c15));
     let uncertainty = noise(&mut rng, difficulty.scatter().1 * 2);
     let short = mm(target.y - stop.y) + uncertainty;
     let effort = if short > 180 {
@@ -502,6 +512,7 @@ mod tests {
                 speed_mm_s: speed,
                 broom_mm: broom,
                 turn: 1,
+                ice_samples: 0,
             };
             game.release(crate::Seat { team, position: 0 }, shot.release())
                 .unwrap();

@@ -323,6 +323,8 @@ func valid_envelope(data: Variant) -> bool:
 	if not call is Dictionary: return false
 	if not call.is_empty():
 		if call.get("kind") not in ["Draw", "Guard", "Hit", "Corner guard", "Freeze", "Tap-back", "Hit-and-roll", "Peel", "Double", "Runback"]: return false
+		if call.has("ice_samples"):
+			if not (call.ice_samples is int or call.ice_samples is float) or not is_finite(float(call.ice_samples)) or float(call.ice_samples) != floorf(float(call.ice_samples)) or call.ice_samples < 0 or call.ice_samples > 8: return false
 		for key in ["target_x_mm", "target_y_mm", "broom_mm", "speed_mm_s", "turn"]:
 			if not (call.get(key) is float or call.get(key) is int) or not is_finite(float(call[key])) or float(call[key]) != floorf(float(call[key])): return false
 		if absf(call.target_x_mm) > 2200 or call.target_y_mm < -5000 or call.target_y_mm > 2000 or absf(call.broom_mm) > 2200 or call.speed_mm_s < 1400 or call.speed_mm_s > 5000 or int(call.turn) not in [-1, 1]: return false

@@ -271,3 +271,22 @@ restore for all names, full solo restore and a 96-delivery game with replay,
 review reconstruction and rematch pass. Rendered mobile-layout long call inspected.
 Native empty-house timings are documented in PERFORMANCE.md. Installed Android
 strategy/catalogue and physical-device feel remain open.
+
+### Observational ice estimate (27 October 2026)
+
+AI planning and sweeping forecasts now use a standard-sheet estimate rather than
+hidden seed/heat/wear. A bounded delivery calibration uses up to eight nearby
+clean draws from this or the previous end to adjust line and draw weight. It
+excludes sweeping (including late accepted inputs), contact, faults and out-of-play
+shots. Counts are advisory call metadata; the real simulation, accepted journal
+and physics/rules versions are unchanged. Old saves reconstruct new observations
+from their accepted inputs and need no migration.
+
+Core tests verify hidden-ice independence for all difficulty tiers and live advice,
+actual warm-sheet error reduction (383 to 145 mm), rejection of contaminated,
+distant and old observations, no learning of player aim error, and identical
+estimates after clean/swept journal replay. Core/every-tick goldens and Clippy pass.
+Native rated plans and post-replay calls agree; manual calls, all held-call names,
+restore and review pause pass. Mobile-layout call card with the ice-read line
+rendered and inspected. A complete 96-delivery match passed replay/review
+reconstruction and rematch. Installed Android follows the clean source commit. This remains a heuristic rather than a full uncertainty model.

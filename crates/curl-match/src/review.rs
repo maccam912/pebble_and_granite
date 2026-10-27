@@ -35,6 +35,8 @@ pub struct ShotReview {
     pub release_tick: u32,
     pub release_pos: V2,
     pub release_vel: V2,
+    pub release_spin: Fx,
+    pub swept: bool,
     pub hog_split_ms: Option<u32>,
     pub travel_ms: u32,
     pub finish: Option<V2>,
@@ -104,6 +106,8 @@ impl ReviewBook {
                 release_tick: sim.release_tick,
                 release_pos: stone.pos,
                 release_vel: stone.vel,
+                release_spin: stone.spin,
+                swept: false,
                 hog_split_ms: None,
                 travel_ms: 0,
                 finish: None,
@@ -135,6 +139,14 @@ impl ReviewBook {
             && active.review.path.len() < 1201
         {
             Arc::make_mut(&mut active.review.path).push(stone.pos);
+        }
+    }
+    /// Conservative exclusion for ice learning, including accepted late inputs.
+    pub fn note_brush(&mut self, effort: u8) {
+        if effort > 0
+            && let Some(active) = &mut self.active
+        {
+            active.review.swept = true;
         }
     }
     pub fn split_ms(&self, sim: &Sim) -> Option<u32> {

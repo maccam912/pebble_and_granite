@@ -46,6 +46,8 @@ func show_call(call: Dictionary, waiting: bool) -> void:
 	var depth := "tee line" if absf(target.y) < .05 else "%.1f m %s tee" % [absf(target.y), "short of" if target.y < 0 else "behind"]
 	details.text = "%s · %s\n%s · %s\nCurl %s · Broom %s" % [call.kind.to_upper(), weight, across, depth, "left ←" if int(call.turn) < 0 else "right →", "centre" if absi(game.broom_mm) < 50 else "%d cm %s" % [roundi(absf(game.broom_mm) / 10.0), "left" if game.broom_mm < 0 else "right"]]
 	details.text += "\nNear-hog pace: %.2f m/s" % (float(call.speed_mm_s) / 1000.0)
+	if call.has("ice_samples"):
+		details.text += "\nIce read: %d clean draws" % int(call.ice_samples) if int(call.ice_samples) > 0 else "\nIce read: still learning"
 	queue_redraw()
 
 func map_point(at: Vector2) -> Vector2:

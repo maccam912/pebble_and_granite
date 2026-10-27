@@ -733,11 +733,12 @@ impl CurlSession {
             return GString::new();
         }
         let authority: curl_match::Authority = (**game).clone();
+        let observations = game.reviews.clone();
         self.ai_plan = None;
         self.ai_task = Some(AiTask {
             context: AiContext::of(game),
             worker: std::thread::spawn(move || {
-                curl_match::ai::plan_at_level(&authority, ai_level(level))
+                curl_match::ai::learning::plan(&authority, &observations, ai_level(level))
             }),
         });
         GString::new()
@@ -762,14 +763,16 @@ impl CurlSession {
         if game.game.phase != Phase::Calling || game.in_hand.is_some() || self.ai_task.is_some() {
             return "Wait for a ready delivery before changing the call".into();
         }
-        let sim = game.sim.clone();
+        let authority: curl_match::Authority = (**game).clone();
+        let observations = game.reviews.clone();
         let context = AiContext::of(game);
         self.ai_plan = None;
         self.ai_task = Some(AiTask {
             context,
             worker: std::thread::spawn(move || {
-                Ok(curl_match::ai::solve(
-                    &sim,
+                Ok(curl_match::ai::learning::called(
+                    &authority,
+                    &observations,
                     V2::new(Fx::ratio(x_mm, 1000), Fx::ratio(y_mm, 1000)),
                     kind,
                     turn,
@@ -805,6 +808,7 @@ impl CurlSession {
             Ok(plan) => {
                 result.set("kind", plan.kind.name());
                 result.set("weight_kind", plan.kind.weight_kind() as i64);
+                result.set("ice_samples", plan.ice_samples as i64);
                 result.set("target_x_mm", rounded_mm(plan.target.x));
                 result.set("target_y_mm", rounded_mm(plan.target.y));
                 result.set("broom_mm", plan.broom_mm);

@@ -263,6 +263,9 @@ impl Practice {
         // The canonical order is start then brush, independent of caller slice order.
         shot.sweeps.sort_by_key(|s| (s.start, s.input.brush));
         self.sim.step(inputs);
+        for input in inputs {
+            self.reviews.note_brush(input.effort);
+        }
         self.reviews.tick(&self.sim);
         shot.ticks += 1;
         if self.sim.timed_out {
@@ -352,6 +355,9 @@ impl Practice {
                             .map(|s| s.input)
                             .collect();
                         sim.step(&inputs);
+                        for input in &inputs {
+                            reviews.note_brush(input.effort);
+                        }
                         reviews.tick(&sim);
                     }
                     if sim.timed_out {

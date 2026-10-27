@@ -59,7 +59,20 @@ tests; physical-device feel is the third item and needs user participation.
    rematch; existing two-object cleanup warning remains. Empty-house plans:
    195 / 1,090 / 1,829 ms on M5 Pro; installed Android strategy/catalogue not yet
    checked. No physical-device timing or feel claim.
-6. Next: observation-based AI ice learning.
+6. Observation-based AI ice learning implemented: standard-sheet tactical
+   forecasts, bounded line/draw-weight corrections from at most eight clean
+   nearby-lane draws from this or the prior end. Swept/contact/fault/out-of-play
+   observations excluded; late brush inputs also mark contamination. No hidden
+   seed/heat/wear reads in plan selection or live weight advice. Same observations
+   reproduce the same estimate after journal replay. Synthetic warm-sheet error
+   improved 383 to 145 mm after four observations. Core/goldens and all-target
+   Clippy pass. Native plans/post-replay calls, manual calls, held calls, solo
+   restore and review pause pass; rendered ice-read card inspected. Full match
+   passed 96 deliveries, replay/reviews and rematch (existing cleanup warning).
+   Richer uncertainty modelling remains beyond this heuristic. Installed Android
+   verification follows the source commit.
+7. Next: measured physics calibration; first establish reproducible measurement
+   inputs and compare the current model without inventing empirical coefficients.
 
 ## Current state
 
