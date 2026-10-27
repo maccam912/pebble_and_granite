@@ -49,11 +49,11 @@ func write_state() -> void:
 		"send": point(game.solo.send_button), "shot_kind": point(game.solo.shot_choice), "place_target": point(game.solo.target_button),
 		"hard": point(game.solo.call_buttons[0]), "clean": point(game.solo.call_buttons[1]), "off": point(game.solo.call_buttons[2]),
 		"done": point(find_button(settings, "Done")), "role": point(settings.position_choice), "difficulty": point(settings.difficulty_choice), "fast": point(settings.fast_toggle),
-		"board_close": point(find_button(game.ice_board, "Close"))}
+		"board_close": point(find_button(game.ice_board, "Close")), "accept": point(game.solo.accept_button), "restore": point(game.solo.restore_button)}
 	sequence += 1
 	var state := {"schema": 1, "nonce": nonce, "sequence": sequence, "age_s": age, "expired": age > 360.0,
 		"mode": "solo" if game.solo.enabled else ("match" if game.match_mode else "practice"), "phase": game.phase,
-		"match_phase": frame.get("match_phase", ""), "team": frame.get("team", -1), "thrower": frame.get("thrower", -1),
+		"choice_team": frame.get("choice_team", -1), "violation": frame.get("violation", ""), "remedy_restored": frame.get("remedy_restored", false), "match_phase": frame.get("match_phase", ""), "team": frame.get("team", -1), "thrower": frame.get("thrower", -1),
 		"delivered_count": count, "end": frame.get("end", -1), "run_active": game.run_active,
 		"human_position": settings.human_position, "difficulty": settings.difficulty, "fast": settings.fast_opponents,
 		"planning": game.solo.planning, "planned": not game.solo.planned.is_empty(), "kind": game.solo.planned.get("kind", ""),

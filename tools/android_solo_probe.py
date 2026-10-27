@@ -24,6 +24,7 @@ out = ROOT / 'build/probes' / ('solo-ui-' + nonce)
 out.mkdir(parents=True)
 events = []
 last_state = {}
+print('SOLO_UI_EVIDENCE ' + str(out), flush=True)
 
 
 def adb(*args, check=True, input=None):
@@ -77,9 +78,11 @@ def tap(name):
     time.sleep(.3)
 
 
-def choose(name, current, desired, count):
+def choose(name, desired):
     tap(name)
-    for _ in range((desired - current) % count):
+    # Touch-opened Android PopupMenu has no keyboard-focused row. Its first
+    # Down selects row zero; subsequent Downs reach the desired row.
+    for _ in range(desired + 1):
         adb('shell', 'input', 'keyevent', 'KEYCODE_DPAD_DOWN')
         time.sleep(.08)
     adb('shell', 'input', 'keyevent', 'KEYCODE_ENTER')
@@ -112,10 +115,10 @@ try:
     capture('01-initial')
     tap('settings')
     state = wait_for(lambda s: s['settings_visible'], 'settings open')
-    choose('role', state['human_position'], 5, 6)
-    state = wait_for(lambda s: s['human_position'] == 5, 'calling-only selected')
-    choose('difficulty', state['difficulty'], 2, 3)
-    state = wait_for(lambda s: s['difficulty'] == 2, 'elite selected')
+    choose('role', 5)
+    state = wait_for(lambda s: s['human_position'] == 5, 'calling-only selected', timeout=12)
+    choose('difficulty', 2)
+    state = wait_for(lambda s: s['difficulty'] == 2, 'elite selected', timeout=12)
     if not state['fast']:
         tap('fast')
     wait_for(lambda s: s['fast'], 'fast watching enabled')
@@ -126,7 +129,7 @@ try:
     wait_for(lambda s: s['mode'] == 'solo' and s['planned'] and s['team'] == 0,
              'Gold AI call ready', timeout=90)
     # The empty-board suggestion is a draw; choose a guard through the real menu.
-    choose('shot_kind', 0, 1, 3)
+    choose('shot_kind', 1)
     wait_for(lambda s: s['planned'] and s['kind'] == 'Guard', 'guard solved')
     tap('zoom')
     wait_for(lambda s: s['zoomed'] and s['camera'] == 'House' and s['camera_size'] < 3, 'guard zoom')

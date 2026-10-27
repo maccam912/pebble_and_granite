@@ -140,3 +140,50 @@ Send, HARD/OFF, and ice-board pause. It retrieves the accepted match journal for
 shared-core verification and compares all normal save/preference files before/
 after. Desktop bootstrap/consumption/no-persistence tests pass. Installed evidence
 will be recorded only after a clean APK run.
+
+### Installed checkpoint complete
+
+Clean f573bdc / local Android build 75 passed installed golden/JNI, actual solo
+menu/call/zoom/board/fast-forward input, desktop verification of its two-delivery
+journal (`cb90ff1fc182d9c9`), and the original touch/sweep/background/regrip/hog
+suite. UI-probe normal saves/preferences were unchanged; original practice files
+were restored after the separate Fresh ice touch fixture. Exact APK provenance
+and evidence paths are recorded in ANDROID_INPUT.md. Android exposes speech and
+English voices, but no-audio emulator operation is not audible approval.
+
+All requested feature checkboxes above have native/installed evidence. Additional
+bible work completed: target drills, shot cards, local ice notes/paths/statistics,
+Full team / Calling only and remappable accessible calls. Advanced strategy,
+independent team brushes, online boards/calls, career and physical calibration
+remain explicitly open. Weekly usage: 22% used / 78% remaining; the below-50%
+remaining cutoff has not been reached.
+
+Rendered installed screens were inspected. A small follow-up caption now labels
+the next thrower explicitly while the previous stone rests, avoiding attribution
+of the previous result to the next team. This UI-only change follows the installed
+f573bdc evidence and is covered by the native solo flow; input/physics are unchanged.
+
+### No-tick remedy recovery
+
+Final rules review found that club teams could enter the existing no-tick Choice
+phase without a UI route to continue. Gold now chooses Accept current positions
+or Restore original positions; Cyan evaluates both and chooses automatically.
+The AI planner also evaluates the opponent's best remedy during search, rather
+than scoring the unresolved no-tick board. No-tick messages distinguish pending,
+accepted and restored states; the chosen delivery counts exactly once.
+
+A real glancing-contact fixture reaches Choice through two normal releases.
+Core/native tests cover both human remedies, a saved pending choice, exact journal/
+review replay, duplicate rejection, and Cyan automatic continuation. A prefixed
+hog fault reverses the teams for the AI-owned choice case. Existing rule/journal
+versions retain their meanings; this adds the missing frontend command path.
+
+The updated AI/full-game gate completed seven ends / 112 deliveries, including a
+six-end tie, extra-end winner, full review/journal reconstruction and rematch.
+The remedy camera now frames the house plus free-guard zone; the explanatory
+panel narrows so it does not obscure that decision area.
+
+The same FSM audit caught a clock forfeit during an early, still-moving release.
+Local travel now ends when match authority leaves InFlight, exposes Rematch, and
+saves that terminal state. A nearly-expired-clock fixture verifies recovery and
+rematch. The new team_rules.gd gate covers these terminal/choice branches.

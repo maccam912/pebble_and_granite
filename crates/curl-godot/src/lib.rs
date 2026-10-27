@@ -893,6 +893,39 @@ impl CurlSession {
         }
     }
     #[func]
+    fn match_choose(&mut self, restore: bool) -> GString {
+        let Some(game) = &mut self.game else {
+            return "No match".into();
+        };
+        if game.game.phase != Phase::Choice {
+            return "No remedy is pending".into();
+        }
+        let seat = Seat {
+            team: 1 - game.game.delivering_team(),
+            position: 0,
+        };
+        game.apply(curl_match::recorded::Record::Choose {
+            seat,
+            remedy: if restore {
+                curl_rules::Remedy::Restore
+            } else {
+                curl_rules::Remedy::Accept
+            },
+        })
+        .err()
+        .unwrap_or("")
+        .into()
+    }
+    #[func]
+    fn recommended_remedy(&self) -> i64 {
+        self.game
+            .as_ref()
+            .and_then(|game| curl_match::ai::best_remedy(game).ok())
+            .map_or(-1, |remedy| {
+                i64::from(remedy == curl_rules::Remedy::Restore)
+            })
+    }
+    #[func]
     fn match_next_end(&mut self) -> GString {
         let Some(a) = &mut self.game else {
             return "No match".into();
@@ -1061,6 +1094,19 @@ pub(crate) fn presentation_frame(
         frame.set("delivered_count", a.game.delivered as i64);
         frame.set("hammer", a.game.hammer as i64);
         frame.set("placement_team", a.game.placement_team as i64);
+        frame.set(
+            "choice_team",
+            a.last_resolution
+                .as_ref()
+                .and_then(|r| r.choice_team)
+                .map_or(-1, i64::from),
+        );
+        frame.set(
+            "remedy_restored",
+            a.last_resolution
+                .as_ref()
+                .is_some_and(|r| r.replace_stones.is_some()),
+        );
         frame.set("clock_gold", a.game.thinking_ms[0] as i64);
         frame.set("clock_cyan", a.game.thinking_ms[1] as i64);
         frame.set("score_gold", a.game.score[0] as i64);

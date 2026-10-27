@@ -2,7 +2,7 @@
 //! Plans are derived, disposable state; only the eventual release is journalled.
 use crate::Authority;
 use curl_fx::{Fx, Rng, V2};
-use curl_rules::Phase;
+use curl_rules::{Phase, Remedy};
 use curl_sim::{HOUSE, MAX_TICKS, RADIUS, Release, Sim};
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -170,7 +170,17 @@ pub fn plan(authority: &Authority) -> Result<Plan, &'static str> {
                 }
                 next.step()?;
             }
-            // Team rules have already applied protected-stone remedies here.
+            if next.game.phase == Phase::Choice {
+                let remedy = best_remedy(&next)?;
+                next.choose(
+                    crate::Seat {
+                        team: 1 - team,
+                        position: 0,
+                    },
+                    remedy,
+                )?;
+            }
+            // Evaluate the resulting board after the opponent's best remedy.
             let value = board_value(&next.sim, team, authority.game.delivered);
             if best.as_ref().is_none_or(|(_, score)| value > *score) {
                 best = Some((candidate, value));
@@ -179,6 +189,24 @@ pub fn plan(authority: &Authority) -> Result<Plan, &'static str> {
     }
     best.map(|(shot, _)| shot).ok_or("No legal AI candidate")
 }
+/// The non-offending team chooses its better legal board; ties restore the guard.
+pub fn best_remedy(authority: &Authority) -> Result<Remedy, &'static str> {
+    if authority.game.phase != Phase::Choice {
+        return Err("No remedy is pending");
+    }
+    let team = 1 - authority.game.delivering_team();
+    let mut best = None;
+    for remedy in [Remedy::Restore, Remedy::Accept] {
+        let mut next = authority.clone();
+        next.choose(crate::Seat { team, position: 0 }, remedy)?;
+        let value = board_value(&next.sim, team, authority.game.delivered);
+        if best.as_ref().is_none_or(|(_, score)| value > *score) {
+            best = Some((remedy, value));
+        }
+    }
+    Ok(best.expect("two legal remedies").0)
+}
+
 /// A noisy weight estimate for the skip. The forecast is a disposable unswept
 /// rollout; it does not alter the real ice or move any authoritative stone.
 pub fn advice(sim: &Sim, target: V2, difficulty: Difficulty) -> (u8, u8) {
@@ -265,6 +293,48 @@ mod tests {
             .enumerate()
         {
             assert_eq!(weight_zone(y), index as u8 + 1);
+        }
+    }
+    #[test]
+    fn physical_no_tick_fixture_and_ai_remedy() {
+        let mut game = RecordedMatch::new(42, Rules::club(), 1).unwrap();
+        for (team, speed, broom) in [(0, 1981, -963), (1, 2016, -803)] {
+            let shot = Plan {
+                kind: ShotKind::Draw,
+                target: V2::ZERO,
+                speed_mm_s: speed,
+                broom_mm: broom,
+                turn: 1,
+            };
+            game.release(crate::Seat { team, position: 0 }, shot.release())
+                .unwrap();
+            while game.game.phase == Phase::InFlight {
+                game.advance(64, None).unwrap();
+            }
+        }
+        assert_eq!(game.game.phase, Phase::Choice);
+        let before = game.hash();
+        // This glancing tick promotes the non-offender's guard into the house.
+        assert_eq!(best_remedy(&game).unwrap(), Remedy::Accept);
+        assert_eq!(game.hash(), before);
+        let pending = game.json().unwrap();
+        for remedy in [Remedy::Accept, Remedy::Restore] {
+            let mut restored = RecordedMatch::parse(pending.as_bytes()).unwrap();
+            assert_eq!(restored.game.phase, Phase::Choice);
+            restored
+                .apply(crate::recorded::Record::Choose {
+                    seat: crate::Seat {
+                        team: 0,
+                        position: 0,
+                    },
+                    remedy,
+                })
+                .unwrap();
+            assert_eq!(restored.game.phase, Phase::Calling);
+            assert_eq!(restored.game.delivered, 2);
+            let final_copy = RecordedMatch::parse(restored.json().unwrap().as_bytes()).unwrap();
+            assert_eq!(final_copy.hash(), restored.hash());
+            assert_eq!(final_copy.reviews, restored.reviews);
         }
     }
     #[test]

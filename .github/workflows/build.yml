@@ -107,6 +107,7 @@ jobs:
           python tools/godot.py --headless --path . --script tests/rink_view.gd
           python tools/godot.py --headless --path . --script tests/accessibility.gd
           python tools/godot.py --headless --path . --script tests/ice_board.gd
+          python tools/godot.py --headless --path . --script tests/team_rules.gd
           python tools/godot.py --headless --path . --script tests/called_shots.gd
           python tools/godot.py --headless --path . --script tests/drills.gd
           python tools/godot.py --headless --path . --script tests/solo_restore.gd

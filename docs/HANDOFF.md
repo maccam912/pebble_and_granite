@@ -7,9 +7,10 @@ bible only. Remote: `maccam912/pebble_and_granite`, main branch.
 
 ## Pick up here
 
-Latest published checkpoint: `7551472` (rules 4 / protocol 11, physics model 3),
-published as [Build 42](https://github.com/maccam912/pebble_and_granite/releases/tag/v0.0.42-dev).
-Its complete pipeline succeeded (run 40324153949), verified on 26 October.
+Last verified downloadable checkpoint: `f573bdc` (rules 4 / protocol 11, model 3),
+[Build 95](https://github.com/maccam912/pebble_and_granite/releases/tag/v0.0.95-dev).
+Its complete cross-platform pipeline passed (40455218259). Follow-up team-rule
+choice/clock recovery is being validated separately before its next publish.
 Current source includes solo teams, rated AI, role cameras/calls and target drills;
 see docs/AI_PROGRESS.md and the final entries for current evidence.
 The main scene is a 3D curler's view with direct handle grip, pull/push/held slide,
@@ -1072,3 +1073,38 @@ proves Full team adds no hidden automatic brushing. Core/golden, all-target Clip
 and eight additional native regressions pass. Mobile-sized settings/shortcut/call
 renders were inspected. Installed Android validation follows a clean checkpoint.
 Weekly remaining last checked: 79%; work continues below the requested cap.
+
+## Installed solo checkpoint
+
+Clean f573bdc, local Android build 75, passed installed goldens/JNI, actual menu/
+touch control of solo calls/guard/zoom/board/fast watching, and desktop replay of
+the Android journal at cb90ff1fc182d9c9. The same APK passed both curl directions,
+spatial/hold sweeping, lift stop, background/regrip and exact-once hog tests. UI
+probe player files were unchanged; the separate touch fixture's original practice
+files were restored byte-for-byte. Full provenance is in ANDROID_INPUT.md.
+
+The UI driver needed one initial Down for Android popup focus; the fix is in the
+host fixture, with no gameplay/APK change. Voice support/English availability was
+observed; audible quality and physical-device feel remain open. Weekly remaining
+usage at this checkpoint: 78%. The threshold was not reached.
+
+## No-tick choice recovery
+
+The final team-rules review caught an unhandled frontend Choice phase. Gold now
+gets accept/restore controls after a protected centre-guard tick; Cyan chooses
+its better legal result. AI candidate evaluation resolves the opponent's best
+remedy before scoring a no-tick board. Pending/accepted/restored copy is accurate,
+and a settled caption identifies the next thrower instead of attributing the
+previous result to that team. Physical two-release tests enter the real rules
+choice, exercise both remedies and saved-choice resume, and verify replay hashes/
+review reconstruction; a hog-prefix case verifies the AI-owned remedy.
+
+A related local-FSM fix handles a thinking-clock forfeit while an early-released
+stone is still moving. Travel now follows the authoritative phase, terminal state
+saves immediately, and Rematch remains available. The new team_rules.gd fixture
+covers no-tick recovery and this clock branch. The full AI game passed seven ends /
+112 deliveries including tie/extra-end winner, replayed observations and rematch.
+
+Publication: Build 95 tag was verified at f573bdc and all jobs in run 40455218259
+passed. It includes the requested solo/camera/call/accessibility/drill/board work;
+the subsequent team-rule recovery requires the next source build.

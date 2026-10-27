@@ -85,7 +85,8 @@ def fresh():
     print('FRESH_ICE_READY %.2fs' % (time.monotonic() - started), flush=True)
 
 
-# Reviewed at 1280x800: handle (640, 557.012), fitted at x+336 / 1.35x.
+# Reviewed 2400x1080 fixture: this grip lies within the current handle hit area.
+# The stroke uses relative motion, with logical coordinates fitted at 1.35x +336.
 def drive():
     event('DOWN', 1200, 752)
     time.sleep(.08)
@@ -148,8 +149,8 @@ for direction, label in [(1, 'right'), (-1, 'left')]:
         raise RuntimeError('Incorrect touch release: ' + str(release))
     results[label] = release
     if label == 'right':
-        # Auto Sweeper view tracks the selected stone. Its .35 m-ahead point is
-        # (629.7, 445.1) on the logical canvas, observed in tests/sweeping.gd.
+        # Auto Sweeper view tracks the stone. This reviewed screen point remains
+        # inside the legal brush region; the accepted spans verify its bounds.
         event('DOWN', 1186, 601)
         for i in range(10):
             time.sleep(.04)

@@ -383,6 +383,9 @@ func update_labels() -> void:
 			status.text = "Mixed doubles  /  %s wins" % team_name(frame.winner)
 		if frame.get("violation", "") == "HogRelease":
 			report_label.text += "\nHog-line violation: stone removed; delivery counts."
+		elif frame.get("violation", "") == "NoTick":
+			if frame.match_phase == "Choice": report_label.text += "\nCentre guard moved: opponent chooses the remedy."
+			else: report_label.text += "\nNo-tick remedy: " + ("original positions restored." if frame.get("remedy_restored", false) else "current positions accepted.")
 		elif not frame.get("violation", "").is_empty():
 			report_label.text += "\nProtected stone removed: positions restored; delivery forfeited."
 	if authoritative_delivery and not frame.get("in_hand", {}).is_empty():
@@ -395,7 +398,7 @@ func update_labels() -> void:
 
 func layout_feedback() -> void:
 	if feedback_bg == null: return
-	var width := 365.0 if phase == "Slide" else 490.0
+	var width := 365.0 if phase == "Slide" or frame.get("match_phase", "") == "Choice" else 490.0
 	report_label.size.x = width - 24
 	report_label.size.y = report_label.get_minimum_size().y
 	var height := maxf(report_label.get_minimum_size().y + 24, 72)
@@ -549,7 +552,7 @@ func _process(delta: float) -> void:
 			if fast and not solo.fast_forwarding(): accumulator = 0.0
 			if not frame.stones.is_empty():
 				if not delivered_stone().is_empty(): path.append(delivered_stone().position)
-			if frame.resting:
+			if frame.resting or (match_mode and frame.get("match_phase", "") != "InFlight"):
 				run_active = false
 				stop_scrub()
 				hold_sweep = false
@@ -561,8 +564,10 @@ func _process(delta: float) -> void:
 				var split := "%.2f s" % (true_split / 1000.0) if true_split >= 0 else ("—" if frame.hog_tick < 0 else "%.2f s" % (float(frame.hog_tick) / 240.0))
 				var split_name := "Hog-to-hog" if true_split >= 0 else "Release to far hog"
 				report = "Release %.3f m/s\n%s %s\n%.2f rotations • %.2f s travel\nRest: %.2f m across, %.2f m from tee\n%s" % [float(release_report.get("speed_mm_s", 0)) / 1000.0, split_name, split, s.turns, float(frame.tick) / 240.0, s.position.x, s.position.y, "In play" if s.active else "Out of play"]
+				if match_mode and frame.get("match_phase", "") == "GameComplete" and not frame.resting:
+					report = "Thinking time expired. %s wins. Choose Rematch to play again." % team_name(frame.winner)
 				update_labels()
-			if frame.resting or frame.global_tick - last_save_tick >= 240:
+			if not run_active or frame.global_tick - last_save_tick >= 240:
 				save_practice()
 	update_delivery()
 	if run_active: update_labels()
@@ -684,7 +689,7 @@ func begin_pointer(id: int, p: Vector2) -> void:
 	if play_settings != null and play_settings.visible: return
 	if solo != null and solo.enabled and not run_active and (solo.planning or (not solo.human_throws() and not solo.human_skips())): return
 	var controls := [camera_button, view_button, settings_button, zoom_button]
-	if solo != null: controls.append_array([solo.solo_button, solo.send_button, solo.shot_choice, solo.target_button, solo.auto_button] + solo.call_buttons)
+	if solo != null: controls.append_array([solo.solo_button, solo.send_button, solo.shot_choice, solo.target_button, solo.auto_button, solo.accept_button, solo.restore_button] + solo.call_buttons)
 	if ice_board != null: controls.append(ice_board.menu_button)
 	if drills != null: controls.append_array([drills.menu_button, drills.start_button, drills.choice])
 	for control in controls:

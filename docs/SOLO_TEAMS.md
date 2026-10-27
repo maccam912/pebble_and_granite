@@ -6,7 +6,9 @@ AI players. **Settings → Your solo control** selects Lead, Second, Vice or Ski
 **Calling only** delegates every delivery to AI and lets you call all Gold shots.
 Each position delivers two stones per end, with six scheduled ends and extra
 ends when tied. The existing club rules, thinking clocks, scoring and remedies
-apply. Human deliveries keep the direct pull/push/slide/flick input.
+apply. After a no-tick violation, Gold can accept the current positions or restore
+the original stones and remove the delivered stone. Cyan chooses its own remedy
+automatically. Pending choices survive saves without losing the delivery. Human deliveries keep the direct pull/push/slide/flick input.
 
 When you are the skip (vice while the skip delivers), review the proposed shot.
 Choose **Draw**, **Guard**, or **Hit**. **Place target** lets you tap the intended

@@ -21,6 +21,9 @@ var shot_choice: OptionButton
 var target_button: Button
 var auto_button: Button
 var placing_target := false
+var choice_waiting := false
+var accept_button: Button
+var restore_button: Button
 var called_target := Vector2.ZERO
 var call_label: Label
 var call_background: Panel
@@ -36,6 +39,12 @@ func create_controls() -> void:
 	send_button = game.button("Send called shot", Vector2(960, 555), send_shot)
 	send_button.custom_minimum_size = Vector2(260, 52)
 	send_button.theme_type_variation = "PrimaryButton"
+	accept_button = game.button("Accept current positions", Vector2(800, 490), func(): choose_remedy(false))
+	restore_button = game.button("Restore original positions", Vector2(800, 560), func(): choose_remedy(true))
+	for item in [accept_button, restore_button]:
+		item.custom_minimum_size = Vector2(420, 58)
+		item.size = item.custom_minimum_size
+	restore_button.theme_type_variation = "PrimaryButton"
 	shot_choice = OptionButton.new()
 	shot_choice.position = Vector2(960, 425)
 	shot_choice.size = Vector2(260, 52)
@@ -98,6 +107,7 @@ func reset_turn() -> void:
 	planning = false
 	planned.clear()
 	placing_target = false
+	choice_waiting = false
 	last_spoken = ""
 	delay = 0.0
 	advice_time = 0.0
@@ -110,6 +120,14 @@ func reset_turn() -> void:
 func advance(delta: float) -> void:
 	if not enabled: return
 	var state: String = game.frame.get("match_phase", "")
+	if state == "Choice":
+		if not choice_waiting: delay = 0.0; choice_waiting = true
+		if game.frame.get("choice_team", -1) == 1:
+			delay += delta
+			if delay >= 1.0:
+				var recommended: int = game.session.recommended_remedy()
+				if recommended >= 0: apply_remedy(recommended == 1)
+		return
 	if game.run_active:
 		advice_time -= delta
 		if advice_time <= 0:
@@ -148,6 +166,24 @@ func advance(delta: float) -> void:
 	if not planned.is_empty() and not human_skips():
 		delay += delta
 		if delay >= 1.3: send_shot()
+
+func choose_remedy(restore: bool) -> void:
+	if not enabled or game.frame.get("match_phase", "") != "Choice" or game.frame.get("choice_team", -1) != 0: return
+	apply_remedy(restore)
+
+func apply_remedy(restore: bool) -> void:
+	var owner := int(game.frame.get("choice_team", -1))
+	var error: String = game.session.match_choose(restore)
+	if not error.is_empty(): game.report = error; return
+	game.frame = game.session.frame()
+	game.previous = game.frame
+	game.phase = "Stone at rest"
+	choice_waiting = false
+	delay = 0.0
+	game.report = "%s chose to %s. The delivery counts." % [game.team_name(owner), "restore the original stones and remove the delivered stone" if restore else "accept the current stone positions"]
+	game.save_practice()
+	game.update_labels()
+	game.update_spatial(0)
 
 func suggest_again() -> void:
 	if not enabled or planning or game.run_active: return
@@ -279,7 +315,9 @@ func update_camera() -> void:
 	game.rink.role_camera = ""
 	game.rink.called_target = called_target if enabled and human_skips() and not game.run_active and (planning or not planned.is_empty()) else Vector2.INF
 	if not enabled: return
-	if game.run_active:
+	if game.frame.get("match_phase", "") == "Choice":
+		game.rink.role_camera = "House"
+	elif game.run_active:
 		game.rink.role_camera = "Skip" if (human_skips() and human_position() != 4) or shot_team != 0 else "Sweeper"
 	elif game.frame.get("match_phase", "") == "Calling" and not human_throws():
 		game.rink.role_camera = "House" if human_skips() else "Skip"
@@ -289,6 +327,9 @@ func refresh_controls() -> void:
 	solo_button.disabled = game.run_active or game.pointer != -99
 	solo_button.text = "Solo 4 vs 4" if not enabled else "Resume solo"
 	solo_button.visible = not enabled
+	var human_choice: bool = enabled and game.frame.get("match_phase", "") == "Choice" and game.frame.get("choice_team", -1) == 0
+	accept_button.visible = human_choice
+	restore_button.visible = human_choice
 	var owns_call := enabled and human_skips()
 	var show_card: bool = owns_call and not game.run_active and (planning or not planned.is_empty())
 	for control in [shot_choice, target_button, auto_button]:
@@ -311,8 +352,15 @@ func refresh_controls() -> void:
 	var state: String = game.frame.get("match_phase", "")
 	if state == "Calling" or state == "InFlight":
 		game.status.text = "4 vs 4  /  %s %s%s • %s" % [game.team_name(game.frame.team), CurlPlaySettings.POSITIONS[game.frame.thrower], " (you)" if human_throws() else " (AI)", game.phase]
+		if game.phase == "Stone at rest":
+			game.status.text = "4 vs 4  /  Stone at rest • Next: %s %s%s" % [game.team_name(game.frame.team), CurlPlaySettings.POSITIONS[game.frame.thrower], " (you)" if human_throws() else " (AI)"]
 		if not game.run_active and game.phase != "Stone at rest" and not human_throws(): game.new_button.disabled = true
-	if state == "EndComplete": game.status.text = "4 vs 4  /  End complete"
+	if state == "Choice":
+		game.status.text = "4 vs 4  /  %s chooses the no-tick remedy" % game.team_name(game.frame.get("choice_team", -1))
+		game.new_button.disabled = true
+		game.new_button.text = "Choose remedy"
+		game.report_label.text = "A protected centre guard moved off the centre line or into the house. %s chooses whether to accept this result or restore the original stones and remove the delivered stone." % game.team_name(game.frame.get("choice_team", -1))
+	elif state == "EndComplete": game.status.text = "4 vs 4  /  End complete"
 	elif state == "GameComplete": game.status.text = "4 vs 4  /  %s wins" % game.team_name(game.frame.winner)
 	if game.run_active: game.new_button.text = "Stone in play"
 	game.mode_button.text = "Practice"

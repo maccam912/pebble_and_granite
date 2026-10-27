@@ -148,3 +148,48 @@ The same APK passed the Android↔macOS forced-relay two-delivery probe, includi
 held/in-flight reconnect, suspended analog position, regrip/release and continuous
 thrower sweeping. Host/client hash: `b932c1c5128ec7cd`. Evidence:
 `build/probes/2f0cc14f4cf842038562725e5360c2d6/result.json`.
+
+
+## Solo/control/camera installed checkpoint — 27 October 2026
+
+Clean source `f573bdc5234a924050d62c666846e5c79ba0dbbc`, local Android build 75,
+Godot 4.7 with existing installed Android templates (`template_source=installed-android`).
+APK: `build/android/pebble-and-granite.apk`; exact manifest:
+`build/download/pebble-and-granite-75-android.json` (`source_dirty=false`).
+SHA256: `1349ca9af2de416ec2d1d563c924f54239ce0d365572cbbf094eb38163ca1da4`.
+Android v2 signature verification passed. This local build number is separate
+from the numbered GitHub release pipeline.
+
+Dedicated `pebble_granite_lab`, emulator-5580, Android 35 ARM64, 2400x1080 landscape:
+
+- Installed shared golden-trace/JNI self-test passed (`build/solo-android-runtime.log`).
+- Actual adb menu/touch flow selected Calling only, Elite and opponent fast travel;
+  changed the shot to guard, inspected it with zoom, sent the AI delivery, and
+  issued HARD then OFF through the real GUI buttons.
+- Opened the observed ice board, verified a frozen authoritative hash while open,
+  resumed, observed opponent-only fast travel, and reached the next Gold approval.
+- Two accepted AI deliveries / two review paths; exported Android match journal
+  replay-verified on desktop at hash `cb90ff1fc182d9c9`. All normal practice/match/
+  solo/drill saves, preferences and note sidecars were unchanged by this UI probe.
+- Evidence: `build/probes/solo-ui-396e7af610404eb8a2f4a64c98d0871d/` contains result,
+  actual taps, eight screenshots, exported journal and desktop verifier output.
+  Two earlier terminal attempts exposed a fixture assumption: touch-opened Android
+  popups have no keyboard-focused row, so the first Down selects row zero. The adb
+  driver was corrected; this did not require a gameplay/APK change.
+- Android reports the device speech feature and 51 English voices. The emulator
+  used no-audio mode; this is voice availability, not audible/human approval.
+
+The same APK passed the existing direct-touch suite: both curl signs, spatial
+scrubbing, no extra heat after lift, accessible hold, held Home/pause/regrip and
+exact-once hog handling. Evidence:
+`build/probes/touch-e66eb845ed6247fd8d49a61c9bf87018/`, log
+`build/solo-android-touch.log`. The original dedicated-emulator practice primary
+and backup were restored byte-for-byte after the fixture's Fresh ice cases.
+
+This verifies installed emulator behavior and cross-core replay. It does not
+approve physical Android feel, latency/thermals, audio quality, or measured ice
+calibration. The latest source release/CI state is tracked in AI_PROGRESS.md.
+
+The subsequent checkpoint only adjusts the resting-shot caption to identify the
+next thrower explicitly, alongside host-fixture/docs changes. Installed evidence
+above remains tied to f573bdc; the caption change has local native coverage.

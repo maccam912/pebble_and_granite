@@ -1,3 +1,8 @@
+Solo teams now handle centre-guard no-tick remedies: choose Accept or Restore for
+Gold; Cyan chooses automatically. AI shot planning accounts for the opponent’s
+remedy. Pending choices resume from saves. A clock forfeit during a moving early
+release now ends travel and exposes Rematch.
+
 Full team and Calling only now complement individual solo positions. Call keys
 H/C/O can be remapped in Settings; active keys appear on the call buttons.
 Settings and ice-board dialogs keep keyboard focus inside them. A visible weight
