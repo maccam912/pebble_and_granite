@@ -79,6 +79,13 @@ pub struct ReviewBook {
     active: Option<Active>,
     next_ordinal: u32,
 }
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum SplitClock {
+    Waiting,
+    Running(u32),
+    Complete(u32),
+    Incomplete,
+}
 impl ReviewBook {
     pub fn begin(&mut self, sim: &Sim, seat: Seat, end: u8) {
         let Some(stone) = sim.stones.iter().find(|s| Some(s.id) == sim.delivered) else {
@@ -138,6 +145,25 @@ impl ReviewBook {
             .back()
             .filter(|r| Some(r.stone) == sim.delivered && r.release_tick == sim.release_tick)
             .and_then(|r| r.hog_split_ms)
+    }
+    /// A stopwatch driven by observed whole-stone crossings, never wall time.
+    pub fn split_clock(&self, sim: &Sim) -> SplitClock {
+        if let Some(ms) = self.split_ms(sim) {
+            return SplitClock::Complete(ms);
+        }
+        let Some(active) = &self.active else {
+            return SplitClock::Incomplete;
+        };
+        let moving = sim
+            .stones
+            .iter()
+            .any(|stone| stone.id == active.review.stone && stone.active && stone.vel != V2::ZERO);
+        if !moving {
+            return SplitClock::Incomplete;
+        }
+        active.near_hog.map_or(SplitClock::Waiting, |near| {
+            SplitClock::Running(sim.tick.saturating_sub(near) * 1000 / 240)
+        })
     }
     pub fn finish(&mut self, sim: &Sim, violation: Option<Violation>) {
         let Some(active) = self.active.take() else {
@@ -239,6 +265,58 @@ mod tests {
     use crate::{practice::Practice, recorded::RecordedMatch};
     use curl_rules::Rules;
     use curl_sim::Release;
+    #[test]
+    fn live_split_waits_for_near_hog_freezes_at_far_hog_and_rebuilds() {
+        let mut practice = Practice::new(42);
+        let mut release = Release::draw();
+        release.pos.y = Fx::int(-36);
+        release.vel.y = Fx::ratio(27, 10);
+        practice.release(release).unwrap();
+        assert_eq!(
+            practice.reviews.split_clock(&practice.sim),
+            SplitClock::Waiting
+        );
+        let mut near = None;
+        let mut rebuilt = false;
+        while !practice.sim.is_resting() {
+            practice.step(&[]).unwrap();
+            if near.is_none() && practice.sim.stones[0].pos.y - RADIUS > NEAR_HOG {
+                near = Some(practice.sim.tick);
+            }
+            let clock = practice.reviews.split_clock(&practice.sim);
+            if let Some(far) = practice.sim.hog_tick {
+                assert_eq!(
+                    clock,
+                    SplitClock::Complete((far - near.unwrap()) * 1000 / 240)
+                );
+            } else if let Some(near) = near {
+                assert_eq!(
+                    clock,
+                    SplitClock::Running((practice.sim.tick - near) * 1000 / 240)
+                );
+                if !rebuilt && practice.sim.tick > near + 120 {
+                    let restored = Practice::from_log(practice.log.clone()).unwrap();
+                    assert_eq!(restored.reviews.split_clock(&restored.sim), clock);
+                    assert_eq!(restored.sim.hash(), practice.sim.hash());
+                    rebuilt = true;
+                }
+            } else {
+                assert_eq!(clock, SplitClock::Waiting);
+            }
+        }
+        assert!(rebuilt);
+        let mut short = Practice::new(42);
+        let mut release = Release::draw();
+        release.vel.y = Fx::ratio(1, 10);
+        short.release(release).unwrap();
+        while !short.sim.is_resting() {
+            short.step(&[]).unwrap();
+        }
+        assert_eq!(
+            short.reviews.split_clock(&short.sim),
+            SplitClock::Incomplete
+        );
+    }
     #[test]
     fn early_release_split_is_true_hog_to_hog_and_practice_rebuilds_paths() {
         let mut practice = Practice::new(42);

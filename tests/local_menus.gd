@@ -3,6 +3,17 @@ var failed := false
 func check(ok: bool, message: String) -> void:
 	if not ok: push_error(message); failed = true
 func _initialize() -> void: call_deferred("run")
+func escape() -> void:
+	var event := InputEventKey.new()
+	event.keycode = KEY_ESCAPE
+	event.pressed = true
+	Input.parse_input_event(event)
+	await process_frame
+	event = InputEventKey.new()
+	event.keycode = KEY_ESCAPE
+	event.pressed = false
+	Input.parse_input_event(event)
+	await process_frame
 func run() -> void:
 	var game = load("res://scenes/play.tscn").instantiate()
 	game.persistence_enabled = false
@@ -65,6 +76,20 @@ func run() -> void:
 	initial = game.session.state_hash()
 	game.request_restart()
 	check(game.fresh_button.disabled and not game.restart_prompt.visible and game.session.state_hash() == initial, "Restart discarded a held delivery")
+	game.pointer = -1
+	game.phase = "Slide"
+	await escape()
+	check(game.play_settings.visible and game.pointer == -99 and not game.frame.in_hand.is_empty(), "Escape did not pause and retain the held stone")
+	initial = game.session.state_hash()
+	game._process(10)
+	check(game.session.state_hash() == initial, "Held stone advanced behind the Escape menu")
+	await escape()
+	check(not game.play_settings.visible and game.phase == "Ready" and not game.frame.in_hand.is_empty(), "Closing Escape menu lost regrip state")
+	# Repeated Escape closes the current menu without reopening it on the same event.
+	await escape()
+	check(game.play_settings.visible, "Escape did not reopen Settings")
+	await escape()
+	check(not game.play_settings.visible, "Escape close reopened the modal")
 	game.queue_free()
 	await create_timer(.5).timeout
 	print("LOCAL_MENUS_OK" if not failed else "LOCAL_MENUS_FAILED")

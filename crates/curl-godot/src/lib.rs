@@ -407,15 +407,12 @@ impl CurlSession {
             self.practice.next_id().is_some(),
         );
         frame.set("in_hand", &pending_frame(self.pending().as_ref()));
-        frame.set(
-            "hog_split_ms",
-            self.review_book()
-                .split_ms(
-                    self.game
-                        .as_ref()
-                        .map_or(&self.practice.sim, |game| &game.sim),
-                )
-                .map_or(-1, i64::from),
+        add_review_frame(
+            &mut frame,
+            self.review_book(),
+            self.game
+                .as_ref()
+                .map_or(&self.practice.sim, |game| &game.sim),
         );
         frame.set("solo_target_x_mm", rounded_mm(self.solo_target.x));
         frame.set("solo_target_y_mm", rounded_mm(self.solo_target.y));
@@ -1067,6 +1064,23 @@ fn pending_frame(pending: Option<&curl_proto::session::PendingDelivery>) -> VarD
         data.set("hog_warning", pose.hog_warning);
     }
     data
+}
+
+pub(crate) fn add_review_frame(
+    frame: &mut VarDictionary,
+    reviews: &curl_match::review::ReviewBook,
+    sim: &curl_sim::Sim,
+) {
+    use curl_match::review::SplitClock;
+    let (state, ms) = match reviews.split_clock(sim) {
+        SplitClock::Waiting => ("Waiting", -1),
+        SplitClock::Running(ms) => ("Running", i64::from(ms)),
+        SplitClock::Complete(ms) => ("Complete", i64::from(ms)),
+        SplitClock::Incomplete => ("Incomplete", -1),
+    };
+    frame.set("hog_clock_state", state);
+    frame.set("hog_clock_ms", ms);
+    frame.set("hog_split_ms", reviews.split_ms(sim).map_or(-1, i64::from));
 }
 
 pub(crate) fn presentation_frame(

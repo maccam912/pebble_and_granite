@@ -80,6 +80,7 @@ var shot_reference := CurlShotReference.new()
 var ice_audio: CurlIceAudio
 var restart_prompt: CurlRestartPrompt
 var match_readout: CurlMatchReadout
+var shot_clock: CurlShotClock
 
 var mobile_ui := OS.get_name() == "Android"
 
@@ -182,6 +183,9 @@ func _ready() -> void:
 	match_readout = CurlMatchReadout.new()
 	add_child(match_readout)
 	match_readout.setup(self)
+	shot_clock = CurlShotClock.new()
+	add_child(shot_clock)
+	shot_clock.setup(self)
 	restart_prompt = CurlRestartPrompt.new()
 	add_child(restart_prompt)
 	restart_prompt.setup(self)
@@ -432,6 +436,7 @@ func update_labels() -> void:
 	if drills != null: drills.refresh_controls()
 	if ice_board != null: ice_board.refresh_button()
 	if match_readout != null: match_readout.refresh()
+	if shot_clock != null: shot_clock.refresh()
 	if run_active and (sweeping or hold_sweep):
 		var selected := selected_sweep_stone()
 		if selected.is_empty(): report_label.text = "STONE NO LONGER AVAILABLE\nLift, then select another eligible moving stone."
@@ -695,6 +700,16 @@ func _notification(what: int) -> void:
 	if what == NOTIFICATION_APPLICATION_FOCUS_OUT or what == NOTIFICATION_APPLICATION_PAUSED or what == NOTIFICATION_WM_CLOSE_REQUEST:
 		suspended = true
 		cancel_pointer()
+
+func _unhandled_key_input(event: InputEvent) -> void:
+	# Menus consume Escape first. During play it safely interrupts the current
+	# gesture; an in-hand delivery remains available to regrip after closing.
+	if not event is InputEventKey or not event.pressed or event.echo or event.keycode != KEY_ESCAPE: return
+	if event.ctrl_pressed or event.alt_pressed or event.meta_pressed: return
+	if session == null or not is_visible_in_tree() or local_menu_open() or (room_panel != null and room_panel.visible): return
+	cancel_pointer()
+	play_settings.show()
+	get_viewport().set_input_as_handled()
 
 func _input(event: InputEvent) -> void:
 	if room_panel != null and room_panel.visible: return

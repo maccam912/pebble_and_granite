@@ -111,6 +111,10 @@ review with Keep playing selected; Escape restores the prior focus and session.
 The next-end and completed-match rematch actions remain immediate. Online settings
 do not pause the remote authority. `tests/local_menus.gd` covers pause/resume,
 restart cancellation/confirmation, held-delivery protection and modal input.
+Escape opens Settings during play and safely interrupts the current pointer
+gesture. Held deliveries retain their position for regrip; Escape in an existing
+menu closes that menu without reopening it. Online uses its existing held-delivery
+suspension command while room authority continues to run.
 
 
 Between match deliveries, a compact readout identifies hammer, each team's stones
@@ -144,3 +148,12 @@ Restored settled shots rebuild feedback from the recorded shot history. Feedback
 uses left/right and short of/behind the tee, actual hog-to-hog timing, unsigned
 rotation counts and stone contacts; incomplete splits are never presented as a
 different timer. `tests/shot_feedback.gd` checks these observational labels.
+
+Local practice, drills and solo now show a live hog-to-hog stopwatch during
+travel. Whole-stone near-hog and far-hog crossings start and stop it. It uses
+240 Hz simulation ticks, rebuilds from the existing journal, pauses with local
+menus, and explicitly labels accelerated opponent travel. It never estimates an
+endpoint or future split. Online stopwatch display remains deferred because late
+accepted sweep commands can revise the observed path before review reconciliation.
+`tests/shot_clock.gd` covers pause, in-flight restore and the completed split;
+the Rust review tests cover exact crossing ticks and incomplete shots.
