@@ -100,6 +100,7 @@ func update_labels() -> void:
 	elif run_active and team == frame.team and not delivered_stone().is_empty() and delivered_stone().position.y >= 0:
 		report_label.text = "Past the tee: one sweeper per team. Player 1 takes priority if both hold."
 	elif frame.match_phase == "Placement": report_label.text = "Each team selects its first/last thrower. The indicated team chooses placement."
+	if match_readout != null: match_readout.refresh()
 	layout_feedback()
 func owns_delivery() -> bool:
 	var index := online.seat_index()

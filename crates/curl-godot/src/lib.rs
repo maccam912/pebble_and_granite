@@ -1102,6 +1102,27 @@ pub(crate) fn presentation_frame(
     frame.set("can_deliver_next", can_deliver_next);
     frame.set("ice_cells", sim.ice.cells.len() as i64);
     frame.set("resting", sim.is_resting());
+    // Read-only scoring feedback uses the same fixed-point rules as settlement.
+    // Hide provisional counts while stones move or a remedy is pending.
+    let settled = sim.is_resting() && game.is_none_or(|a| a.game.phase != Phase::Choice);
+    let (counting_team, counting_points) = if settled {
+        curl_rules::score_end(&sim.stones)
+    } else {
+        (None, 0)
+    };
+    let mut counting: Vec<_> = sim
+        .stones
+        .iter()
+        .filter(|s| Some(s.team) == counting_team && curl_rules::in_house(s))
+        .collect();
+    counting.sort_by_key(|s| (s.pos.dot(s.pos), s.id));
+    let mut counting_ids = PackedInt32Array::new();
+    for stone in counting.into_iter().take(counting_points as usize) {
+        counting_ids.push(stone.id as i32);
+    }
+    frame.set("counting_team", counting_team.map_or(-1, i64::from));
+    frame.set("counting_points", counting_points as i64);
+    frame.set("counting_stones", &counting_ids);
     frame.set("contacts", sim.contacts as i64);
     frame.set(
         "hog_tick",
@@ -1132,6 +1153,20 @@ pub(crate) fn presentation_frame(
         frame.set("thrower", a.game.throwing_seat() as i64);
         frame.set("delivered_count", a.game.delivered as i64);
         frame.set("hammer", a.game.hammer as i64);
+        let stones_per_team = a.game.rules.stones_per_team();
+        frame.set("stones_per_team", stones_per_team as i64);
+        for (team, key) in [(0, "stones_left_gold"), (1, "stones_left_cyan")] {
+            let completed = a.game.delivered / 2
+                + u8::from(a.game.delivered % 2 != 0 && team == 1 - a.game.hammer);
+            let in_flight = u8::from(
+                matches!(a.game.phase, Phase::InFlight | Phase::Choice)
+                    && team == a.game.delivering_team(),
+            );
+            frame.set(
+                key,
+                stones_per_team.saturating_sub(completed + in_flight) as i64,
+            );
+        }
         frame.set("placement_team", a.game.placement_team as i64);
         frame.set(
             "choice_team",

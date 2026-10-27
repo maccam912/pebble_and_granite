@@ -105,3 +105,20 @@ review with Keep playing selected; Escape restores the prior focus and session.
 The next-end and completed-match rematch actions remain immediate. Online settings
 do not pause the remote authority. `tests/local_menus.gd` covers pause/resume,
 restart cancellation/confirmation, held-delivery protection and modal input.
+
+
+Between match deliveries, a compact readout identifies hammer, each team's stones
+still to play, and the settled house count. It hides during travel and held slides.
+Solid cream rings mark the actual counting stones; a pending no-tick choice hides
+them until the remedy is accepted. Counts and ring IDs come from the native
+fixed-point scoring routine, including exact ties and biter eligibility, rather
+than a second float-based UI interpretation. Positioned doubles stones do not
+consume delivery inventory. Extra ends are labelled explicitly.
+
+Completed ends show scorer/points, total score, next hammer and a Next end action;
+finished matches show the winner and Rematch. A thinking-clock forfeit is labelled
+as such. The action inherits existing online host/readiness restrictions. Duplicate
+delivery controls hide while this result card is shown. `tests/match_readout.gd`
+checks scoring, inventory, native replay, blank ends, clock expiry and next-end
+reset; captures live in build/evidence/match-readout. No authority or journal
+schema changed; these are derived presentation fields.

@@ -79,6 +79,7 @@ var zoom_button: Button
 var shot_reference := CurlShotReference.new()
 var ice_audio: CurlIceAudio
 var restart_prompt: CurlRestartPrompt
+var match_readout: CurlMatchReadout
 
 var mobile_ui := OS.get_name() == "Android"
 
@@ -178,6 +179,9 @@ func _ready() -> void:
 		room_panel = CurlRoomPanel.new()
 		add_child(room_panel)
 		room_panel.hide()
+	match_readout = CurlMatchReadout.new()
+	add_child(match_readout)
+	match_readout.setup(self)
 	restart_prompt = CurlRestartPrompt.new()
 	add_child(restart_prompt)
 	restart_prompt.setup(self)
@@ -280,6 +284,7 @@ func update_spatial(delta: float) -> void:
 	if solo != null: solo.update_camera()
 	if drills != null: drills.update_view()
 	var aiming: bool = not run_active and phase != "Stone at rest" and frame.get("match_phase", "Calling") == "Calling"
+	rink.show_counting = match_mode and not run_active and frame.get("match_phase", "") != "Choice"
 	rink.hand_held = pointer != -99 and not dragging_broom and not sweeping and not run_active
 	rink.pull_offset = clampf((stroke_trace[-1].y - stroke_trace[0].y) * .004, -.08, .18) if rink.hand_held and stroke_trace.size() > 1 and phase in ["Grip", "Pull", "Drive"] else 0.0
 	var held: Dictionary = frame.get("in_hand", {}) if authoritative_delivery else {}
@@ -366,6 +371,8 @@ func reset(persist := true) -> void:
 	if persist: save_practice()
 
 func update_labels() -> void:
+	var concluded: bool = match_mode and frame.get("match_phase", "") in ["EndComplete", "GameComplete"]
+	for control in [new_button, sweep_button, one_button]: control.visible = not concluded
 	status.text = "Practice  /  " + phase
 	hint.text = "CLUB ICE  •  Aim · deliver · sweep" if spatial_view else "FEEL LAB     •     Seed 42     •     Mouse / trackpad / touch"
 	turn_button.text = "Turn: clockwise ↻" if turn == 1 else "Turn: counterclockwise ↺"
@@ -388,7 +395,7 @@ func update_labels() -> void:
 	if match_mode:
 		gold_score.text = "GOLD  %d" % frame.score_gold
 		cyan_score.text = "%d  CYAN" % frame.score_cyan
-		end_score.text = "END %d / %d" % [frame.end, frame.scheduled_ends]
+		end_score.text = "EXTRA %d" % (frame.end - frame.scheduled_ends) if frame.end > frame.scheduled_ends else "END %d / %d" % [frame.end, frame.scheduled_ends]
 		clock_label.text = "Gold %s   •   Cyan %s" % [clock_text(frame.clock_gold), clock_text(frame.clock_cyan)]
 		hint.text = "LOCAL MIXED DOUBLES  •  Autosaved"
 		if frame.match_phase == "Placement":
@@ -424,6 +431,7 @@ func update_labels() -> void:
 	if solo != null: solo.refresh_controls()
 	if drills != null: drills.refresh_controls()
 	if ice_board != null: ice_board.refresh_button()
+	if match_readout != null: match_readout.refresh()
 	layout_feedback()
 
 func layout_feedback() -> void:
@@ -720,6 +728,7 @@ func begin_pointer(id: int, p: Vector2) -> void:
 	if solo != null and solo.enabled and not run_active and (solo.planning or (not solo.human_throws() and not solo.human_skips())): return
 	if solo != null and solo.enabled and solo.human_throws() and not run_active and solo.planned.is_empty() and frame.get("in_hand", {}).is_empty(): return
 	var controls := [camera_button, view_button, settings_button, zoom_button]
+	if match_readout != null: controls.append(match_readout.end_panel)
 	if solo != null: controls.append_array([solo.solo_button, solo.send_button, solo.shot_choice, solo.auto_button, solo.accept_button, solo.restore_button, solo.shot_card] + solo.call_buttons + solo.turn_buttons)
 	if ice_board != null: controls.append(ice_board.menu_button)
 	if drills != null: controls.append_array([drills.menu_button, drills.start_button, drills.choice])

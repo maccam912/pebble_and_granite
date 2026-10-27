@@ -37,6 +37,7 @@ var role_camera := ""
 var drill_target := Vector2.INF
 var called_target := Vector2.INF
 var calling_view := false
+var show_counting := false
 var remedy_view := false
 var target_rings: Node3D
 var last_tick := -1
@@ -335,6 +336,16 @@ func stone_mesh(team: int) -> Node3D:
 	var contact := mesh(stone, shadow, Vector3(0, .002, 0), shadow_material)
 	contact.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	contact.layers = 2
+	var counting_shape := TorusMesh.new()
+	counting_shape.inner_radius = .18
+	counting_shape.outer_radius = .20
+	counting_shape.rings = 32
+	counting_shape.ring_segments = 6
+	var counting := mesh(stone, counting_shape, Vector3(0, .014, 0), material("fff0ce"))
+	counting.name = "CountingRing"
+	counting.layers = 2
+	counting.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	counting.visible = false
 	var color: StandardMaterial3D = handle_materials[team]
 	mesh(stone, handle_cap_shape, Vector3.ZERO, color).layers = 2
 	var grip := mesh(stone, handle_grip_shape, Vector3.ZERO, color)
@@ -383,6 +394,7 @@ func render_frame(frame: Dictionary, running: bool, sweep: bool, broom_mm: int, 
 			stones[id] = stone
 		var node: Node3D = stones[id]
 		node.visible = data.active
+		node.get_node("CountingRing").visible = show_counting and id in frame.get("counting_stones", [])
 		var target := Vector3(data.position.x, 0, -data.position.y)
 		node.position = target if snap or node.position.distance_to(target) > 2.0 else node.position.lerp(target, 1.0 - exp(-22.0 * delta))
 		node.rotation.y = -data.turns * TAU

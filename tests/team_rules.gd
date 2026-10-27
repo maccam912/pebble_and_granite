@@ -36,6 +36,7 @@ func run() -> void:
 	game.set_process(false)
 	fixture(game, 0)
 	check(game.solo.accept_button.visible and game.solo.restore_button.visible and game.new_button.disabled, "Gold no-tick remedies unavailable")
+	check(game.frame.counting_stones.is_empty(), "Pending remedy displayed a settled score")
 	check(game.rink.current_camera == "House", "No-tick choice did not show the board")
 	if "--capture" in OS.get_cmdline_user_args() and DisplayServer.get_name() != "headless":
 		for i in range(12): await process_frame

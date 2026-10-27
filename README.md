@@ -45,7 +45,9 @@ requested weight, target, broom and curl in a persistent call card with an overh
 As skip, drag the broom and select in-turn/out-turn; the arrow shows curl direction
 without revealing a landing spot. A ghost broom and highlighted stone recall your
 last contact-free result. Settings can mute the new stone/brush sounds separately
-from spoken calls. Solo matches save separately.
+from spoken calls. Solo matches save separately. Between deliveries, hammer and remaining stones show
+beside the rink; cream rings mark counting stones. End cards explain the score
+and lead into the next end or rematch.
 See [solo teams](docs/SOLO_TEAMS.md) for controls and current AI scope.
 **Drills** offers five-shot rounds for tee weight, front guards, alternating line
 and sweeping, plus takeouts and hog-to-hog timing. Gold target rings mark
