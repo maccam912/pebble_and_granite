@@ -1,5 +1,11 @@
 # Delivery model work in progress
 
+Current human/device validation plan: [feel check](FEEL_TEST.md). Input mapping
+version is 5; analog delivery and spatial sweeping are implemented. The numbered
+integration sections below include historical checkpoints and should not be read
+as the current feature checklist. Physical-device gain/comfort approval remains
+open.
+
 `curl-input::delivery` now drives the direct-on-ice handle gesture in both local and
 online scenes. `lift` returns actual integer release position and speed; both
 native simulation and the online packet builder share the same validated factory.

@@ -26,9 +26,13 @@ tests; physical-device feel is the third item and needs user participation.
    modal, diagnostic observer, mouse/touch input, match readout/review, drills,
    solo, online UI and held-resume regression gates pass. Installed Android probe
    tools now navigate the menu; clean APK verification follows this source commit.
-3. Next: real-device input feel. User asked asynchronously for Android/trackpad
-   feedback; do not claim synthetic tests establish human feel or tune gains
-   without evidence.
+3. Real-device input feel remains pending human evidence. `docs/FEEL_TEST.md`
+   records a short repeatability/comfort/recovery session and how observations
+   map to grip, drive, curl, brush or network tuning. Only the dedicated emulator
+   was attached during this pass. User was asked asynchronously for physical
+   Android/trackpad feedback; no response yet. No gains or versions changed.
+   Continue to independent AI work while retaining this explicit open gate.
+4. Next: difficulty-aware strategic planning and match-state evaluation.
 
 ## Current state
 
