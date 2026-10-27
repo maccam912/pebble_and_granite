@@ -157,3 +157,9 @@ endpoint or future split. Online stopwatch display remains deferred because late
 accepted sweep commands can revise the observed path before review reconciliation.
 `tests/shot_clock.gd` covers pause, in-flight restore and the completed split;
 the Rust review tests cover exact crossing ticks and incomplete shots.
+
+Settings' freely positioned body passes pointer events to its ScrollContainer.
+Toggles also pass drags and activate on release, allowing a swipe across a row to
+scroll without changing it. Installed Android 81 verifies this path and the
+lower volume control. Graphical desktop pan and headless keyboard focus checks
+cover their respective input routes.

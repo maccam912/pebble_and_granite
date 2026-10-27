@@ -74,13 +74,19 @@ func run() -> void:
 	for suffix in ["", ".bak", ".tmp"]: DirAccess.remove_absolute(ProjectSettings.globalize_path(game.solo.save_path + suffix))
 	game.play_settings.show()
 	await process_frame
-	var sound_before: bool = game.play_settings.ice_sounds
-	var pan := InputEventPanGesture.new()
-	pan.position = game.play_settings.sound_toggle.get_global_rect().get_center()
-	pan.delta = Vector2(0, 12)
-	Input.parse_input_event(pan)
-	await process_frame
-	check(game.play_settings.content_scroll.scroll_vertical > 0 and game.play_settings.ice_sounds == sound_before, "Settings swallowed scrolling over a toggle or changed its value")
+	# Native pointer dispatch is unavailable with the headless display server.
+	if DisplayServer.get_name() != "headless":
+		var sound_before: bool = game.play_settings.ice_sounds
+		var pan := InputEventPanGesture.new()
+		pan.position = game.play_settings.sound_toggle.get_global_rect().get_center()
+		pan.delta = Vector2(0, 12)
+		var motion := InputEventMouseMotion.new()
+		motion.position = pan.position
+		Input.parse_input_event(motion)
+		await process_frame
+		Input.parse_input_event(pan)
+		await process_frame
+		check(game.play_settings.content_scroll.scroll_vertical > 0 and game.play_settings.ice_sounds == sound_before, "Settings swallowed scrolling over a toggle or changed its value")
 	game.play_settings.content_scroll.scroll_vertical = 250
 	await process_frame
 	game.play_settings.volume_slider.grab_focus()

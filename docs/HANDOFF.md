@@ -1216,3 +1216,11 @@ The first new CI run exposed a stale installed-probe reference to the removed
 target button; `0985aa0` fixes it. Android probes now exercise real broom dragging,
 explicit turns and the reviewed restart confirmation. Physical-device feel,
 audible sound mix and measured ice calibration remain human validation work.
+
+Installed Android 80 also passed the full direct-touch delivery/sweep/background/
+hog probe with original practice files restored. A final Settings swipe exposed
+an event-propagation issue, fixed in `89a9e32` and verified on clean Android 81:
+swipe, 35% volume, mute/unmute and Escape all work. The desktop gesture test uses
+the graphical display; headless keeps its keyboard-scroll coverage. The emulator
+is stopped after validation. Latest CI remains queued behind the earlier batch;
+local passes do not establish publication of the newest changes.

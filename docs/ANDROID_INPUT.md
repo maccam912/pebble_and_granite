@@ -302,3 +302,16 @@ Evidence: `build/probes/touch-010609c4b4824c9fa4038d961590f678/` and
 save and backup byte for byte and removed its temporary file. The installed
 hold-sweep/stopwatch capture was inspected. Physical-device and audible-mix
 validation remain open.
+
+The Settings swipe check exposed a mobile-only issue in Android 80: the
+free-positioned content swallowed drag events. Android 81 fixes propagation and
+makes toggle changes occur on release so a scroll does not toggle them. Clean
+source `89a9e326dcaa7cdb60c06b7f79be47674761df52`, APK SHA256
+`590ace82bf7a317b80ad7e10637f6a13ff7f537b54959cbbcd588311cbb2a536`.
+Actual Android swipes reached the lower settings; taps set Ice volume to 35%,
+muted/unmuted, and Escape closed/reopened the panel. Captures were inspected and
+normal saves/preferences stayed unchanged. Evidence:
+`build/evidence/android-80-settings-9621afecebb24de2aaee5f6c7b4ab789/`
+(the probe directory retains its previous build prefix), and
+`build/polish-android-81-settings-final.log`. The desktop pan event check passes
+with the graphical display; headless checks retain the keyboard-scroll test.
