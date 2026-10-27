@@ -169,17 +169,23 @@ static func lathe(profile: PackedVector2Array) -> ArrayMesh:
 static func jacket_sleeve(length: float) -> ArrayMesh:
 	# Soft diagonal folds near the cuff, rather than concentric hard ridges.
 	# This is only the existing first-person prop; no animation/input changes.
-	const RINGS := 36
+	const RINGS := 64
 	const SIDES := 48
 	var vertices := PackedVector3Array()
 	var normals := PackedVector3Array()
 	var uvs := PackedVector2Array()
+	var colors := PackedColorArray()
 	var indices := PackedInt32Array()
 	for row in range(RINGS + 1):
 		var t := float(row) / RINGS
 		for column in range(SIDES + 1):
 			var angle := float(column) / SIDES * TAU
-			vertices.append(sleeve_point(length, t, angle))
+			var point := sleeve_point(length, t, angle)
+			vertices.append(point)
+			var radius := Vector2(point.x, point.z / .92).length()
+			var compression := clampf((lerpf(.074, .038, t) - radius) / .006, 0.0, 1.0)
+			var shade := lerpf(1.0, .86, compression)
+			colors.append(Color(shade, shade, shade))
 			var along := sleeve_point(length, t + .001, angle) - sleeve_point(length, t - .001, angle)
 			var around := sleeve_point(length, t, angle + .001) - sleeve_point(length, t, angle - .001)
 			normals.append(along.cross(around).normalized())
@@ -193,6 +199,7 @@ static func jacket_sleeve(length: float) -> ArrayMesh:
 	arrays[Mesh.ARRAY_VERTEX] = vertices
 	arrays[Mesh.ARRAY_NORMAL] = normals
 	arrays[Mesh.ARRAY_TEX_UV] = uvs
+	arrays[Mesh.ARRAY_COLOR] = colors
 	arrays[Mesh.ARRAY_INDEX] = indices
 	var result := ArrayMesh.new()
 	result.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, arrays)
@@ -201,8 +208,14 @@ static func jacket_sleeve(length: float) -> ArrayMesh:
 static func sleeve_point(length: float, t: float, angle: float) -> Vector3:
 	var taper := lerpf(.074, .038, t)
 	var folds := smoothstep(.38, .66, t) * (1.0 - smoothstep(.94, 1.0, t))
-	var crease := sin(t * 39.0 + sin(angle * 2.0) * 1.8) * .0028
-	crease += sin(t * 27.0 - angle * 3.0) * .0018
+	var crease := sin(t * 39.0 + sin(angle * 2.0) * 1.8) * .0014
+	crease += sin(t * 27.0 - angle * 3.0) * .0009
+	# Local diagonal compression folds, with loose cloth beside each valley.
+	for fold: Vector3 in [Vector3(.62, .055, .5), Vector3(.79, .05, 2.7), Vector3(.91, .035, 4.4)]:
+		var offset := t - fold.x - sin(angle + fold.z) * .045
+		var weight := .25 + .75 * pow(sin(angle * .5 + fold.z), 2.0)
+		crease -= exp(-pow(offset / fold.y, 2.0)) * .007 * weight
+		crease += exp(-pow((offset + .045) / (fold.y * 1.3), 2.0)) * .004 * weight
 	var radius := taper + folds * crease
 	return Vector3(cos(angle) * radius, (t - .5) * length, sin(angle) * radius * .92)
 

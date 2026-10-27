@@ -28,6 +28,10 @@ func run() -> void:
 	game.persistence_enabled = false
 	if mobile_preview: game.mobile_ui = true
 	root.add_child(game)
+	if game.rink == null or not is_instance_valid(game.rink.camera):
+		push_error("Rink failed to initialize; refusing empty visual evidence")
+		quit(1)
+		return
 	game.set_process(false)
 	game.set_process_input(false)
 	game.reset(false)

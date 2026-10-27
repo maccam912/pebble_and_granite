@@ -115,6 +115,7 @@ func _ready() -> void:
 	var jacket_material := material("3b5361", .91)
 	glove_material.metallic_specular = .18
 	jacket_material.metallic_specular = .18
+	jacket_material.vertex_color_use_as_albedo = true
 	var glove := SphereMesh.new()
 	glove.radius = .044
 	glove.height = .039

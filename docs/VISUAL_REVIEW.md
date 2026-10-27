@@ -1026,3 +1026,29 @@ for byte. Final captures/logs are in `build/evidence/polish/android-72/` and
 `build/android-72-review.log`. This verifies the emulator render and input gates,
 not physical-phone performance. CI run `40423314992` is still pending at this
 checkpoint. Weekly quota remaining is 86 percent.
+
+## Gathered sleeve folds at gameplay scale
+
+The full presentation review found that the held-delivery sleeve still read as a
+smooth tube. Compared its silhouette and fabric compression with a [delivery
+photograph published by WBUR](https://www.wbur.org/onlyagame/2018/02/22/curling-stones-scotland-olympics-pyeongchang).
+The photo is reference-only under ignored `build/reference/delivery-sleeve.jpg`.
+
+Refined the existing sleeve with three local diagonal compression folds and a
+small adjacent fabric bulge. Added restrained vertex-color shading in the fold
+valleys, using the existing matte material, after geometry alone remained too
+subtle under the club lighting. Reduced the stronger first shading trial by half
+before retaining the final normal-scale held capture. Increased the axial rings
+from 36 to 64 to resolve the local folds: 6,144 triangles replace 3,456 on this
+single held prop. No new texture, draw call or custom shader is added. Wrist,
+forearm, glove, handle hit target, animation and input transforms are unchanged.
+
+The first trial had a GDScript inference error; it was corrected before visual
+acceptance. The screenshot fixture had nonetheless printed success after
+capturing an empty rink, so it now refuses to capture if the rink camera failed
+to initialize. Trial errors/empty images are not passing evidence. The corrected
+`final.log` has all ten captures, `VISUAL_REVIEW_OK` and no errors/warnings.
+Native `RINK_VIEW_OK`, `HELD_RESUME_OK` and `DELIVERY_SLIDE_OK` also pass with clean
+logs. Original source, before image and trial/final logs are retained under
+`build/sleeve-final-review/`. Installed Android verification follows the source
+commit. Weekly quota remaining is 85 percent.
