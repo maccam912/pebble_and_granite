@@ -73,8 +73,17 @@ tests; physical-device feel is the third item and needs user participation.
    verification passed on clean APK 83: actual-touch solo and drill flows,
    journal replay, unchanged normal saves/preferences. Emulator stopped; exact
    provenance in ANDROID_INPUT.md.
-7. Next: measured physics calibration; first establish reproducible measurement
-   inputs and compare the current model without inventing empirical coefficients.
+7. Measurement comparison pipeline implemented in `tools/physics_calibration.py`.
+   Unit-labelled release inputs run through the native replay engine; reports
+   include exact trace/state hashes, model and input/binary hashes, residuals,
+   tolerances, bias and RMSE. Baseline/synthetic cases cannot satisfy --check,
+   boundary exits cannot pass stopping-point comparisons, unsupported contact
+   setups and malformed units/provenance are rejected. Eight baseline cases and
+   five tool tests pass; added to core CI. PHYSICS_CALIBRATION.md records the
+   current model's metrics and the reference-data contract. Actual coefficient
+   fitting remains pending a measured dataset; user asked asynchronously. No
+   empirical constants or model versions changed. Continue independent work.
+8. Next: independent team sweeper roles and fatigue.
 
 ## Current state
 

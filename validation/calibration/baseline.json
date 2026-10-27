@@ -1,0 +1,106 @@
+{
+  "schema": 1,
+  "cases": [
+    {
+      "id": "guard",
+      "source": {
+        "kind": "baseline",
+        "conditions": "Fresh uniform simulated ice; unswept; no obstacles. Not measured data."
+      },
+      "release": {
+        "vx_mm_s": 0,
+        "vy_mm_s": 1980,
+        "spin_milli_rps": 120
+      }
+    },
+    {
+      "id": "draw_low_rotation",
+      "source": {
+        "kind": "baseline",
+        "conditions": "Fresh uniform simulated ice; unswept; no obstacles. Not measured data."
+      },
+      "release": {
+        "vx_mm_s": 0,
+        "vy_mm_s": 2085,
+        "spin_milli_rps": 60
+      }
+    },
+    {
+      "id": "draw",
+      "source": {
+        "kind": "baseline",
+        "conditions": "Fresh uniform simulated ice; unswept; no obstacles. Not measured data."
+      },
+      "release": {
+        "vx_mm_s": 0,
+        "vy_mm_s": 2085,
+        "spin_milli_rps": 120
+      }
+    },
+    {
+      "id": "draw_high_rotation",
+      "source": {
+        "kind": "baseline",
+        "conditions": "Fresh uniform simulated ice; unswept; no obstacles. Not measured data."
+      },
+      "release": {
+        "vx_mm_s": 0,
+        "vy_mm_s": 2085,
+        "spin_milli_rps": 250
+      }
+    },
+    {
+      "id": "opposite_turn",
+      "source": {
+        "kind": "baseline",
+        "conditions": "Fresh uniform simulated ice; unswept; no obstacles. Not measured data."
+      },
+      "release": {
+        "vx_mm_s": 0,
+        "vy_mm_s": 2085,
+        "spin_milli_rps": -120
+      }
+    },
+    {
+      "id": "short_slow_segment",
+      "source": {
+        "kind": "baseline",
+        "conditions": "Fresh uniform simulated ice; unswept; no obstacles. Not measured data."
+      },
+      "release": {
+        "vx_mm_s": 0,
+        "vy_mm_s": 700,
+        "spin_milli_rps": 120
+      }
+    },
+    {
+      "id": "heavy_boundary_exit",
+      "source": {
+        "kind": "baseline",
+        "conditions": "Fresh uniform simulated ice; unswept; no obstacles. Not measured data."
+      },
+      "release": {
+        "vx_mm_s": 0,
+        "vy_mm_s": 3000,
+        "spin_milli_rps": 120
+      }
+    },
+    {
+      "id": "draw_swept_first_7_seconds",
+      "source": {
+        "kind": "baseline",
+        "conditions": "Fresh uniform simulated ice; centered 100% brush for seven seconds. Not measured data."
+      },
+      "release": {
+        "vx_mm_s": 0,
+        "vy_mm_s": 2085,
+        "spin_milli_rps": 120
+      },
+      "sweep": {
+        "start_tick": 0,
+        "end_tick": 1680,
+        "effort": 255
+      }
+    }
+  ]
+}
