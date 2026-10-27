@@ -13,6 +13,9 @@ use godot::prelude::*;
 struct AiContext {
     end: u8,
     delivered: u8,
+    score: [u16; 2],
+    hammer: u8,
+    rules: Rules,
     stones: Vec<curl_sim::Stone>,
     ice: curl_sim::Ice,
 }
@@ -21,6 +24,9 @@ impl AiContext {
         Self {
             end: game.game.end,
             delivered: game.game.delivered,
+            score: game.game.score,
+            hammer: game.game.hammer,
+            rules: game.game.rules.clone(),
             stones: game.sim.stones.clone(),
             ice: game.sim.ice.clone(),
         }
@@ -710,6 +716,13 @@ impl CurlSession {
     /// Planning runs on a native worker; no Godot objects cross the thread.
     #[func]
     fn request_ai_plan(&mut self) -> GString {
+        self.request_rated_ai_plan(0)
+    }
+    #[func]
+    fn request_rated_ai_plan(&mut self, level: i64) -> GString {
+        if !(0..=2).contains(&level) {
+            return "Invalid AI planning level".into();
+        }
         let Some(game) = &self.game else {
             return "No match".into();
         };
@@ -723,7 +736,9 @@ impl CurlSession {
         self.ai_plan = None;
         self.ai_task = Some(AiTask {
             context: AiContext::of(game),
-            worker: std::thread::spawn(move || curl_match::ai::plan(&authority)),
+            worker: std::thread::spawn(move || {
+                curl_match::ai::plan_at_level(&authority, ai_level(level))
+            }),
         });
         GString::new()
     }

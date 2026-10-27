@@ -1,3 +1,8 @@
+AI difficulty now changes strategy as well as accuracy. Competitive considers
+opponent replies to two different shot intentions; Elite considers four and
+checks execution risk. Match score, end and hammer affect choices, including
+early blanks and final-end winning draws. These are bounded game heuristics.
+
 Menu now groups modes and restart actions, leaving the rink clearer. Local play
 pauses in the menu; active shots must finish before switching modes. One-push,
 next-stone and sweeping controls appear in the phases where they are useful.

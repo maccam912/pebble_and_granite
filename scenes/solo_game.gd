@@ -175,7 +175,7 @@ func advance(delta: float) -> void:
 			if game.turn == 0: game.turn = 1
 			request_call(caller_kind, Vector2(0, -3.0 if caller_kind == 1 else 0.0))
 			return
-		var error: String = game.session.request_ai_plan()
+		var error: String = game.session.request_rated_ai_plan(game.play_settings.difficulty)
 		if not error.is_empty(): game.report = error; return
 		planning = true
 		game.report = "AI skip is reading the house…"
@@ -227,7 +227,7 @@ func apply_remedy(restore: bool) -> void:
 
 func suggest_again() -> void:
 	if not enabled or planning or game.run_active: return
-	var error: String = game.session.request_ai_plan()
+	var error: String = game.session.request_rated_ai_plan(game.play_settings.difficulty)
 	if not error.is_empty(): game.report = error; return
 	planning = true
 	keep_broom = false

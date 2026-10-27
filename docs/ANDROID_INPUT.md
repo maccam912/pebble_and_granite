@@ -14,7 +14,11 @@ unchanged. Installed caller screenshot inspected; no clipped navigation controls
 Evidence: `build/probes/solo-ui-8a90cd509fa44c2ab2c9907b0a6bafb5/` and
 `build/probes/drills-ui-79002831e19844b182762b5921e631ae/`.
 Tutorial progression has native rendered/input coverage; this installed probe
-does not certify its progression on Android. Direct-touch lifecycle probe follows.
+does not certify its progression on Android. The full direct-touch lifecycle
+probe also passed: both curl directions, scrub/lift, accessible hold, held pause/
+regrip and exactly-once hog faults. It restored original practice files byte for
+byte. Evidence: `build/probes/touch-9573aa14149744dbb1c854fc51d117f9/`.
+The dedicated emulator was stopped after validation.
 Physical-device feel and audible mix remain open.
 
 The direct-on-ice scene was tested on the Android 35 ARM64 emulator

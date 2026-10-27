@@ -49,7 +49,7 @@ Escape opens Settings and pauses local play; close it and regrip to resume a hel
 delivery. Fresh ice and New match ask before replacing an ongoing session.
 Next stone retains the field and evolving ice; Fresh ice starts a new session.
 Practice saves automatically, including held slides and interrupted shots, with a previous-save backup. Choose **Solo 4 vs 4** to play one position with seven AI players. Settings
-selects your position (or Full team / Calling only), three AI accuracy tiers,
+selects your position (or Full team / Calling only), three AI difficulty tiers,
 remappable H/C/O call keys, spoken calls and optional 4×
 opponent travel between the hog lines. Skip/vice can send called shots and call
 HARD/CLEAN/OFF; text and symbols support silent play. Your deliveries show the skip's
@@ -60,6 +60,8 @@ last contact-free result. Settings can mute the new stone/brush sounds separatel
 from spoken calls. Solo matches save separately. Between deliveries, hammer and remaining stones show
 beside the rink; cream rings mark counting stones. End cards explain the score
 and lead into the next end or rematch.
+Club plans one shot; Competitive and Elite consider opponent replies, with a
+wider search and execution-risk check for Elite. Score, end and hammer matter.
 See [solo teams](docs/SOLO_TEAMS.md) for controls and current AI scope.
 **Drills** offers five-shot rounds for tee weight, front guards, alternating line
 and sweeping, plus takeouts and hog-to-hog timing. Gold target rings mark

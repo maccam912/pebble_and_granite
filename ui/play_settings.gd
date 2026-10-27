@@ -77,7 +77,7 @@ func _ready() -> void:
 	fast_toggle.button_pressed = fast_opponents
 	fast_toggle.toggled.connect(func(value): fast_opponents = value; update_preferences())
 	add_child(fast_toggle)
-	label("AI shot accuracy", Vector2(24, 288))
+	label("AI difficulty", Vector2(24, 288))
 	difficulty_choice = OptionButton.new()
 	difficulty_choice.position = Vector2(268, 276)
 	difficulty_choice.size = Vector2(268, 50)

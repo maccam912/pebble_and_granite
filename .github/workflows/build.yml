@@ -130,6 +130,7 @@ jobs:
           python tools/godot.py --headless --path . --script tests/drills.gd
           python tools/godot.py --headless --path . --script tests/solo_restore.gd
           python tools/godot.py --headless --path . --script tests/solo_teams.gd
+          python tools/godot.py --headless --path . --script tests/ai_strategy.gd
           python tools/godot.py --headless --path . --script tests/solo_full_match.gd -- --full-match
           python tools/godot.py --headless --path . --script tests/sweeping.gd
           python tools/godot.py --headless --path . --script tests/match_flow.gd -- --full-match

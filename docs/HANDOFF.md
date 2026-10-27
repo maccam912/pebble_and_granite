@@ -32,7 +32,22 @@ tests; physical-device feel is the third item and needs user participation.
    was attached during this pass. User was asked asynchronously for physical
    Android/trackpad feedback; no response yet. No gains or versions changed.
    Continue to independent AI work while retaining this explicit open gate.
-4. Next: difficulty-aware strategic planning and match-state evaluation.
+4. Strategic AI implemented: Club one-ply, Competitive opponent replies over two
+   distinct shortlisted intentions, Elite four plus four fixed execution-risk
+   samples. Both turns are solved before shortlisting. Match score/end/hammer and
+   stones remaining influence an explicit heuristic; completed points are not
+   counted twice and actual terminal wins dominate. Worker contexts now include
+   score, hammer and rules. Physics/accepted journal formats remain unchanged.
+   Core/every-tick golden checks and workspace all-target Clippy pass. Tactical
+   tests cover an early hammer-retaining blank, taking a final-end win, tying to
+   avoid defeat, and a guarded scoring position where replying search improves
+   on the greedy hit. Native rated-plan/replay, called-shots, restore and rules
+   branches pass. Initial empty-house planning on M5 Pro: Club 139 ms,
+   Competitive 510 ms, Elite 911 ms. These are local probes, not phone budgets.
+   Full solo match passed all 96 deliveries, journal/review reconstruction and
+   rematch. Existing Godot cleanup warnings remain in that fixture; no script
+   errors. Installed Android strategy is not yet checked.
+5. Next: expand the AI's physical shot catalogue beyond draws, guards and hits.
 
 ## Current state
 

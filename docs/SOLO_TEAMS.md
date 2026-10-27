@@ -59,9 +59,19 @@ shots; the caller watches from behind the broom. Camera remains manually selecta
 and held delivery views keep the handle visible; explicit manual cameras still
 work. This preference is independent of FOV, zoom and fast watching.
 
-**AI shot accuracy** has three tiers. All use the same physics and the same
-bounded one-ply search over draws, center guards and hits. The executor adds
-centered triangular speed, line and rotation scatter with these maximum bounds:
+**AI difficulty** has three tiers. All use the same physics and a bounded
+catalogue of draws, center guards and hits. Club evaluates one shot. Competitive
+checks the opponent's best reply to its two strongest distinct shot intentions;
+Elite checks four and penalizes brittle shots with four fixed execution samples.
+Both turns are evaluated before shortlisting each target/type. Search ends at the
+end boundary; there is no full-game tree or calibrated win probability.
+
+Position values account for match score, end number, hammer and stones left, with
+actual terminal wins taking priority. Early blanks can retain hammer; a final-end
+winning point overrides that preference. Guard value changes with the stone
+owner's lead. These are explicit game heuristics, not measured curling odds.
+The executor adds
+centered bounded speed, line and rotation scatter with these maximum bounds:
 
 | Tier | Speed | Line at tee | Rotation |
 | --- | --- | --- | --- |
@@ -87,8 +97,8 @@ FOV. FOV, speech, accuracy, role and fast travel preferences persist on the devi
 
 The current team authority has one combined brush per team. AI partner effort
 and human input contribute to that brush, with its existing fatigue. Independent
-four-player brush/fatigue identities, individual teammate personalities, advanced
-multi-ply strategy, Bayesian ice learning, doubles/runbacks/freezes, coaching and
+four-player brush/fatigue identities, individual teammate personalities, deeper
+stochastic strategy, Bayesian ice learning, doubles/runbacks/freezes, coaching and
 career remain future work. Mixed-doubles online continues to use its existing
 separate per-player brushes. No simulation, rules or journal version changes
 are needed for this first solo implementation.

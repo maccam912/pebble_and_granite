@@ -1,5 +1,23 @@
 # Performance probes
 
+## Strategic AI — 27 October 2026
+
+`tests/ai_strategy.gd` measures an initial empty-house plan on seed 42 and verifies
+that planning does not mutate the match, then executes and replays an accepted
+Elite release. One release-native headless run on Apple M5 Pro/macOS measured:
+
+| Tier | Worker request to polled result |
+| --- | ---: |
+| Club, one shot | 139 ms |
+| Competitive, replies to two intentions | 510 ms |
+| Elite, replies to four plus execution-risk samples | 911 ms |
+
+These are single local wall-time observations, not physical Android budgets or
+input/render latency measurements. Crowded houses cost more; exact simulation
+and a fixed candidate shortlist bound search work rather than elapsed CPU time.
+There is no frame-rate-dependent search cutoff. Current physics model is 3;
+the earlier rewind measurements below retain their original model-2 context.
+
 Measurements below are single local probes on Apple M5 Pro/macOS with Rust 1.98.1,
 Godot 4.7 and model 2. They are regression evidence, not Android or universal FPS
 claims. Run native release builds when assessing shipping behavior; debug builds
