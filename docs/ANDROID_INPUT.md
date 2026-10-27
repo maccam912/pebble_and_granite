@@ -193,3 +193,22 @@ calibration. The latest source release/CI state is tracked in AI_PROGRESS.md.
 The subsequent checkpoint only adjusts the resting-shot caption to identify the
 next thrower explicitly, alongside host-fixture/docs changes. Installed evidence
 above remains tied to f573bdc; the caption change has local native coverage.
+
+## Team-rule follow-up — 27 October 2026
+
+Clean source `2851fef375051167f25b276358af8b33f705bb57`, local Android 76,
+installed Android templates, `source_dirty=false`. APK SHA256:
+`d7fd285189bf1fb9f2c82a0a90555000de5ec49c33d519655e8fdc72323dd2fe`.
+Manifest: `build/download/pebble-and-granite-76-android.json`.
+Installed golden/JNI self-test passed; actual solo UI probe passed all menu/call/
+zoom/board/opponent-fast/next-approval checks and confirmed unchanged normal saves.
+Two-delivery journal verified on desktop: `1fbba44ef7e65df2`.
+Evidence: `build/probes/solo-ui-6c9f768a6ada42948892cf3ca9f03e0b/`;
+logs `build/team-rules-android-runtime.log` and
+`build/team-rules-android-solo-repeat.log`. One preceding UI run reached the final
+approval but its verifier hit a concurrently edited local compile; its exported
+journal was verified separately, then the complete probe was rerun successfully.
+No installed no-tick collision fixture was driven: both remedies, pending restore,
+AI choice and moving-clock rematch have desktop native/core coverage. Existing
+direct-touch evidence above remains tied to build 75. New drill work follows this
+APK and requires its own installed validation.

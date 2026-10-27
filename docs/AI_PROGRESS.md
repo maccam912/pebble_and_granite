@@ -187,3 +187,25 @@ The same FSM audit caught a clock forfeit during an early, still-moving release.
 Local travel now ends when match authority leaves InFlight, exposes Rematch, and
 saves that terminal state. A nearly-expired-clock fixture verifies recovery and
 rematch. The new team_rules.gd gate covers these terminal/choice branches.
+
+### Takeout and split-time training
+
+Added two five-shot drills from the bible. Takeouts alternate sides and place a
+Gold target using an ordinary recorded AI draw. Player grades distinguish removal
+with retention in the house (3), removal (2), displacement of at least 45 cm (1),
+and miss/fault (0). Displacement uses the actual setup finish. Setup never counts
+as a player attempt. Replays reconstruct the target and evolving ice normally.
+
+Timing training shows attainable 14–16 second goals and grades the measured
+whole-stone near/far hog interval within 0.20 / 0.50 / 1.00 seconds. Missing either
+crossing earns zero; timing alone can score a stone that later runs out the back.
+Goals and tolerances are game training values on the current model, not measured
+ice calibration. Positional rings are hidden for this drill. Old four-drill
+wrappers upgrade their best scores to the new six-drill wrapper without changing
+native journal compatibility.
+
+Core tests cover actual target setup/hits/faults, atomic setup rejection, exact
+setup/outcome replay, real early-release hog timing, thresholds and attainability
+of all five time goals. Native tests cover five takeout attempts, no setup grade,
+ready-target/in-flight timing restore, legacy scores and malformed metrics.
+Weekly usage: 23% used / 77% remaining; work continues.

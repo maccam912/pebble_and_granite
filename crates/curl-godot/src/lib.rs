@@ -505,11 +505,42 @@ impl CurlSession {
             return result;
         }
         if let Some(kind) = curl_match::drills::Kind::from_index(kind) {
-            let target = kind.target(attempt as u8);
+            let target = kind.observed_target(&self.practice, attempt as u8);
             result.set("x_mm", rounded_mm(target.x));
             result.set("y_mm", rounded_mm(target.y));
+            result.set(
+                "split_target_ms",
+                curl_match::drills::Kind::split_target_ms(attempt as u8) as i64,
+            );
         }
         result
+    }
+    #[func]
+    fn prepare_drill(&mut self, kind: i64, attempt: i64, clear: bool) -> GString {
+        let Some(kind) = curl_match::drills::Kind::from_index(kind) else {
+            return "Unknown drill".into();
+        };
+        if self.game.is_some()
+            || !(0..5).contains(&attempt)
+            || self.pending().is_some()
+            || !self.practice.sim.is_resting()
+        {
+            return "Drill setup unavailable".into();
+        }
+        let mut next = self.practice.clone();
+        let result = (|| {
+            if clear {
+                next.clear_stones()?;
+                next.idle(480)?;
+            }
+            kind.prepare(&mut next, attempt as u8)
+        })();
+        if let Err(e) = result {
+            return e.into();
+        }
+        self.practice = next;
+        self.stroke.cancel();
+        GString::new()
     }
     #[func]
     fn drill_result(&self, kind: i64, attempt: i64) -> VarDictionary {
@@ -518,11 +549,19 @@ impl CurlSession {
             return result;
         }
         if let Some(kind) = curl_match::drills::Kind::from_index(kind)
-            && let Some(score) = kind.result(&self.practice.sim, attempt as u8)
+            && let Some(score) = kind.grade(&self.practice, attempt as u8)
         {
             result.set("stars", score.stars as i64);
             result.set("error_mm", score.error_mm);
             result.set("in_play", score.in_play);
+            if let Some(ms) = score.split_ms {
+                result.set("split_ms", ms as i64);
+            }
+            if let Some(ms) = score.error_ms {
+                result.set("error_ms", ms as i64);
+            }
+            result.set("target_removed", score.target_removed);
+            result.set("target_moved_mm", score.target_moved_mm);
         }
         result
     }

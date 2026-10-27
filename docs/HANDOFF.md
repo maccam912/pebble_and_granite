@@ -10,7 +10,8 @@ bible only. Remote: `maccam912/pebble_and_granite`, main branch.
 Last verified downloadable checkpoint: `f573bdc` (rules 4 / protocol 11, model 3),
 [Build 95](https://github.com/maccam912/pebble_and_granite/releases/tag/v0.0.95-dev).
 Its complete cross-platform pipeline passed (40455218259). Follow-up team-rule
-choice/clock recovery is being validated separately before its next publish.
+choice/clock recovery passed clean local Android 76 and awaits its complete
+remote publish. New takeout/timing drills follow that installed checkpoint.
 Current source includes solo teams, rated AI, role cameras/calls and target drills;
 see docs/AI_PROGRESS.md and the final entries for current evidence.
 The main scene is a 3D curler's view with direct handle grip, pull/push/held slide,
@@ -1108,3 +1109,20 @@ covers no-tick recovery and this clock branch. The full AI game passed seven end
 Publication: Build 95 tag was verified at f573bdc and all jobs in run 40455218259
 passed. It includes the requested solo/camera/call/accessibility/drill/board work;
 the subsequent team-rule recovery requires the next source build.
+
+## Takeout and timing drills
+
+Six five-shot drill types now include takeouts and hog-to-hog timing. Targets are
+normal recorded setup draws; no new native journal commands or fixture snapshots
+were introduced. The player’s hit is graded separately, using actual displacement
+from the setup endpoint. Timing grades use actual whole-stone hog crossings and
+allow out-the-back shots because this exercise isolates timing. 14–16 second
+goals are verified attainable on seed 42; tolerances are provisional game values.
+The wrapper advances to schema 2 with six best scores; schema 1 four-drill saves
+still restore and upgrade. Core/native round/restore/legacy validation passes;
+mobile-size takeout and timing renders were inspected. Core/golden and all-target
+Clippy pass. New source still needs its commit/package and installed drill check.
+
+Team-rule Android 76 (clean 2851fef) passed golden/JNI and actual solo UI actions,
+normal-save isolation and cross-core journal verification. Exact APK hash/evidence
+are in ANDROID_INPUT.md. Weekly usage is 23% used / 77% remaining.

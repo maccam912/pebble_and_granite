@@ -18,9 +18,10 @@ p = argparse.ArgumentParser(description=__doc__)
 p.add_argument('apk', type=pathlib.Path)
 p.add_argument('--serial', required=True)
 p.add_argument('--adb', default=str(pathlib.Path.home() / 'Library/Android/sdk/platform-tools/adb'))
+p.add_argument('--drills', action='store_true', help='Exercise takeout and timing drills using actual touch deliveries')
 a = p.parse_args()
 nonce = uuid.uuid4().hex
-out = ROOT / 'build/probes' / ('solo-ui-' + nonce)
+out = ROOT / 'build/probes' / (('drills-ui-' if a.drills else 'solo-ui-') + nonce)
 out.mkdir(parents=True)
 events = []
 last_state = {}
@@ -97,20 +98,8 @@ def saves():
             for name in names for suffix in ['', '.bak']}
 
 
-if adb('shell', 'getprop', 'ro.boot.qemu.avd_name').decode().strip() != 'pebble_granite_lab':
-    raise RuntimeError('This fixture requires the dedicated pebble_granite_lab emulator')
-adb('install', '-r', '-t', str(a.apk.resolve()))
-adb('shell', 'am', 'force-stop', PACKAGE)
-before_saves = saves()
-request = 'files/diagnostics/self-test-request.json'
-adb('exec-out', 'run-as', PACKAGE, 'mkdir', '-p', 'files/diagnostics')
-payload = json.dumps({'schema': 3, 'nonce': nonce}).encode()
-adb('exec-in', 'run-as', PACKAGE, 'dd', 'of=' + request, 'bs=1', 'count=' + str(len(payload)), input=payload)
-activity = adb('shell', 'cmd', 'package', 'resolve-activity', '--brief', PACKAGE).decode().strip().splitlines()[-1]
-if not activity.startswith(PACKAGE + '/'):
-    raise RuntimeError('APK did not resolve the expected application')
-try:
-    adb('shell', 'am', 'start', '-W', '-n', activity)
+
+def run_solo():
     wait_for(lambda s: s['mode'] == 'practice' and s['sequence'] > 2, 'initial scene', timeout=90)
     capture('01-initial')
     tap('settings')
@@ -179,6 +168,111 @@ try:
               'audio_boundary': 'Device voice availability only; no-audio emulator, no audible approval.'}
     (out / 'result.json').write_text(json.dumps(result, indent=2) + '\n')
     print('ANDROID_SOLO_UI_OK ' + str(out), flush=True)
+
+def touch(kind, x, y):
+    adb('shell', 'input', 'touchscreen', 'motionevent', kind, x, y)
+    events.append({'touch': kind, 'x': x, 'y': y, 'time': time.monotonic()})
+
+
+def throw_from_handle():
+    state = read_state()
+    x, y = state['handle']['x'], state['handle']['y']
+    # Same reviewed relative stroke as android_touch_probe.py, on the live handle.
+    touch('DOWN', x, y)
+    try:
+        time.sleep(.08)
+        touch('MOVE', x, y + 36)
+        time.sleep(.06)
+        touch('MOVE', x, y + 26)
+        time.sleep(.14)
+        touch('MOVE', x, y - 18)
+        time.sleep(.8)
+        touch('MOVE', x, y - 18)
+        touch('MOVE', x + 48, y - 27)
+        time.sleep(.04)
+        touch('MOVE', x + 96, y - 36)
+        touch('UP', x + 96, y - 36)
+    finally:
+        adb('shell', 'input', 'touchscreen', 'motionevent', 'CANCEL', x, y, check=False)
+
+
+def verify_drill(name, state):
+    raw = read_file('diagnostics/ui-session-' + nonce + '.json')
+    journal = out / (name + '-session.json')
+    journal.write_bytes(raw)
+    verified = subprocess.run(['cargo', 'run', '--locked', '--release', '-p', 'curl-server', '--',
+                               'verify-session', str(journal)], cwd=ROOT, capture_output=True, text=True, check=True)
+    (out / (name + '-verify.txt')).write_text(verified.stdout)
+    result = json.loads(verified.stdout)
+    if result['hash'] != state['journal_hash']:
+        raise RuntimeError('Installed drill journal does not match the replayed state')
+
+
+def run_drills():
+    wait_for(lambda s: s['mode'] == 'practice' and s['sequence'] > 2, 'initial scene')
+    # This relative touch fixture has only been reviewed at the dedicated resolution.
+    import struct
+    data = adb('exec-out', 'screencap', '-p')
+    if struct.unpack('>II', data[16:24]) != (2400, 1080):
+        raise RuntimeError('Drill stroke requires the reviewed 2400x1080 landscape layout')
+    tap('drills')
+    wait_for(lambda s: s['mode'] == 'drills', 'drills entered')
+    choose('drill_kind', 4)
+    ready = wait_for(lambda s: s['drill_kind'] == 4 and s['delivered'] == 0 and not s['drill_results'], 'takeout target ready')
+    capture('01-takeout-target')
+    if ready['phase'] != 'Ready':
+        raise RuntimeError('Takeout setup was counted as a player attempt')
+    throw_from_handle()
+    takeout = wait_for(lambda s: s['drill_kind'] == 4 and len(s['drill_results']) == 1 and not s['run_active'] and s['hash'] == s['journal_hash'], 'takeout graded', timeout=90)
+    capture('02-takeout-grade')
+    verify_drill('takeout', takeout)
+    tap('next')
+    wait_for(lambda s: s['drill_attempt'] == 1 and s['delivered'] == 0 and len(s['drill_results']) == 1, 'next takeout target')
+    choose('drill_kind', 5)
+    wait_for(lambda s: s['drill_kind'] == 5 and s['drill_attempt'] == 0 and s['drill_goal_ms'] == 14000, 'timing goal ready')
+    capture('03-timing-goal')
+    for attempt in range(3):
+        throw_from_handle()
+        timing = wait_for(lambda s: s['drill_kind'] == 5 and len(s['drill_results']) == 1 and not s['run_active'] and s['hash'] == s['journal_hash'], 'timing graded', timeout=90)
+        if 'split_ms' in timing['drill_results'][0]:
+            break
+        if attempt == 2:
+            raise RuntimeError('Three actual strokes failed to reach both hog lines')
+        tap('restart')
+        wait_for(lambda s: not s['drill_results'] and s['delivered'] == -1, 'timing round restarted')
+    capture('04-timing-grade')
+    if 's slower' not in timing['report'] and 's faster' not in timing['report'] and 'on target' not in timing['report']:
+        raise RuntimeError('Measured timing lacked signed feedback')
+    verify_drill('timing', timing)
+    tap('next')
+    final = wait_for(lambda s: s['drill_attempt'] == 1 and s['drill_goal_ms'] == 15000, 'next timing goal')
+    if saves() != before_saves:
+        raise RuntimeError('Drill probe modified normal player saves/preferences')
+    result = {'ok': True, 'serial': a.serial, 'nonce': nonce,
+              'apk_sha256': hashlib.sha256(a.apk.read_bytes()).hexdigest(), 'takeout': takeout,
+              'timing': timing, 'final_state': final, 'events': events, 'normal_saves_unchanged': True}
+    (out / 'result.json').write_text(json.dumps(result, indent=2) + '\n')
+    print('ANDROID_DRILLS_UI_OK ' + str(out), flush=True)
+
+
+if adb('shell', 'getprop', 'ro.boot.qemu.avd_name').decode().strip() != 'pebble_granite_lab':
+    raise RuntimeError('This fixture requires the dedicated pebble_granite_lab emulator')
+adb('install', '-r', '-t', str(a.apk.resolve()))
+adb('shell', 'am', 'force-stop', PACKAGE)
+before_saves = saves()
+request = 'files/diagnostics/self-test-request.json'
+adb('exec-out', 'run-as', PACKAGE, 'mkdir', '-p', 'files/diagnostics')
+payload = json.dumps({'schema': 3, 'nonce': nonce}).encode()
+adb('exec-in', 'run-as', PACKAGE, 'dd', 'of=' + request, 'bs=1', 'count=' + str(len(payload)), input=payload)
+activity = adb('shell', 'cmd', 'package', 'resolve-activity', '--brief', PACKAGE).decode().strip().splitlines()[-1]
+if not activity.startswith(PACKAGE + '/'):
+    raise RuntimeError('APK did not resolve the expected application')
+try:
+    adb('shell', 'am', 'start', '-W', '-n', activity)
+    if a.drills:
+        run_drills()
+    else:
+        run_solo()
 except Exception:
     capture('failure')
     (out / 'last-state.json').write_text(json.dumps(last_state, indent=2) + '\n')
@@ -189,4 +283,6 @@ finally:
         'files/diagnostics/ui-state-' + nonce + '.json',
         'files/diagnostics/ui-state-' + nonce + '.json.tmp',
         'files/diagnostics/ui-match-' + nonce + '.json',
-        'files/diagnostics/ui-match-' + nonce + '.json.tmp', check=False)
+        'files/diagnostics/ui-match-' + nonce + '.json.tmp',
+        'files/diagnostics/ui-session-' + nonce + '.json',
+        'files/diagnostics/ui-session-' + nonce + '.json.tmp', check=False)

@@ -1,14 +1,14 @@
 class_name CurlDrills
 extends RefCounted
 ## Five-shot learn-to-curl rounds. The core grades actual settled outcomes.
-const NAMES := ["Weight to the tee", "Front guard", "Alternate line", "Sweep it home"]
-const HELP := ["Aim for tee depth. This drill grades weight, so sideways error is ignored.", "Stop on the front guard target, short of the rings.", "Draw to the marked side. Targets alternate left and right.", "Start a slightly light AI draw, then judge weight and sweep it to the button."]
+const NAMES := ["Weight to the tee", "Front guard", "Alternate line", "Sweep it home", "Takeout", "Hog-to-hog timing"]
+const HELP := ["Aim for tee depth. This drill grades weight, so sideways error is ignored.", "Stop on the front guard target, short of the rings.", "Draw to the marked side. Targets alternate left and right.", "Start a slightly light AI draw, then judge weight and sweep it to the button.", "Remove the Gold target. 3 stars: remove it and stay in the house; 2: remove it; 1: move it at least 45 cm.", "Match the marked hog-to-hog time with your delivery. Timing only: a stone crossing both hog lines can score even if it runs out the back."]
 var game
 var enabled := false
 var kind := 0
 var attempt := 0
 var results: Array = []
-var best: Array = [0, 0, 0, 0]
+var best: Array = [0, 0, 0, 0, 0, 0]
 var save_path := "user://target-drills.json"
 var menu_button: Button
 var start_button: Button
@@ -56,9 +56,14 @@ func toggle() -> void:
 	game.update_spatial(0)
 
 func reset_round() -> void:
+	choice.select(kind)
 	attempt = 0
 	results.clear()
-	game.report = HELP[kind] + "\nFive attempts. Target rings: 15 cm / 45 cm / 90 cm."
+	var error: String = game.session.prepare_drill(kind, attempt, false)
+	game.frame = game.session.frame()
+	game.previous = game.frame
+	game.report = HELP[kind] + "\n" + ("Timing stars: within 0.20 / 0.50 / 1.00 seconds." if kind == 5 else "Five attempts." if kind == 4 else "Five attempts. Target rings: 15 cm / 45 cm / 90 cm.")
+	if not error.is_empty(): game.report = error
 
 func start_sweeping() -> void:
 	if not enabled or kind != 3 or game.run_active or results.size() > attempt: return
@@ -81,6 +86,10 @@ func advance() -> void:
 	results.append(score)
 	if results.size() == 5: best[kind] = maxi(int(best[kind]), points())
 	var distance := "Out of play · 0 stars" if not score.in_play else "%d cm error · %d / 3 stars" % [roundi(score.error_mm / 10.0), score.stars]
+	if kind == 4:
+		distance = ("Target removed" if score.target_removed else "Target moved %d cm" % roundi(score.target_moved_mm / 10.0)) + " · %d / 3 stars" % score.stars
+	elif kind == 5:
+		distance = "Did not cross both hog lines · 0 stars" if not score.has("split_ms") else "%.2f s · %.2f s %s · %d / 3 stars" % [score.split_ms / 1000.0, score.error_ms / 1000.0, "slower" if score.split_ms > split_target_ms() else "faster" if score.split_ms < split_target_ms() else "on target", score.stars]
 	game.report = distance + "\n" + ("Round complete: %d / 15 stars. Best: %d / 15." % [points(), best[kind]] if results.size() == 5 else "Next target to continue the five-shot round.")
 	game.save_practice()
 	game.update_labels()
@@ -98,7 +107,7 @@ func next_target() -> void:
 	if results.size() == 5:
 		game.reset()
 		return
-	var error: String = game.session.prepare_next(true)
+	var error: String = game.session.prepare_drill(kind, attempt + 1, true)
 	if not error.is_empty(): game.report = error; return
 	attempt += 1
 	game.frame = game.session.frame()
@@ -116,9 +125,12 @@ func target() -> Vector2:
 	var data: Dictionary = game.session.drill_target(kind, attempt)
 	return Vector2(float(data.get("x_mm", 0)) / 1000.0, float(data.get("y_mm", 0)) / 1000.0)
 
+func split_target_ms() -> int:
+	return int(game.session.drill_target(kind, attempt).get("split_target_ms", 0))
+
 func update_view() -> void:
 	if game.rink == null: return
-	game.rink.drill_target = target() if enabled else Vector2.INF
+	game.rink.drill_target = target() if enabled and kind != 5 else Vector2.INF
 
 func refresh_controls() -> void:
 	if menu_button == null: return
@@ -134,6 +146,8 @@ func refresh_controls() -> void:
 	game.status.text = "%s  /  %s" % [NAMES[kind], game.phase]
 	var at := target()
 	var detail := "Tee depth" if kind == 0 else ("Front guard" if kind == 1 else ("Left target" if at.x < 0 else "Right target" if at.x > 0 else "Button"))
+	if kind == 4: detail = "Remove Gold target"
+	elif kind == 5: detail = "Target: %.2f s hog-to-hog" % (split_target_ms() / 1000.0)
 	target_label.text = "%s · Shot %d / 5 · %d stars" % [detail, attempt + 1, points()]
 	if game.frame.get("in_hand", {}).is_empty():
 		game.new_button.text = "New round" if results.size() == 5 else "Next target"
@@ -141,32 +155,47 @@ func refresh_controls() -> void:
 	game.fresh_button.text = "Restart drill"
 
 func save_envelope(session_json: String) -> String:
-	return JSON.stringify({"schema": 1, "session": session_json, "kind": kind, "attempt": attempt, "results": results, "best": best})
+	return JSON.stringify({"schema": 2, "session": session_json, "kind": kind, "attempt": attempt, "results": results, "best": best})
 
 func valid_envelope(data: Variant) -> bool:
-	if not data is Dictionary or data.get("schema") != 1 or not data.get("session") is String: return false
+	if not data is Dictionary or (data.get("schema") != 1 and data.get("schema") != 2) or not data.get("session") is String: return false
 	for key in ["kind", "attempt"]:
 		if not (data.get(key) is float or data.get(key) is int) or not is_finite(float(data[key])) or float(data[key]) != floorf(float(data[key])): return false
-	if data.kind < 0 or data.kind > 3 or data.attempt < 0 or data.attempt > 4: return false
+	if data.kind < 0 or data.kind > (3 if data.schema == 1 else 5) or data.attempt < 0 or data.attempt > 4: return false
 	if not data.get("results") is Array or data.results.size() < data.attempt or data.results.size() > data.attempt + 1: return false
 	for score in data.results:
 		if not score is Dictionary or not score.get("in_play") is bool: return false
 		for key in ["stars", "error_mm"]:
 			if not (score.get(key) is float or score.get(key) is int) or not is_finite(float(score[key])) or float(score[key]) != floorf(float(score[key])): return false
 		if score.stars < 0 or score.stars > 3 or score.error_mm < 0 or score.error_mm > 100000: return false
-	if not data.get("best") is Array or data.best.size() != 4: return false
+		if data.kind == 4:
+			if not score.get("target_removed") is bool or not valid_integer(score.get("target_moved_mm"), 100000): return false
+		if data.kind == 5:
+			if score.has("split_ms") != score.has("error_ms"): return false
+			if score.has("split_ms"):
+				if not valid_integer(score.split_ms, 120000) or not valid_integer(score.error_ms, 120000): return false
+			elif score.stars != 0: return false
+	if not data.get("best") is Array or data.best.size() != (4 if data.schema == 1 else 6): return false
 	for value in data.best:
 		if not (value is float or value is int) or not is_finite(float(value)) or value < 0 or value > 15 or float(value) != floorf(float(value)): return false
 	return true
+
+func valid_integer(value: Variant, maximum: int) -> bool:
+	return (value is float or value is int) and is_finite(float(value)) and float(value) == floorf(float(value)) and value >= 0 and value <= maximum
 
 func restore_metadata(data: Dictionary) -> void:
 	kind = int(data.kind)
 	attempt = int(data.attempt)
 	results = data.results
-	best = data.best
+	best = data.best.duplicate()
+	while best.size() < NAMES.size(): best.append(0)
 	choice.select(kind)
 	if game.frame.resting and int(game.frame.get("delivered", -1)) >= 0:
 		game.phase = "Stone at rest"
+	if kind == 4 and game.frame.get("delivered", -1) == 0 and results.size() == attempt:
+		game.phase = "Ready"
 	if results.size() > attempt:
 		game.phase = "Stone at rest"
 		game.report = "Drill restored. %d / 15 stars; continue with Next target." % points()
+	elif game.phase == "Ready":
+		game.report = "Drill restored. " + HELP[kind]

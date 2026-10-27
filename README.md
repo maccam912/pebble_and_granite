@@ -43,8 +43,10 @@ opponent travel between the hog lines. Skip/vice can send called shots and call
 HARD/CLEAN/OFF; text and symbols support silent play. Solo matches save separately.
 See [solo teams](docs/SOLO_TEAMS.md) for controls and current AI scope.
 **Drills** offers five-shot rounds for tee weight, front guards, alternating line
-and sweeping. Gold target rings mark 15/45/90 cm scoring zones; weight drills
-grade depth only. Rounds and best scores save separately from free practice.
+and sweeping, plus takeouts and hog-to-hog timing. Gold target rings mark
+15/45/90 cm scoring zones; weight drills grade depth only. Takeouts reward
+removal and staying in the house; timing drills show a target time and actual
+crossing error. Rounds and best scores save separately from free practice.
 **Ice board** shows recent actual paths against the release ray, true hog-to-hog
 splits, observed curl and delivery totals by position. Select a path to save a
 short ice note. Opening it pauses local play; online boards are future work.

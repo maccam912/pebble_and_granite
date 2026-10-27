@@ -27,6 +27,21 @@ func run() -> void:
 		if value is Dictionary and value.get("nonce") == nonce: report = value; break
 	check(not report.is_empty() and report.mode == "practice", "Native UI probe did not report the real initial scene")
 	check(report.controls.solo.x > 0 and report.controls.send.is_empty(), "UI probe exported hidden or missing controls")
+	check(report.handle.x > 0 and report.handle.y > 0 and not report.controls.drills.is_empty(), "Probe did not map the live handle/drill control to pixels")
+	game.drills.toggle()
+	game.drills.kind = 4
+	game.reset(false)
+	var observer
+	for child in game.get_children():
+		if child.get_script() == load("res://net/installed_ui_probe.gd"): observer = child; break
+	check(observer != null, "UI observer missing")
+	if observer != null: observer.write_state()
+	var drill_report: Dictionary = JSON.parse_string(FileAccess.get_file_as_string(report_path))
+	check(drill_report.mode == "drills" and drill_report.delivered == 0 and drill_report.drill_results.is_empty() and not drill_report.controls.drill_kind.is_empty(), "Takeout setup diagnostic is wrong")
+	var session_path := "user://diagnostics/ui-session-" + nonce + ".json"
+	var copy = ClassDB.instantiate("CurlSession")
+	check(copy.load_session(FileAccess.get_file_as_string(session_path)).is_empty() and copy.state_hash() == game.session.state_hash(), "Exported target journal failed to replay")
+	DirAccess.remove_absolute(ProjectSettings.globalize_path(session_path))
 	DirAccess.remove_absolute(ProjectSettings.globalize_path(report_path))
 	game.queue_free()
 	await process_frame

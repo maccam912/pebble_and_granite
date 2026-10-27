@@ -1,3 +1,7 @@
+Drills now includes takeouts and hog-to-hog timing. Alternate takeout targets
+reward removal and staying in the house; timing rounds compare your actual
+crossings against five time goals. Existing drill best scores are preserved.
+
 Solo teams now handle centre-guard no-tick remedies: choose Accept or Restore for
 Gold; Cyan chooses automatically. AI shot planning accounts for the opponent’s
 remedy. Pending choices resume from saves. A clock forfeit during a moving early
